@@ -32,8 +32,11 @@ This repository will implement a few tools in Rust for working in Nuke:
 - `grammar/canonical.abnf` — the normative grammar of the canonical form.
 - `docs/canonical-form.md` — the rules ABNF cannot express.
 - `fixtures/valid`, `fixtures/invalid` — conformance fixtures, shared by every crate.
+- `crates/nuke-fixtures` — reads that tree, so no crate keeps its own copy of the walker.
 - `crates/nuke-grammar` — translates the ABNF to pest at test time and checks the fixtures
   against it, so the grammar file is executable and cannot drift from the implementation.
+- `crates/nuke-syntax` — the hand-written lexer and parser. It carries the rules ABNF
+  cannot state, and a test asserts it agrees with the grammar on every fixture.
 
 Work inside the devshell: `nix develop -c cargo test --workspace`.
 
@@ -80,8 +83,10 @@ We are taking baby steps.
 - [x] Design the grammar of Nuke's canonical form in ABNF. Differences with JSON: no
   separators in collection literals; arbitrary values as map keys; atoms; both map and
   named tuple literals; choice removed wherever possible; `#` comments.
-- [ ] A hand-written lexer and parser for the canonical form, with serde support, checked
-  against the same fixtures as the grammar.
+- [x] A hand-written lexer and parser for the canonical form, checked against the same
+  fixtures as the grammar and against the grammar itself.
+- [ ] Serde support: `Value` as a self-describing data model, then a deserializer that
+  goes from text straight to a user's type.
 - [ ] A transpiler from the canonical form to JSON, then to the other targets.
 - [ ] The surface language: the expressions that reduce to the canonical form, and imports.
 - [ ] The formatter, the linter, the LSP server.

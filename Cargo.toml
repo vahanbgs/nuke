@@ -1,11 +1,16 @@
 [workspace]
 resolver = "3"
-members = ["crates/nuke-grammar"]
+members = ["crates/nuke-fixtures", "crates/nuke-grammar", "crates/nuke-syntax"]
 
 [workspace.package]
 edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.85"
+
+[workspace.dependencies]
+nuke-fixtures = { path = "crates/nuke-fixtures" }
+nuke-grammar = { path = "crates/nuke-grammar" }
+indexmap = "2"
 
 [workspace.lints.rust]
 warnings = { level = "deny", priority = -1 }

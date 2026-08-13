@@ -1,29 +1,4 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-
 use nuke_grammar::{Grammar, Rejection, Shape};
-
-fn fixtures(kind: &str) -> Vec<(PathBuf, String)> {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../fixtures")
-        .join(kind);
-    let mut found: Vec<(PathBuf, String)> = fs::read_dir(&dir)
-        .unwrap_or_else(|error| panic!("cannot read {}: {error}", dir.display()))
-        .map(|entry| entry.expect("cannot read directory entry").path())
-        .filter(|path| {
-            path.extension()
-                .is_some_and(|extension| extension == "nuke")
-        })
-        .map(|path| {
-            let source = fs::read_to_string(&path)
-                .unwrap_or_else(|error| panic!("cannot read {}: {error}", path.display()));
-            (path, source)
-        })
-        .collect();
-    found.sort();
-    assert!(!found.is_empty(), "no fixtures found in {}", dir.display());
-    found
-}
 
 fn scalar(kind: &str) -> Shape {
     Shape::Scalar(kind.to_owned())
@@ -37,9 +12,9 @@ fn the_grammar_translates_to_a_usable_parser() {
 #[test]
 fn valid_fixtures_parse_completely() {
     let grammar = Grammar::canonical().unwrap();
-    for (path, source) in fixtures("valid") {
-        if let Err(error) = grammar.parse(&source) {
-            panic!("{} should parse, but: {error}", path.display());
+    for fixture in nuke_fixtures::valid() {
+        if let Err(error) = grammar.parse(&fixture.source) {
+            panic!("{} should parse, but: {error}", fixture.display());
         }
     }
 }
@@ -47,11 +22,11 @@ fn valid_fixtures_parse_completely() {
 #[test]
 fn invalid_fixtures_are_rejected() {
     let grammar = Grammar::canonical().unwrap();
-    for (path, source) in fixtures("invalid") {
+    for fixture in nuke_fixtures::invalid() {
         assert!(
-            grammar.parse(&source).is_err(),
+            grammar.parse(&fixture.source).is_err(),
             "{} should have been rejected",
-            path.display()
+            fixture.display()
         );
     }
 }
