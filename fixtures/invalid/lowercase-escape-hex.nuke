@@ -1,0 +1,2 @@
+# Hex digits in an escape are uppercase.
+"\u{ff}"

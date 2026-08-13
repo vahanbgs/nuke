@@ -1,0 +1,2 @@
+# A brace block is a tuple or a map, never both at once.
+{x = 1 "y" => 2}

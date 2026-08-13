@@ -1,0 +1,9 @@
+# The six escapes, the full scalar range, and literal text.
+[
+  "\"" "\\" "\n" "\r" "\t"
+
+  "\u{0}" "\u{7F}" "\u{FFFF}" "\u{10FFFF}" "\u{1F600}"
+
+  "a # that does not start a comment"
+  "unicode passes through: é ✓ 😀"
+]

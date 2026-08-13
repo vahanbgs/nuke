@@ -1,0 +1,46 @@
+# Nuke
+
+A simple total configuration language.
+
+Nuke files are expressions. Evaluating one reduces it to a canonical form, which transpiles
+to JSON, YAML, TOML, XML, KDL, Lua, INI, cfg and gitconfig — so a dot file can be written
+once, in one language, and shared between the programs that need it.
+
+```nuke
+# A dot file in the canonical form.
+{
+  editor = {
+    theme = "gruvbox-dark"
+    tab_width = 2
+    line_numbers = Relative
+  }
+
+  shell = {
+    aliases = {
+      "ll" => "eza -l"
+      "gs" => "git status"
+    }
+  }
+}
+```
+
+Braces hold a named tuple when their pairs use `=` and a map when they use `=>`; maps take
+any value as a key, not just strings. Brackets hold a list. Unquoted `UpperCamelCase` words
+are atoms, which is all `True`, `False` and `Null` are. Nothing is separated by commas, and
+whitespace only matters where two tokens would otherwise run together.
+
+## Status
+
+Early. The canonical form is specified — [`grammar/canonical.abnf`](grammar/canonical.abnf)
+is normative and [`docs/canonical-form.md`](docs/canonical-form.md) covers what the grammar
+cannot state. Nothing else is built yet.
+
+## Development
+
+```sh
+nix develop -c cargo test --workspace
+```
+
+`crates/nuke-grammar` translates the ABNF to a pest grammar at test time and runs every
+fixture under `fixtures/` through it, so the specification is executable and cannot drift
+from the implementation.

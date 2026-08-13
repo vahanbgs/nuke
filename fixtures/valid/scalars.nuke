@@ -1,0 +1,10 @@
+# Every scalar shape the canonical form admits.
+[
+  True False Null Atom99
+
+  "" "text" "a b c"
+
+  0 -0 42 -7
+
+  0.0 1.5 -1.5 1e5 1e-5 -2.5e-3 0.5e10
+]

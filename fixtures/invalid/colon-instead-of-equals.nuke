@@ -1,0 +1,2 @@
+# Tuple fields are bound with =, not with JSON's colon.
+{x: 1}

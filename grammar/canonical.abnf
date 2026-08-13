@@ -1,0 +1,60 @@
+; Nuke — canonical form.
+;
+; This grammar is normative. It is written in ABNF (RFC 5234) with the
+; case-sensitive string literals of RFC 7405, and is split into two layers.
+;
+; The syntax layer is written over tokens. `ows` marks every position where
+; whitespace and comments are permitted; they are permitted nowhere else.
+;
+; The token layer is matched greedily: at any position a token extends as far
+; as it can. Whitespace is therefore never required between two values, only
+; between two values that would otherwise run together into one token —
+; `[12]` holds one element and `[1 2]` holds two.
+
+; ---- syntax -----------------------------------------------------------------
+
+document   = ows value ows
+
+value      = tuple / map / list / atom / string / number
+
+tuple      = "{" *( ows field ) ows "}"
+field      = ident ows "=" ows value
+
+map        = "{" *( ows entry ) ows "}"
+entry      = value ows "=>" ows value
+
+list       = "[" *( ows value ) ows "]"
+
+; ---- tokens -----------------------------------------------------------------
+
+atom       = upper *( ALPHA / DIGIT )
+ident      = lower *( lower / DIGIT / "_" )
+
+string     = DQUOTE *char DQUOTE
+char       = unescaped / escape
+unescaped  = %x20-21 / %x23-5B / %x5D-10FFFF
+escape     = %x5C ( DQUOTE / %x5C / %s"n" / %s"r" / %s"t" / unicode )
+unicode    = %s"u{" 1*6hexdig %x7D
+
+number     = float / integer
+integer    = [ "-" ] uint
+float      = [ "-" ] uint ( frac [ exp ] / exp )
+frac       = "." 1*DIGIT
+exp        = %s"e" [ "-" ] 1*DIGIT
+uint       = "0" / ( %x31-39 *DIGIT )
+
+ows        = *( wschar / comment )
+comment    = "#" *( %x09 / %x20-10FFFF )
+wschar     = %x20 / %x09 / %x0A
+
+; ---- character classes ------------------------------------------------------
+
+upper      = %x41-5A
+lower      = %x61-7A
+hexdig     = DIGIT / %x41-46
+
+; ---- core rules (RFC 5234 appendix B) ---------------------------------------
+
+ALPHA      = %x41-5A / %x61-7A
+DIGIT      = %x30-39
+DQUOTE     = %x22

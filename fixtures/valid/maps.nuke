@@ -1,0 +1,11 @@
+# Map keys are arbitrary values, not just strings.
+{
+  "string key" => 1
+  42 => True
+  -1.5 => "float key"
+  True => "atom key"
+  [1 2] => "list key"
+  {x = 1} => "tuple key"
+  {} => "empty key"
+  {"nested" => 1} => "map key"
+}

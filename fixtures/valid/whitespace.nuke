@@ -1,0 +1,2 @@
+# Whitespace is only ever needed to keep two tokens apart.
+[{a=1}{"b"=>2}[3]4 5]

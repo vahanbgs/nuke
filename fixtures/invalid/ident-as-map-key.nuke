@@ -1,0 +1,2 @@
+# An identifier is a field name, never a value, so it cannot key a map.
+{a => 1}

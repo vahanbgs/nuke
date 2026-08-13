@@ -1,0 +1,2 @@
+# Raw control characters are excluded from strings, as in JSON.
+"ab"

@@ -1,0 +1,21 @@
+# What a dot file looks like once it has been reduced to the canonical form.
+{
+  editor = {
+    theme = "gruvbox-dark"
+    tab_width = 2
+    line_numbers = Relative
+  }
+
+  shell = {
+    aliases = {
+      "ll" => "eza -l"
+      "gs" => "git status"
+    }
+    history_size = 10000
+  }
+
+  keybindings = [
+    {keys = "ctrl+t" action = OpenTerminal}
+    {keys = "ctrl+w" action = CloseWindow}
+  ]
+}
