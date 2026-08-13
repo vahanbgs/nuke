@@ -6,6 +6,27 @@ pub const CANONICAL_ABNF: &str = include_str!("../../../grammar/canonical.abnf")
 
 pub const DOCUMENT: &str = "document";
 
+pub const NUMBER: &str = "number";
+
+pub const CANONICAL_NUMBER: &str = "canonical_number";
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Rejection {
+    Syntax(String),
+    Number(String),
+}
+
+impl fmt::Display for Rejection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Syntax(message) => write!(f, "{message}"),
+            Self::Number(token) => {
+                write!(f, "`{token}` is not how the canonical form spells a number")
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Error {
     Abnf(String),
@@ -53,23 +74,42 @@ impl Grammar {
         Ok(Self { vm: Vm::new(rules) })
     }
 
-    pub fn parse<'a>(&'a self, input: &'a str) -> Result<Parse<'a>, String> {
+    pub fn parse<'a>(&'a self, input: &'a str) -> Result<Parse<'a>, Rejection> {
         let pairs = self
             .vm
             .parse(DOCUMENT, input)
-            .map_err(|error| error.to_string())?;
+            .map_err(|error| Rejection::Syntax(error.to_string()))?;
         let consumed = pairs
             .clone()
             .next()
             .map_or(0, |pair| pair.as_span().end_pos().pos());
-        if consumed == input.len() {
-            Ok(Parse { pairs })
-        } else {
-            Err(format!(
+        if consumed != input.len() {
+            return Err(Rejection::Syntax(format!(
                 "trailing input at byte {consumed} of {}",
                 input.len()
-            ))
+            )));
         }
+        for token in pairs
+            .clone()
+            .flatten()
+            .filter(|pair| pair.as_rule() == NUMBER)
+        {
+            let token = token.as_str();
+            if !self.matches(CANONICAL_NUMBER, token) {
+                return Err(Rejection::Number(token.to_owned()));
+            }
+        }
+        Ok(Parse { pairs })
+    }
+
+    pub fn matches(&self, rule: &str, input: &str) -> bool {
+        self.vm.parse(rule, input).is_ok_and(|pairs| {
+            pairs
+                .clone()
+                .next()
+                .map(|pair| pair.as_span().end_pos().pos())
+                == Some(input.len())
+        })
     }
 
     pub fn accepts(&self, input: &str) -> bool {

@@ -2,10 +2,8 @@
 
 Every Nuke file is an expression. Evaluating it reduces it to the **canonical form**: the
 subset of Nuke that carries data and nothing else. It is to Nuke what JSON is to JavaScript,
-and it is the input every transpiler backend consumes.
-
-`grammar/canonical.abnf` is the normative grammar. This document records what the grammar
-cannot say.
+and it is the input every transpiler backend consumes. `grammar/canonical.abnf` is the
+normative grammar; this document records what the grammar cannot say.
 
 ## Values
 
@@ -31,9 +29,15 @@ extends as far as it can. Whitespace is therefore never *required* between two v
 between two values that would otherwise run together into a single token. `[12]` holds one
 element and `[1 2]` holds two; `[[1][2]]` and `{"a"=>1 "b"=>2}` need no spaces at all.
 
-The same rule explains two results that surprise on first reading. `[1.2.3]` is an error,
-because the first token is `1.2` and `.3` is not a value. `[01]` holds two elements, because
-a number may not carry a leading zero, so the first token stops after `0`.
+The rule cuts where a token genuinely cannot continue: `[1.2.3]` is an error, because the
+first token is `1.2` and `.3` is not a value.
+
+It is also why a number token takes the *whole* run of characters that could belong to a
+number rather than only the well-formed ones. Were it narrower, a misspelling would split
+into two correct tokens and parse silently: `[01]` would be `0` and `1`, and `[1E5]` would
+be the number `1` beside the atom `E5`. So `number` is permissive, and every token it takes
+must also match `canonical-number`, where the one-spelling rules live — a misspelled number
+is one bad token that names itself, not two good ones.
 
 ## Encoding
 
@@ -62,10 +66,12 @@ or an exponent. `1` and `1.0` are different values, which matters to TOML and to
 with a typed number model. Integers are arbitrary width in the grammar; a backend narrows
 them and reports the loss. Floats are IEEE-754 doubles.
 
-There is one spelling per number. No leading `+`, no leading zeros, no uppercase `E`, no
-digit-less fraction such as `1.` or `.5`, and no hex, octal or binary — those are surface
-syntax that reduces to a decimal integer. There is no infinity and no NaN; a backend that
-needs them takes them from atoms.
+There is one way to write a given number, enforced by `canonical-number`: no leading `+` and
+no leading zeros, in the exponent or before the point; no uppercase `E`; no digit-less
+fraction such as `1.` or `.5`; and no hex, octal or binary, which are surface syntax that
+reduces to a decimal integer. That governs spelling, not the choice among equal floats —
+`1e5` and `100000.0` are both canonical, and deciding between them is the formatter's job.
+There is no infinity and no NaN; a backend that needs them takes them from atoms.
 
 `-0` is admitted; as an integer it is `0`. `-0.0` and `0.0` are floats, and IEEE-754 keeps
 them apart.
@@ -88,6 +94,6 @@ tuple field order, but it carries no meaning.
 ## Grammar, then lint
 
 The grammar admits an atom starting with any uppercase letter and an identifier containing
-any run of underscores. Style is narrower than that: atoms are `UpperCamelCase` and
-identifiers are `snake_case` with no leading, trailing or doubled `_`. The linter enforces
-it; the parser does not, so a file that trips a lint still parses.
+any run of underscores. Style is narrower: atoms are `UpperCamelCase` and identifiers are
+`snake_case` with no leading, trailing or doubled `_`. The linter enforces it and the parser
+does not, so a file that trips a lint still parses.

@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use nuke_grammar::{Grammar, Shape};
+use nuke_grammar::{Grammar, Rejection, Shape};
 
 fn fixtures(kind: &str) -> Vec<(PathBuf, String)> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -62,7 +62,8 @@ fn tokens_are_matched_greedily() {
     let cases = [
         ("[12]", Shape::List(vec![scalar("number")])),
         ("[1 2]", Shape::List(vec![scalar("number"); 2])),
-        ("[01]", Shape::List(vec![scalar("number"); 2])),
+        ("[10]", Shape::List(vec![scalar("number")])),
+        ("[1 0]", Shape::List(vec![scalar("number"); 2])),
         (
             "[[1][2]]",
             Shape::List(vec![Shape::List(vec![scalar("number")]); 2]),
@@ -101,6 +102,37 @@ fn braces_separate_on_their_pair_operator() {
             .parse(source)
             .unwrap_or_else(|error| panic!("{source} should parse, but: {error}"));
         assert_eq!(parse.shape(), expected, "for {source}");
+    }
+}
+
+#[test]
+fn a_misspelled_number_is_one_bad_token() {
+    let grammar = Grammar::canonical().unwrap();
+    for source in ["[01]", "[00.5]", "[1E5]", "[1e05]", "[1e+5]", "[1.]"] {
+        let rejection = grammar
+            .parse(source)
+            .err()
+            .unwrap_or_else(|| panic!("{source} should have been rejected"));
+        let Rejection::Number(token) = rejection else {
+            panic!("{source} should fail the number check, not the parse: {rejection}");
+        };
+        assert_eq!(token, source.trim_matches(['[', ']']), "for {source}");
+    }
+}
+
+#[test]
+fn well_spelled_numbers_survive_the_check() {
+    let grammar = Grammar::canonical().unwrap();
+    for source in [
+        "[0]",
+        "[-0]",
+        "[42]",
+        "[0.0]",
+        "[-1.5]",
+        "[1e5]",
+        "[-2.5e-3]",
+    ] {
+        assert!(grammar.accepts(source), "{source} should be accepted");
     }
 }
 
