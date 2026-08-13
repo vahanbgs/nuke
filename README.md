@@ -38,7 +38,7 @@ cannot state. Nothing else is built yet.
 ## Development
 
 ```sh
-nix develop -c cargo test --workspace
+nix develop -c cargo test --workspace --all-features
 ```
 
 `crates/nuke-grammar` translates the ABNF to a pest grammar at test time and runs every

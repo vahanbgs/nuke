@@ -11,6 +11,7 @@ rust-version = "1.85"
 nuke-fixtures = { path = "crates/nuke-fixtures" }
 nuke-grammar = { path = "crates/nuke-grammar" }
 indexmap = "2"
+serde = { version = "1", default-features = false, features = ["std"] }
 
 [workspace.lints.rust]
 warnings = { level = "deny", priority = -1 }

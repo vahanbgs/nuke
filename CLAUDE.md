@@ -38,7 +38,8 @@ This repository will implement a few tools in Rust for working in Nuke:
 - `crates/nuke-syntax` — the hand-written lexer and parser. It carries the rules ABNF
   cannot state, and a test asserts it agrees with the grammar on every fixture.
 
-Work inside the devshell: `nix develop -c cargo test --workspace`.
+Work inside the devshell: `nix develop -c cargo test --workspace --all-features`. Serde
+support sits behind an off-by-default `serde` feature, so `--all-features` is what covers it.
 
 ## Rules
 
