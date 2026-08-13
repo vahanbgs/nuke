@@ -22,5 +22,9 @@ serde = ["dep:serde"]
 name = "deserialization"
 required-features = ["serde"]
 
+[[test]]
+name = "serialization"
+required-features = ["serde"]
+
 [lints]
 workspace = true
