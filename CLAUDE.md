@@ -59,6 +59,20 @@ Work inside the devshell: `nix develop -c cargo test --workspace`.
 - When possible use modern equivalents of CLI tools when interacting with the file system
   (ripgrep instead of grep, fd instead of find, etc..).
 
+## Commits
+
+Conventional Commits for the subject line, and a prose body that carries the argument. The
+convention says nothing about bodies, so the two compose.
+
+- `<type>(<scope>): <imperative subject>`, no trailing period, 72 characters or fewer.
+- Types: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`. There is
+  no `style` — rustfmt is enforced, so a style-only commit cannot exist.
+- Scope is the area changed: `grammar`, `spec`, `fixtures`, or a crate name without its
+  `nuke-` prefix (`syntax`, `transpile`, `cli`). Omit it when a change is repository-wide.
+- A body is required for anything but a trivial change: what was decided, and what tradeoff
+  it accepted. For a language decision the body is the deliverable, not a formality.
+- `!` before the colon for a breaking change, with a `BREAKING CHANGE:` footer.
+
 ## Plan
 
 We are taking baby steps.
