@@ -1,6 +1,8 @@
 #[cfg(feature = "serde")]
 pub mod de;
 pub mod error;
+#[cfg(feature = "serde")]
+mod hint;
 pub mod lexer;
 mod parser;
 #[cfg(feature = "serde")]

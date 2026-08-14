@@ -7,6 +7,7 @@ use serde::ser::{
 };
 
 use crate::MAX_DEPTH;
+use crate::hint;
 use crate::value::{Atom, Float, Ident, Integer, Map, Tuple, Value};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -103,14 +104,25 @@ fn tagged(tag: Value, payload: Value) -> Value {
     Value::Map(map)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Expect {
+    Atom,
+    Integer,
+    Tuple,
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Serializer {
     depth: usize,
+    expect: Option<Expect>,
 }
 
 impl Serializer {
     pub const fn new() -> Self {
-        Self { depth: 0 }
+        Self {
+            depth: 0,
+            expect: None,
+        }
     }
 
     fn descend(self) -> Result<Self, Error> {
@@ -118,7 +130,10 @@ impl Serializer {
         if depth > MAX_DEPTH {
             Err(Error::new(ErrorKind::TooDeep))
         } else {
-            Ok(Self { depth })
+            Ok(Self {
+                depth,
+                expect: None,
+            })
         }
     }
 }
@@ -177,7 +192,19 @@ impl serde::Serializer for Serializer {
     }
 
     fn serialize_str(self, text: &str) -> Result<Option<Value>, Error> {
-        Ok(Some(Value::String(text.to_owned())))
+        match self.expect {
+            Some(Expect::Atom) => Atom::parse(text)
+                .map(|atom| Some(Value::Atom(atom)))
+                .ok_or_else(|| ser::Error::custom(format!("`{text}` is not the shape of an atom"))),
+            Some(Expect::Integer) => Integer::parse(text)
+                .map(|integer| Some(Value::Integer(integer)))
+                .ok_or_else(|| {
+                    ser::Error::custom(format!(
+                        "`{text}` is not how the canonical form spells a number"
+                    ))
+                }),
+            _ => Ok(Some(Value::String(text.to_owned()))),
+        }
     }
 
     fn serialize_bytes(self, bytes: &[u8]) -> Result<Option<Value>, Error> {
@@ -219,13 +246,19 @@ impl serde::Serializer for Serializer {
 
     fn serialize_newtype_struct<T>(
         self,
-        _name: &'static str,
+        name: &'static str,
         value: &T,
     ) -> Result<Option<Value>, Error>
     where
         T: Serialize + ?Sized,
     {
-        value.serialize(self)
+        let expect = match name {
+            hint::ATOM => Some(Expect::Atom),
+            hint::INTEGER => Some(Expect::Integer),
+            hint::TUPLE => Some(Expect::Tuple),
+            _ => None,
+        };
+        value.serialize(Self { expect, ..self })
     }
 
     fn serialize_newtype_variant<T>(
@@ -271,8 +304,13 @@ impl serde::Serializer for Serializer {
     }
 
     fn serialize_map(self, _length: Option<usize>) -> Result<Entries, Error> {
+        let collected = if self.expect == Some(Expect::Tuple) {
+            Collected::Fields(Tuple::new())
+        } else {
+            Collected::Entries(Map::new())
+        };
         Ok(Entries {
-            entries: Map::new(),
+            collected,
             key: None,
             serializer: self.descend()?,
         })
@@ -394,8 +432,13 @@ impl SerializeTupleVariant for TaggedElements {
     }
 }
 
+enum Collected {
+    Entries(Map),
+    Fields(Tuple),
+}
+
 pub struct Entries {
-    entries: Map,
+    collected: Collected,
     key: Option<Value>,
     serializer: Serializer,
 }
@@ -421,17 +464,34 @@ impl SerializeMap for Entries {
             None => return Err(ser::Error::custom("a map value was written before its key")),
         };
         let value = present(value.serialize(self.serializer)?, "as a map value")?;
-        if self.entries.insert(key, value).is_some() {
-            return Err(Error::new(ErrorKind::DuplicateKey));
+        match &mut self.collected {
+            Collected::Entries(entries) => {
+                if entries.insert(key, value).is_some() {
+                    return Err(Error::new(ErrorKind::DuplicateKey));
+                }
+            }
+            Collected::Fields(fields) => {
+                let Value::String(name) = key else {
+                    return Err(ser::Error::custom(
+                        "a tuple field is named by an identifier",
+                    ));
+                };
+                let Some(field) = Ident::parse(&name) else {
+                    return Err(Error::new(ErrorKind::FieldName(name)));
+                };
+                if fields.insert(field, value).is_some() {
+                    return Err(Error::new(ErrorKind::DuplicateField(name)));
+                }
+            }
         }
         Ok(())
     }
 
     fn end(self) -> Result<Option<Value>, Error> {
-        Ok(Some(if self.entries.is_empty() {
-            Value::Tuple(Tuple::new())
-        } else {
-            Value::Map(self.entries)
+        Ok(Some(match self.collected {
+            Collected::Entries(entries) if entries.is_empty() => Value::Tuple(Tuple::new()),
+            Collected::Entries(entries) => Value::Map(entries),
+            Collected::Fields(fields) => Value::Tuple(fields),
         }))
     }
 }
@@ -493,5 +553,57 @@ impl SerializeStructVariant for TaggedFields {
 
     fn end(self) -> Result<Option<Value>, Error> {
         Ok(Some(tagged(self.tag, Value::Tuple(self.fields.fields))))
+    }
+}
+
+impl Serialize for Value {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Tuple(tuple) => tuple.serialize(serializer),
+            Self::Map(map) => map.serialize(serializer),
+            Self::List(items) => serializer.collect_seq(items),
+            Self::Atom(atom) => atom.serialize(serializer),
+            Self::String(text) => serializer.serialize_str(text),
+            Self::Integer(integer) => integer.serialize(serializer),
+            Self::Float(float) => float.serialize(serializer),
+        }
+    }
+}
+
+struct TupleFields<'a>(&'a Tuple);
+
+impl Serialize for TupleFields<'_> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_map(self.0.iter().map(|(name, value)| (name.as_str(), value)))
+    }
+}
+
+impl Serialize for Tuple {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_newtype_struct(hint::TUPLE, &TupleFields(self))
+    }
+}
+
+impl Serialize for Map {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_map(self.iter())
+    }
+}
+
+impl Serialize for Atom {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_newtype_struct(hint::ATOM, self.as_str())
+    }
+}
+
+impl Serialize for Integer {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_newtype_struct(hint::INTEGER, self.as_str())
+    }
+}
+
+impl Serialize for Float {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_f64(self.get())
     }
 }

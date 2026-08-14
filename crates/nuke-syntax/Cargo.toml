@@ -26,5 +26,9 @@ required-features = ["serde"]
 name = "serialization"
 required-features = ["serde"]
 
+[[test]]
+name = "round_trip"
+required-features = ["serde"]
+
 [lints]
 workspace = true

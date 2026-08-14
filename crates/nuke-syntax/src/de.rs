@@ -8,7 +8,8 @@ use serde::de::{
 };
 
 use crate::error::Span;
-use crate::value::{Ident, Integer, Value};
+use crate::hint;
+use crate::value::{Atom, Float, Ident, Integer, Map, Tuple, Value};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorKind {
@@ -326,13 +327,35 @@ impl<'de> serde::Deserializer<'de> for Deserializer<'de> {
 
     fn deserialize_newtype_struct<V>(
         self,
-        _name: &'static str,
+        name: &'static str,
         visitor: V,
     ) -> Result<V::Value, Error>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_newtype_struct(self)
+        match name {
+            hint::VALUE => match self.value {
+                Value::Atom(_) => visitor.visit_map(Hint::new(hint::ATOM, self)),
+                Value::Tuple(_) => visitor.visit_map(Hint::new(hint::TUPLE, self)),
+                Value::Integer(integer) if wider_than_serde(integer) => {
+                    visitor.visit_map(Hint::new(hint::INTEGER, self))
+                }
+                _ => self.deserialize_any(visitor),
+            },
+            hint::ATOM => match self.value {
+                Value::Atom(atom) => visitor.visit_borrowed_str(atom.as_str()),
+                other => Err(mismatch(other, &visitor)),
+            },
+            hint::INTEGER => match self.value {
+                Value::Integer(integer) => visitor.visit_borrowed_str(integer.as_str()),
+                other => Err(mismatch(other, &visitor)),
+            },
+            hint::TUPLE => match self.value {
+                Value::Tuple(tuple) => visitor.visit_map(Fields::new(tuple.iter())),
+                other => Err(mismatch(other, &visitor)),
+            },
+            _ => visitor.visit_newtype_struct(self),
+        }
     }
 
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Error>
@@ -610,5 +633,338 @@ impl<'de> VariantAccess<'de> for Variant<'de> {
             fields,
             visitor,
         )
+    }
+}
+
+fn wider_than_serde(integer: &Integer) -> bool {
+    integer.to_i128().is_none() && integer.as_str().parse::<u128>().is_err()
+}
+
+struct Hint<'de> {
+    key: &'static str,
+    payload: Option<Deserializer<'de>>,
+}
+
+impl<'de> Hint<'de> {
+    const fn new(key: &'static str, payload: Deserializer<'de>) -> Self {
+        Self {
+            key,
+            payload: Some(payload),
+        }
+    }
+}
+
+impl<'de> MapAccess<'de> for Hint<'de> {
+    type Error = Error;
+
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Error>
+    where
+        K: DeserializeSeed<'de>,
+    {
+        if self.payload.is_none() {
+            return Ok(None);
+        }
+        seed.deserialize(self.key.into_deserializer()).map(Some)
+    }
+
+    fn next_value_seed<T>(&mut self, seed: T) -> Result<T::Value, Error>
+    where
+        T: DeserializeSeed<'de>,
+    {
+        match self.payload.take() {
+            Some(payload) => seed.deserialize(payload),
+            None => Err(Error::custom("a hinted value was asked for twice")),
+        }
+    }
+}
+
+struct ValueVisitor;
+
+impl<'de> Visitor<'de> for ValueVisitor {
+    type Value = Value;
+
+    fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("a value")
+    }
+
+    fn visit_bool<E: de::Error>(self, state: bool) -> Result<Value, E> {
+        Ok(Value::Atom(Atom::new(if state { "True" } else { "False" })))
+    }
+
+    fn visit_i64<E: de::Error>(self, number: i64) -> Result<Value, E> {
+        Ok(Value::Integer(Integer::new(&number.to_string())))
+    }
+
+    fn visit_i128<E: de::Error>(self, number: i128) -> Result<Value, E> {
+        Ok(Value::Integer(Integer::new(&number.to_string())))
+    }
+
+    fn visit_u64<E: de::Error>(self, number: u64) -> Result<Value, E> {
+        Ok(Value::Integer(Integer::new(&number.to_string())))
+    }
+
+    fn visit_u128<E: de::Error>(self, number: u128) -> Result<Value, E> {
+        Ok(Value::Integer(Integer::new(&number.to_string())))
+    }
+
+    fn visit_f64<E: de::Error>(self, number: f64) -> Result<Value, E> {
+        Float::new(number).map(Value::Float).ok_or_else(|| {
+            E::custom("the canonical form has no infinity and no NaN; take them from atoms")
+        })
+    }
+
+    fn visit_str<E: de::Error>(self, text: &str) -> Result<Value, E> {
+        Ok(Value::String(text.to_owned()))
+    }
+
+    fn visit_unit<E: de::Error>(self) -> Result<Value, E> {
+        Ok(Value::Atom(Atom::new("Null")))
+    }
+
+    fn visit_none<E: de::Error>(self) -> Result<Value, E> {
+        self.visit_unit()
+    }
+
+    fn visit_some<D>(self, deserializer: D) -> Result<Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(self)
+    }
+
+    fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(self)
+    }
+
+    fn visit_seq<A>(self, mut access: A) -> Result<Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let mut items = Vec::with_capacity(access.size_hint().unwrap_or_default());
+        while let Some(item) = access.next_element()? {
+            items.push(item);
+        }
+        Ok(Value::List(items))
+    }
+
+    fn visit_map<A>(self, mut access: A) -> Result<Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let Some(first) = access.next_key::<Value>()? else {
+            return Ok(Value::Map(Map::new()));
+        };
+        if let Value::String(name) = &first {
+            match name.as_str() {
+                hint::ATOM => return Ok(Value::Atom(access.next_value()?)),
+                hint::INTEGER => return Ok(Value::Integer(access.next_value()?)),
+                hint::TUPLE => return Ok(Value::Tuple(access.next_value()?)),
+                _ => {}
+            }
+        }
+        let mut entries = Map::new();
+        let value = access.next_value()?;
+        entries.insert(first, value);
+        while let Some((key, value)) = access.next_entry()? {
+            if entries.insert(key, value).is_some() {
+                return Err(de::Error::custom("this key is already in this map"));
+            }
+        }
+        Ok(Value::Map(entries))
+    }
+}
+
+impl<'de> Deserialize<'de> for Value {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_newtype_struct(hint::VALUE, ValueVisitor)
+    }
+}
+
+struct AtomVisitor;
+
+impl<'de> Visitor<'de> for AtomVisitor {
+    type Value = Atom;
+
+    fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("an atom")
+    }
+
+    fn visit_str<E: de::Error>(self, text: &str) -> Result<Atom, E> {
+        Atom::parse(text).ok_or_else(|| E::custom(format!("`{text}` is not the shape of an atom")))
+    }
+
+    fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Atom, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(self)
+    }
+}
+
+impl<'de> Deserialize<'de> for Atom {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_newtype_struct(hint::ATOM, AtomVisitor)
+    }
+}
+
+struct IntegerVisitor;
+
+impl<'de> Visitor<'de> for IntegerVisitor {
+    type Value = Integer;
+
+    fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("an integer")
+    }
+
+    fn visit_str<E: de::Error>(self, text: &str) -> Result<Integer, E> {
+        Integer::parse(text).ok_or_else(|| {
+            E::custom(format!(
+                "`{text}` is not how the canonical form spells a number"
+            ))
+        })
+    }
+
+    fn visit_i64<E: de::Error>(self, number: i64) -> Result<Integer, E> {
+        Ok(Integer::new(&number.to_string()))
+    }
+
+    fn visit_i128<E: de::Error>(self, number: i128) -> Result<Integer, E> {
+        Ok(Integer::new(&number.to_string()))
+    }
+
+    fn visit_u64<E: de::Error>(self, number: u64) -> Result<Integer, E> {
+        Ok(Integer::new(&number.to_string()))
+    }
+
+    fn visit_u128<E: de::Error>(self, number: u128) -> Result<Integer, E> {
+        Ok(Integer::new(&number.to_string()))
+    }
+
+    fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Integer, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(self)
+    }
+}
+
+impl<'de> Deserialize<'de> for Integer {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_newtype_struct(hint::INTEGER, IntegerVisitor)
+    }
+}
+
+struct FloatVisitor;
+
+impl<'de> Visitor<'de> for FloatVisitor {
+    type Value = Float;
+
+    fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("a float")
+    }
+
+    fn visit_f64<E: de::Error>(self, number: f64) -> Result<Float, E> {
+        Float::new(number).ok_or_else(|| {
+            E::custom("the canonical form has no infinity and no NaN; take them from atoms")
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for Float {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_f64(FloatVisitor)
+    }
+}
+
+struct TupleVisitor;
+
+impl<'de> Visitor<'de> for TupleVisitor {
+    type Value = Tuple;
+
+    fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("a tuple")
+    }
+
+    fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Tuple, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(self)
+    }
+
+    fn visit_map<A>(self, mut access: A) -> Result<Tuple, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut fields = Tuple::new();
+        while let Some((name, value)) = access.next_entry::<String, Value>()? {
+            let Some(field) = Ident::parse(&name) else {
+                return Err(de::Error::custom(format!(
+                    "`{name}` cannot name a tuple field; a field name is an identifier"
+                )));
+            };
+            if fields.insert(field, value).is_some() {
+                return Err(de::Error::custom(format!(
+                    "the field `{name}` is already in this tuple"
+                )));
+            }
+        }
+        Ok(fields)
+    }
+}
+
+impl<'de> Deserialize<'de> for Tuple {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_newtype_struct(hint::TUPLE, TupleVisitor)
+    }
+}
+
+struct MapVisitor;
+
+impl<'de> Visitor<'de> for MapVisitor {
+    type Value = Map;
+
+    fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("a map")
+    }
+
+    fn visit_map<A>(self, mut access: A) -> Result<Map, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut entries = Map::new();
+        while let Some((key, value)) = access.next_entry::<Value, Value>()? {
+            if entries.insert(key, value).is_some() {
+                return Err(de::Error::custom("this key is already in this map"));
+            }
+        }
+        Ok(entries)
+    }
+}
+
+impl<'de> Deserialize<'de> for Map {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(MapVisitor)
     }
 }
