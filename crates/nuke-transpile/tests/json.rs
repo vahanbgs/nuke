@@ -1,6 +1,6 @@
 use nuke_syntax::parse;
-use nuke_transpile::json::{to_string, to_string_compact};
-use nuke_transpile::{Error, ErrorKind, Segment};
+use nuke_transpile::Segment;
+use nuke_transpile::json::{Error, ErrorKind, to_string, to_string_compact};
 
 fn pretty(source: &str) -> String {
     let value = parse(source).expect("the source should parse");

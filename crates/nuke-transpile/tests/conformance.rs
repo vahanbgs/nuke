@@ -1,7 +1,6 @@
 use nuke_fixtures::Fixture;
 use nuke_syntax::{Value, parse};
-use nuke_transpile::ErrorKind;
-use nuke_transpile::json::{to_string, to_string_compact};
+use nuke_transpile::json::{ErrorKind, to_string, to_string_compact};
 
 fn refusals() -> Vec<(&'static str, ErrorKind, &'static str)> {
     vec![

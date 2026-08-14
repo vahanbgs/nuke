@@ -1,8 +1,33 @@
 use std::collections::HashSet;
+use std::fmt;
 
 use nuke_syntax::{Atom, Float, MAX_DEPTH, Map, Tuple, Value};
 
-use crate::error::{Error, ErrorKind, Path, Segment};
+use crate::error::{Path, Segment, form, too_deep};
+
+pub type Error = crate::error::Error<ErrorKind>;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ErrorKind {
+    UnrepresentableKey(&'static str),
+    DuplicateKey(String),
+    TooDeep,
+}
+
+impl fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::UnrepresentableKey(form) => write!(
+                f,
+                "a {form} cannot key a JSON object; only a string or an atom names one"
+            ),
+            Self::DuplicateKey(name) => {
+                write!(f, "two keys of this map both name `{name}` in JSON")
+            }
+            Self::TooDeep => too_deep(f),
+        }
+    }
+}
 
 pub fn to_string(value: &Value) -> Result<String, Error> {
     write(value, Some(2))
@@ -175,18 +200,6 @@ impl Writer {
 
     fn error(&self, kind: ErrorKind) -> Error {
         Error::new(kind, Path::new(self.path.clone()))
-    }
-}
-
-fn form(value: &Value) -> &'static str {
-    match value {
-        Value::Tuple(_) => "tuple",
-        Value::Map(_) => "map",
-        Value::List(_) => "list",
-        Value::Atom(_) => "atom",
-        Value::String(_) => "string",
-        Value::Integer(_) => "integer",
-        Value::Float(_) => "float",
     }
 }
 

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use nuke_syntax::MAX_DEPTH;
+use nuke_syntax::{MAX_DEPTH, Value};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Segment {
@@ -50,39 +50,17 @@ impl fmt::Display for Path {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ErrorKind {
-    UnrepresentableKey(&'static str),
-    DuplicateKey(String),
-    TooDeep,
-}
-
-impl fmt::Display for ErrorKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::UnrepresentableKey(form) => write!(
-                f,
-                "a {form} cannot key a JSON object; only a string or an atom names one"
-            ),
-            Self::DuplicateKey(name) => {
-                write!(f, "two keys of this map both name `{name}` in JSON")
-            }
-            Self::TooDeep => write!(f, "this value nests deeper than {MAX_DEPTH} levels"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Error {
-    kind: ErrorKind,
+pub struct Error<K> {
+    kind: K,
     path: Path,
 }
 
-impl Error {
-    pub(crate) fn new(kind: ErrorKind, path: Path) -> Self {
+impl<K> Error<K> {
+    pub(crate) fn new(kind: K, path: Path) -> Self {
         Self { kind, path }
     }
 
-    pub const fn kind(&self) -> &ErrorKind {
+    pub const fn kind(&self) -> &K {
         &self.kind
     }
 
@@ -91,10 +69,26 @@ impl Error {
     }
 }
 
-impl fmt::Display for Error {
+impl<K: fmt::Display> fmt::Display for Error<K> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}, at {}", self.kind, self.path)
     }
 }
 
-impl std::error::Error for Error {}
+impl<K: fmt::Debug + fmt::Display> std::error::Error for Error<K> {}
+
+pub(crate) fn too_deep(f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "this value nests deeper than {MAX_DEPTH} levels")
+}
+
+pub(crate) fn form(value: &Value) -> &'static str {
+    match value {
+        Value::Tuple(_) => "tuple",
+        Value::Map(_) => "map",
+        Value::List(_) => "list",
+        Value::Atom(_) => "atom",
+        Value::String(_) => "string",
+        Value::Integer(_) => "integer",
+        Value::Float(_) => "float",
+    }
+}
