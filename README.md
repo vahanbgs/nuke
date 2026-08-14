@@ -35,10 +35,12 @@ Early. The canonical form is specified — [`grammar/canonical.abnf`](grammar/ca
 is normative and [`docs/canonical-form.md`](docs/canonical-form.md) covers what the grammar
 cannot state. `crates/nuke-syntax` parses it, and its `serde` feature reads a document
 straight into a Rust type; [`docs/serde.md`](docs/serde.md) records what that carries and
-what it cannot. `crates/nuke-transpile` writes JSON and YAML: [`docs/json.md`](docs/json.md)
-settles how atoms, keys and numbers degrade for the targets that follow, and
-[`docs/yaml.md`](docs/yaml.md) records what a target wider than the canonical form does with
-the room. The seven other targets, the surface language and the tooling are still ahead.
+what it cannot. `crates/nuke-transpile` writes JSON, YAML and TOML:
+[`docs/json.md`](docs/json.md) settles how atoms, keys and numbers degrade for the targets
+that follow, [`docs/yaml.md`](docs/yaml.md) records what a target wider than the canonical
+form does with the room, and [`docs/toml.md`](docs/toml.md) records what a target of a
+different shape refuses. The six other targets, the surface language and the tooling are
+still ahead.
 
 ## Development
 
