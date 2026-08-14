@@ -18,20 +18,12 @@ of the various tools used to work with the language.
   files for different programs.
 - Nuke files use the `.nuke` extension.
 
-## Tools for working with Nuke
-
-This repository will implement a few tools in Rust for working in Nuke:
-- A formatter
-- A linter
-- An lsp server
-- A transpiler
-- A parser with serde support
-
 ## Layout
 
 - `grammar/canonical.abnf` — the normative grammar of the canonical form.
 - `docs/canonical-form.md` — the rules ABNF cannot express.
 - `docs/serde.md` — where Nuke and serde's data model disagree, and how the binding settles it.
+- `docs/json.md` — the JSON mapping, and what it degrades or refuses.
 - `fixtures/valid`, `fixtures/invalid` — conformance fixtures, shared by every crate.
 - `crates/nuke-fixtures` — reads that tree, so no crate keeps its own copy of the walker.
 - `crates/nuke-grammar` — translates the ABNF to pest at test time and checks the fixtures
@@ -39,6 +31,8 @@ This repository will implement a few tools in Rust for working in Nuke:
 - `crates/nuke-syntax` — the hand-written lexer and parser. It carries the rules ABNF
   cannot state, and a test asserts it agrees with the grammar on every fixture. Its
   `serde` feature adds `from_str`, `from_value` and `to_value` over the same `Value`.
+- `crates/nuke-transpile` — the backends. `json` writes a `Value` out, laid out or compact,
+  and refuses what JSON cannot key rather than inventing a spelling for it.
 
 Work inside the devshell: `nix develop -c cargo test --workspace --all-features`. Serde
 support sits behind an off-by-default `serde` feature, so `--all-features` is what covers it.
@@ -91,6 +85,8 @@ We are taking baby steps.
 - [x] Serde support: `Value` as a self-describing data model, and `from_str` from text to a
   user's type. It routes through `Value` rather than streaming; spans on data errors wait
   for the lossless tree the formatter and the LSP server need anyway.
-- [ ] A transpiler from the canonical form to JSON, then to the other targets.
+- [x] A transpiler to JSON: the first backend, and the one that settles how atoms, map keys
+  and numbers degrade for the targets that follow.
+- [ ] The other transpiler targets: YAML, TOML, XML, KDL, Lua, INI, cfg, gitconfig.
 - [ ] The surface language: the expressions that reduce to the canonical form, and imports.
 - [ ] The formatter, the linter, the LSP server.

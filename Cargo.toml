@@ -1,6 +1,11 @@
 [workspace]
 resolver = "3"
-members = ["crates/nuke-fixtures", "crates/nuke-grammar", "crates/nuke-syntax"]
+members = [
+  "crates/nuke-fixtures",
+  "crates/nuke-grammar",
+  "crates/nuke-syntax",
+  "crates/nuke-transpile",
+]
 
 [workspace.package]
 edition = "2024"
@@ -10,8 +15,11 @@ rust-version = "1.85"
 [workspace.dependencies]
 nuke-fixtures = { path = "crates/nuke-fixtures" }
 nuke-grammar = { path = "crates/nuke-grammar" }
+nuke-syntax = { path = "crates/nuke-syntax" }
 indexmap = "2"
+ryu = "1"
 serde = { version = "1", default-features = false, features = ["std"] }
+serde_json = "1"
 
 [workspace.lints.rust]
 warnings = { level = "deny", priority = -1 }
