@@ -12,6 +12,7 @@ ryu.workspace = true
 
 [dev-dependencies]
 nuke-fixtures.workspace = true
+saphyr.workspace = true
 serde_json.workspace = true
 
 [lints]

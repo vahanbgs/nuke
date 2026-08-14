@@ -18,7 +18,8 @@ nuke-grammar = { path = "crates/nuke-grammar" }
 nuke-syntax = { path = "crates/nuke-syntax" }
 indexmap = "2"
 ryu = "1"
-serde = { version = "1", default-features = false, features = ["std"] }
+saphyr = "0.0.11"
+serde ={ version = "1", default-features = false, features = ["std"] }
 serde_json = "1"
 
 [workspace.lints.rust]
