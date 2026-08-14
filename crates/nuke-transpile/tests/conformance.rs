@@ -1,6 +1,7 @@
 use nuke_fixtures::Fixture;
 use nuke_syntax::{Value, parse};
 use nuke_transpile::json::{ErrorKind, to_string, to_string_compact};
+use nuke_transpile::toml as toml_backend;
 use nuke_transpile::yaml;
 use saphyr::{LoadableYamlNode, Yaml};
 
@@ -194,4 +195,101 @@ fn mapping<'a>(loaded: &'a Yaml<'a>, at: &str) -> &'a saphyr::Mapping<'a> {
     loaded
         .as_mapping()
         .unwrap_or_else(|| panic!("{at} should be a mapping, not {loaded:?}"))
+}
+
+fn toml_refusals() -> Vec<(&'static str, toml_backend::ErrorKind, &'static str)> {
+    let root = toml_backend::ErrorKind::UnrepresentableRoot("list");
+    vec![
+        ("collections.nuke", root.clone(), "the document"),
+        ("comments.nuke", root.clone(), "the document"),
+        ("scalars.nuke", root.clone(), "the document"),
+        ("strings.nuke", root.clone(), "the document"),
+        ("whitespace.nuke", root, "the document"),
+        (
+            "maps.nuke",
+            toml_backend::ErrorKind::UnrepresentableKey("integer"),
+            "#2",
+        ),
+    ]
+}
+
+#[test]
+fn every_fixture_toml_cannot_carry_is_refused_by_the_error_that_names_its_fault() {
+    for (name, kind, path) in toml_refusals() {
+        let fixture = fixture(name);
+        let error = toml_backend::to_string(&value_of(&fixture))
+            .err()
+            .unwrap_or_else(|| panic!("{name} should have been refused"));
+        assert_eq!(error.kind(), &kind, "for {name}");
+        assert_eq!(error.path().to_string(), path, "for {name}");
+    }
+}
+
+#[test]
+fn what_the_backend_writes_is_the_document_a_real_toml_parser_loads_back() {
+    let refused = toml_refusals();
+    for fixture in nuke_fixtures::valid() {
+        if refused.iter().any(|(name, _, _)| *name == fixture.name()) {
+            continue;
+        }
+        let value = value_of(&fixture);
+        let written = toml_backend::to_string(&value).expect("it should transpile");
+        let loaded: toml::Value = toml::from_str(&written).unwrap_or_else(|error| {
+            panic!(
+                "the TOML of {} does not parse: {error}\n{written}",
+                fixture.name()
+            )
+        });
+        holds(&value, &loaded, fixture.name());
+    }
+}
+
+fn holds(value: &Value, loaded: &toml::Value, at: &str) {
+    match value {
+        Value::Tuple(tuple) => {
+            let table = table(loaded, at);
+            assert_eq!(table.len(), tuple.len(), "{at} lost an entry");
+            for ((name, item), (key, item_toml)) in tuple.iter().zip(table) {
+                assert_eq!(key.as_str(), name.as_str(), "{at} renamed a field");
+                holds(item, item_toml, &format!("{at}.{name}"));
+            }
+        }
+        Value::Map(map) => {
+            let table = table(loaded, at);
+            assert_eq!(table.len(), map.len(), "{at} lost an entry");
+            for (position, ((key, item), (name, item_toml))) in map.iter().zip(table).enumerate() {
+                let at = format!("{at}#{}", position + 1);
+                let spelling = match key {
+                    Value::String(text) => text.as_str(),
+                    Value::Atom(atom) => atom.as_str(),
+                    other => panic!("{at} has a key TOML cannot name: {other:?}"),
+                };
+                assert_eq!(name.as_str(), spelling, "{at} renamed a key");
+                holds(item, item_toml, &at);
+            }
+        }
+        Value::List(items) => {
+            let array = loaded
+                .as_array()
+                .unwrap_or_else(|| panic!("{at} should be an array, not {loaded:?}"));
+            assert_eq!(array.len(), items.len(), "{at} lost an element");
+            for (index, (item, item_toml)) in items.iter().zip(array).enumerate() {
+                holds(item, item_toml, &format!("{at}[{index}]"));
+            }
+        }
+        Value::Atom(atom) => match atom.as_str() {
+            "True" => assert_eq!(loaded.as_bool(), Some(true), "at {at}"),
+            "False" => assert_eq!(loaded.as_bool(), Some(false), "at {at}"),
+            spelling => assert_eq!(loaded.as_str(), Some(spelling), "at {at}"),
+        },
+        Value::String(text) => assert_eq!(loaded.as_str(), Some(text.as_str()), "at {at}"),
+        Value::Integer(integer) => assert_eq!(loaded.as_integer(), integer.to_i64(), "at {at}"),
+        Value::Float(number) => assert_eq!(loaded.as_float(), Some(number.get()), "at {at}"),
+    }
+}
+
+fn table<'a>(loaded: &'a toml::Value, at: &str) -> &'a toml::Table {
+    loaded
+        .as_table()
+        .unwrap_or_else(|| panic!("{at} should be a table, not {loaded:?}"))
 }
