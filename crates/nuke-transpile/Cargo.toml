@@ -14,6 +14,7 @@ ryu.workspace = true
 nuke-fixtures.workspace = true
 saphyr.workspace = true
 serde_json.workspace = true
+toml.workspace = true
 
 [lints]
 workspace = true

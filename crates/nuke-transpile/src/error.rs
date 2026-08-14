@@ -81,6 +81,14 @@ pub(crate) fn too_deep(f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "this value nests deeper than {MAX_DEPTH} levels")
 }
 
+pub(crate) fn article(form: &str) -> &'static str {
+    if form.starts_with(['a', 'e', 'i', 'o', 'u']) {
+        "an"
+    } else {
+        "a"
+    }
+}
+
 pub(crate) fn form(value: &Value) -> &'static str {
     match value {
         Value::Tuple(_) => "tuple",

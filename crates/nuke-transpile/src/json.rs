@@ -3,7 +3,7 @@ use std::fmt;
 
 use nuke_syntax::{Atom, Float, MAX_DEPTH, Map, Tuple, Value};
 
-use crate::error::{Path, Segment, form, too_deep};
+use crate::error::{Path, Segment, article, form, too_deep};
 
 pub type Error = crate::error::Error<ErrorKind>;
 
@@ -19,7 +19,8 @@ impl fmt::Display for ErrorKind {
         match self {
             Self::UnrepresentableKey(form) => write!(
                 f,
-                "a {form} cannot key a JSON object; only a string or an atom names one"
+                "{} {form} cannot key a JSON object; only a string or an atom names one",
+                article(form)
             ),
             Self::DuplicateKey(name) => {
                 write!(f, "two keys of this map both name `{name}` in JSON")
