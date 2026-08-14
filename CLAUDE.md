@@ -23,7 +23,7 @@ of the various tools used to work with the language.
 - `grammar/canonical.abnf` — the normative grammar of the canonical form.
 - `docs/canonical-form.md` — the rules ABNF cannot express.
 - `docs/serde.md` — where Nuke and serde's data model disagree, and how the binding settles it.
-- `docs/json.md` — the JSON mapping, and what it degrades or refuses.
+- `docs/json.md`, `docs/yaml.md` — each mapping, and what it degrades or refuses.
 - `fixtures/valid`, `fixtures/invalid` — conformance fixtures, shared by every crate.
 - `crates/nuke-fixtures` — reads that tree, so no crate keeps its own copy of the walker.
 - `crates/nuke-grammar` — translates the ABNF to pest at test time and checks the fixtures
@@ -31,8 +31,9 @@ of the various tools used to work with the language.
 - `crates/nuke-syntax` — the hand-written lexer and parser. It carries the rules ABNF
   cannot state, and a test asserts it agrees with the grammar on every fixture. Its
   `serde` feature adds `from_str`, `from_value` and `to_value` over the same `Value`.
-- `crates/nuke-transpile` — the backends. `json` writes a `Value` out, laid out or compact,
-  and refuses what JSON cannot key rather than inventing a spelling for it.
+- `crates/nuke-transpile` — the backends, each owning its own `ErrorKind`. `json` writes a
+  `Value` laid out or compact and refuses what JSON cannot key; `yaml` writes block style,
+  keys a mapping with any value, and quotes what a YAML 1.1 loader would misread.
 
 Work inside the devshell: `nix develop -c cargo test --workspace --all-features`. Serde
 support sits behind an off-by-default `serde` feature, so `--all-features` is what covers it.
@@ -87,6 +88,7 @@ We are taking baby steps.
   for the lossless tree the formatter and the LSP server need anyway.
 - [x] A transpiler to JSON: the first backend, and the one that settles how atoms, map keys
   and numbers degrade for the targets that follow.
-- [ ] The other transpiler targets: YAML, TOML, XML, KDL, Lua, INI, cfg, gitconfig.
+- [ ] The other transpiler targets. YAML is done — it settled that a backend takes the room a
+      target gives it. TOML, XML, KDL, Lua, INI, cfg and gitconfig remain.
 - [ ] The surface language: the expressions that reduce to the canonical form, and imports.
 - [ ] The formatter, the linter, the LSP server.
