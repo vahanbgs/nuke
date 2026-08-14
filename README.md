@@ -33,7 +33,9 @@ whitespace only matters where two tokens would otherwise run together.
 
 Early. The canonical form is specified — [`grammar/canonical.abnf`](grammar/canonical.abnf)
 is normative and [`docs/canonical-form.md`](docs/canonical-form.md) covers what the grammar
-cannot state. Nothing else is built yet.
+cannot state. `crates/nuke-syntax` parses it, and its `serde` feature reads a document
+straight into a Rust type; [`docs/serde.md`](docs/serde.md) records what that carries and
+what it cannot. Nothing transpiles yet.
 
 ## Development
 
