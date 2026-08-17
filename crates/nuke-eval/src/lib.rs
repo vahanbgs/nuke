@@ -12,37 +12,64 @@ pub fn eval(source: &str) -> Result<Value, Error> {
 }
 
 pub fn reduce(document: &Document) -> Result<Value, Error> {
-    let mut reducer = Reducer {
-        scope: Vec::new(),
-        budget: MAX_VALUES,
-    };
-    reducer.bind(&document.bindings, 0)?;
-    reducer.value(&document.value, 0)
+    let mut session = Session::new();
+    session.document(document)
 }
 
-struct Bound {
-    name: Ident,
+struct Session {
+    budget: usize,
+}
+
+impl Session {
+    const fn new() -> Self {
+        Self { budget: MAX_VALUES }
+    }
+
+    fn document(&mut self, document: &Document) -> Result<Value, Error> {
+        let mut reducer = Reducer {
+            session: self,
+            scope: Vec::new(),
+        };
+        reducer.bind(&document.bindings, 0)?;
+        reducer.value(&document.value, 0)
+    }
+}
+
+struct Measured {
     value: Value,
     values: usize,
     depth: usize,
 }
 
-struct Reducer {
-    scope: Vec<Bound>,
-    budget: usize,
+impl Measured {
+    fn new(value: Value) -> Self {
+        let (values, depth) = measure(&value);
+        Self {
+            value,
+            values,
+            depth,
+        }
+    }
 }
 
-impl Reducer {
+struct Bound {
+    name: Ident,
+    measured: Measured,
+}
+
+struct Reducer<'a> {
+    session: &'a mut Session,
+    scope: Vec<Bound>,
+}
+
+impl Reducer<'_> {
     fn bind(&mut self, bindings: &[Binding], depth: usize) -> Result<usize, Error> {
         let frame = self.scope.len();
         for binding in bindings {
             let value = self.value(&binding.value, depth)?;
-            let (values, reach) = measure(&value);
             self.scope.push(Bound {
                 name: binding.name.ident.clone(),
-                value,
-                values,
-                depth: reach,
+                measured: Measured::new(value),
             });
         }
         Ok(frame)
@@ -118,28 +145,36 @@ impl Reducer {
     }
 
     fn reference(&mut self, name: &Ident, span: Span, depth: usize) -> Result<Value, Error> {
-        let Some(bound) = self.scope.iter().rev().find(|bound| bound.name == *name) else {
+        let Some(at) = self.scope.iter().rposition(|bound| bound.name == *name) else {
             return Err(Error::new(
                 ErrorKind::Unbound(name.as_str().to_owned()),
                 span,
             ));
         };
-        if depth + bound.depth > MAX_DEPTH {
+        let values = self.scope[at].measured.values;
+        let reach = self.scope[at].measured.depth;
+        self.charge(values, reach, span, depth)?;
+        Ok(self.scope[at].measured.value.clone())
+    }
+
+    fn charge(
+        &mut self,
+        values: usize,
+        reach: usize,
+        span: Span,
+        depth: usize,
+    ) -> Result<(), Error> {
+        if depth + reach > MAX_DEPTH {
             return Err(Error::new(ErrorKind::TooDeep, span));
         }
-        if bound.values > self.budget {
-            return Err(Error::new(ErrorKind::TooLarge, span));
-        }
-        let value = bound.value.clone();
-        self.budget -= bound.values;
-        Ok(value)
+        self.spend(values, span)
     }
 
     fn spend(&mut self, values: usize, span: Span) -> Result<(), Error> {
-        if values > self.budget {
+        if values > self.session.budget {
             return Err(Error::new(ErrorKind::TooLarge, span));
         }
-        self.budget -= values;
+        self.session.budget -= values;
         Ok(())
     }
 }
