@@ -23,8 +23,8 @@ of the various tools used to work with the language.
 - `grammar/canonical.abnf` — the normative grammar of the canonical form.
 - `docs/canonical-form.md` — the rules ABNF cannot express.
 - `docs/serde.md` — where Nuke and serde's data model disagree, and how the binding settles it.
-- `docs/json.md`, `docs/yaml.md`, `docs/toml.md` — each mapping, and what it degrades or
-  refuses.
+- `docs/json.md`, `docs/yaml.md`, `docs/toml.md`, `docs/xml.md` — each mapping, and what it
+  degrades or refuses.
 - `fixtures/valid`, `fixtures/invalid` — conformance fixtures, shared by every crate.
 - `crates/nuke-fixtures` — reads that tree, so no crate keeps its own copy of the walker.
 - `crates/nuke-grammar` — translates the ABNF to pest at test time and checks the fixtures
@@ -32,11 +32,10 @@ of the various tools used to work with the language.
 - `crates/nuke-syntax` — the hand-written lexer and parser. It carries the rules ABNF
   cannot state, and a test asserts it agrees with the grammar on every fixture. Its
   `serde` feature adds `from_str`, `from_value` and `to_value` over the same `Value`.
-- `crates/nuke-transpile` — the backends, each owning its own `ErrorKind`. `json` writes a
-  `Value` laid out or compact and refuses what JSON cannot key; `yaml` writes block style,
-  keys a mapping with any value, and quotes what a YAML 1.1 loader would misread; `toml`
-  writes a section where a header can stand without swallowing what follows it, and inline
-  everywhere else.
+- `crates/nuke-transpile` — the backends, each owning its own `ErrorKind` and its own answer
+  to what the target can spell: `json` laid out or compact, `yaml` block style, `toml` a
+  section wherever a header fits, `xml` elements under one named root. `docs/` carries the
+  argument for each.
 
 Work inside the devshell: `nix develop -c cargo test --workspace --all-features`. Serde
 support sits behind an off-by-default `serde` feature, so `--all-features` is what covers it.
@@ -81,9 +80,7 @@ convention says nothing about bodies, so the two compose.
 
 We are taking baby steps.
 
-- [x] Design the grammar of Nuke's canonical form in ABNF. Differences with JSON: no
-  separators in collection literals; arbitrary values as map keys; atoms; both map and
-  named tuple literals; choice removed wherever possible; `#` comments.
+- [x] Design the grammar of Nuke's canonical form in ABNF.
 - [x] A hand-written lexer and parser for the canonical form, checked against the same
   fixtures as the grammar and against the grammar itself.
 - [x] Serde support: `Value` as a self-describing data model, and `from_str` from text to a
@@ -92,8 +89,9 @@ We are taking baby steps.
 - [x] A transpiler to JSON: the first backend, and the one that settles how atoms, map keys
   and numbers degrade for the targets that follow.
 - [ ] The other transpiler targets. YAML settled that a backend takes the room a target gives
-      it; TOML settled that a target's *shape* can refuse a document outright, and that
-      declaration order outranks getting every table a header. XML, KDL, Lua, INI, cfg and
-      gitconfig remain.
+      it; TOML that a target's *shape* can refuse a document outright, and that declaration
+      order outranks giving every table a header; XML that a target can keep a tuple and a
+      map apart, and that it can refuse a character. KDL, Lua, INI, cfg and gitconfig
+      remain.
 - [ ] The surface language: the expressions that reduce to the canonical form, and imports.
 - [ ] The formatter, the linter, the LSP server.
