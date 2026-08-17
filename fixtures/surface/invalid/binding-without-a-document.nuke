@@ -1,0 +1,2 @@
+# A document is one value, and this one only binds a name.
+n := 1

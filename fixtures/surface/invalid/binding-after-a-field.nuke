@@ -1,0 +1,2 @@
+# A binding stands at the head of its block, before any pair.
+{a = 1 n := 2}

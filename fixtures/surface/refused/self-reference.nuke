@@ -1,0 +1,4 @@
+# A binding's value is read before its own name exists, so this names nothing
+# and a cycle has no spelling.
+n := n
+[n]

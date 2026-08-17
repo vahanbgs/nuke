@@ -19,12 +19,62 @@ impl Fixture {
     }
 }
 
+pub struct Reduction {
+    pub source: Fixture,
+    pub reduced: Fixture,
+}
+
+impl Reduction {
+    pub fn name(&self) -> &str {
+        self.source.name()
+    }
+
+    pub fn display(&self) -> std::path::Display<'_> {
+        self.source.display()
+    }
+}
+
 pub fn valid() -> Vec<Fixture> {
     read("valid")
 }
 
 pub fn invalid() -> Vec<Fixture> {
     read("invalid")
+}
+
+pub fn surface_invalid() -> Vec<Fixture> {
+    read("surface/invalid")
+}
+
+pub fn surface_refused() -> Vec<Fixture> {
+    read("surface/refused")
+}
+
+pub fn reductions() -> Vec<Reduction> {
+    let mut reduced = read("surface/reduced");
+    let paired: Vec<Reduction> = read("surface/valid")
+        .into_iter()
+        .map(|source| {
+            let at = reduced
+                .iter()
+                .position(|candidate| candidate.name() == source.name())
+                .unwrap_or_else(|| {
+                    panic!(
+                        "{} has no counterpart in fixtures/surface/reduced",
+                        source.display()
+                    )
+                });
+            let reduced = reduced.remove(at);
+            Reduction { source, reduced }
+        })
+        .collect();
+    if let Some(orphan) = reduced.first() {
+        panic!(
+            "{} is the reduction of nothing in fixtures/surface/valid",
+            orphan.display()
+        );
+    }
+    paired
 }
 
 fn read(kind: &str) -> Vec<Fixture> {

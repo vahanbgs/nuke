@@ -1,0 +1,2 @@
+# A field is data; only `:=` introduces a name.
+{a = 1 b = a}

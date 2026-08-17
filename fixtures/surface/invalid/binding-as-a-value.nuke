@@ -1,0 +1,2 @@
+# A binding is an item of a block rather than a value one can stand in for.
+{a = n := 1}

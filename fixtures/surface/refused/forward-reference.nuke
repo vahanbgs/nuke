@@ -1,0 +1,7 @@
+# A binding sees what stands above it, and `later` stands below.
+{
+  here := later
+  later := 1
+
+  a = here
+}

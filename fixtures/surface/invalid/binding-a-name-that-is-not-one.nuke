@@ -1,0 +1,2 @@
+# A binding names a value with an identifier, never with a string.
+{"n" := 1 a = 1}

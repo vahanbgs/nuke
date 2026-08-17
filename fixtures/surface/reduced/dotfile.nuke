@@ -1,0 +1,21 @@
+# What the surface dot file reduces to, which is fixtures/valid/dotfile.nuke.
+{
+  editor = {
+    theme = "gruvbox-dark"
+    tab_width = 2
+    line_numbers = Relative
+  }
+
+  shell = {
+    aliases = {
+      "ll" => "eza -l"
+      "gs" => "git status"
+    }
+    history_size = 10000
+  }
+
+  keybindings = [
+    {keys = "ctrl+t" action = OpenTerminal}
+    {keys = "ctrl+w" action = CloseWindow}
+  ]
+}

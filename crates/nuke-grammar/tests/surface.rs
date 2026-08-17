@@ -57,6 +57,51 @@ fn the_surface_language_admits_two_documents_the_canonical_form_refuses_and_no_o
 }
 
 #[test]
+fn every_surface_fixture_parses_completely() {
+    let grammar = Grammar::surface().unwrap();
+    for reduction in nuke_fixtures::reductions() {
+        if let Err(error) = grammar.parse(&reduction.source.source) {
+            panic!("{} should parse, but: {error}", reduction.display());
+        }
+    }
+}
+
+#[test]
+fn every_recorded_reduction_is_itself_a_canonical_document() {
+    let grammar = Grammar::canonical().unwrap();
+    for reduction in nuke_fixtures::reductions() {
+        if let Err(error) = grammar.parse(&reduction.reduced.source) {
+            panic!("{} should parse, but: {error}", reduction.reduced.display());
+        }
+    }
+}
+
+#[test]
+fn every_invalid_surface_fixture_is_rejected() {
+    let grammar = Grammar::surface().unwrap();
+    for fixture in nuke_fixtures::surface_invalid() {
+        assert!(
+            grammar.parse(&fixture.source).is_err(),
+            "{} should have been rejected",
+            fixture.display()
+        );
+    }
+}
+
+#[test]
+fn the_fixtures_the_reduction_refuses_are_ones_the_grammar_admits() {
+    let grammar = Grammar::surface().unwrap();
+    for fixture in nuke_fixtures::surface_refused() {
+        if let Err(error) = grammar.parse(&fixture.source) {
+            panic!(
+                "{} is refused by the grammar, so it belongs in surface/invalid: {error}",
+                fixture.display()
+            );
+        }
+    }
+}
+
+#[test]
 fn a_binding_stands_at_the_head_of_a_document_and_of_a_brace_block() {
     let grammar = Grammar::surface().unwrap();
     admitted(

@@ -1,0 +1,2 @@
+# A list holds values, and a binding is not one.
+[n := 1 n]

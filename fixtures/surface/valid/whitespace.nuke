@@ -1,0 +1,2 @@
+# `:=` needs no more room around it than `=` does.
+{a:=1 b:="x" c=[a a] d={a=>b}}

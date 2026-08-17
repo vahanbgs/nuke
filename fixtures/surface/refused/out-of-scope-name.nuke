@@ -1,0 +1,5 @@
+# A binding reaches to the end of its own block and no further.
+{
+  a = {n := 1 x = n}
+  b = n
+}

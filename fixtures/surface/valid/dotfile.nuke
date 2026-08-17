@@ -1,0 +1,25 @@
+# The dot file of fixtures/valid/dotfile.nuke, with its two editor settings
+# named above the document they configure.
+theme := "gruvbox-dark"
+tab := 2
+
+{
+  editor = {
+    theme = theme
+    tab_width = tab
+    line_numbers = Relative
+  }
+
+  shell = {
+    aliases = {
+      "ll" => "eza -l"
+      "gs" => "git status"
+    }
+    history_size = 10000
+  }
+
+  keybindings = [
+    {keys = "ctrl+t" action = OpenTerminal}
+    {keys = "ctrl+w" action = CloseWindow}
+  ]
+}
