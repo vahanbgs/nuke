@@ -35,14 +35,15 @@ Early. The canonical form is specified — [`grammar/canonical.abnf`](grammar/ca
 is normative and [`docs/canonical-form.md`](docs/canonical-form.md) covers what the grammar
 cannot state. `crates/nuke-syntax` parses it, and its `serde` feature reads a document
 straight into a Rust type; [`docs/serde.md`](docs/serde.md) records what that carries and
-what it cannot. `crates/nuke-transpile` writes JSON, YAML, TOML, XML and KDL:
+what it cannot. `crates/nuke-transpile` writes JSON, YAML, TOML, XML, KDL and Lua:
 [`docs/json.md`](docs/json.md) settles how atoms, keys and numbers degrade for the targets
 that follow, [`docs/yaml.md`](docs/yaml.md) records what a target wider than the canonical
 form does with the room, [`docs/toml.md`](docs/toml.md) records what a target of a different
 shape refuses, [`docs/xml.md`](docs/xml.md) records what a target with no data model at all
-can still carry, and [`docs/kdl.md`](docs/kdl.md) records what a backend declines when a
-target spells one value several ways. The four other targets, the surface language and the
-tooling are still ahead.
+can still carry, [`docs/kdl.md`](docs/kdl.md) records what a backend declines when a target
+spells one value several ways, and [`docs/lua.md`](docs/lua.md) records which Lua a backend
+writes for when the target is a family rather than one language. The three other targets, the
+surface language and the tooling are still ahead.
 
 ## Development
 
