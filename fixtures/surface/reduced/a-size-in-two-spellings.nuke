@@ -1,0 +1,8 @@
+{
+  alacritty = {font_size = 12}
+
+  waybar = {
+    font = "JetBrainsMono Nerd Font 12"
+    padding = "12px"
+  }
+}

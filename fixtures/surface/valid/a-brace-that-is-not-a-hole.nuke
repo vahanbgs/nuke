@@ -1,0 +1,11 @@
+# `{{` is one brace and `}}` is the other, which is Rust's spelling rather than
+# `\{` because the escapes belong to the token layer the canonical form shares.
+# Only an interpolation pays for it: a brace in a plain string is already itself.
+size := 12
+
+[
+  $"body {{ font-size: {size}px; }}"
+  $"{{}}"
+  $"{{{size}}}"
+  "body { font-size: 12px; }"
+]

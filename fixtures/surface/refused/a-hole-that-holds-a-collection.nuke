@@ -1,0 +1,3 @@
+# A collection's text would be Nuke's own syntax, which would make the evaluator a
+# formatter and let a document carry its grammar as data.
+$"{[1 2]}"

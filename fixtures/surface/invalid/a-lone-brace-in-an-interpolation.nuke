@@ -1,0 +1,3 @@
+# A lone `}` closes no hole, so it is a fault rather than a brace. That is the one
+# spelling a plain string keeps and an interpolation does not.
+$"a } b"

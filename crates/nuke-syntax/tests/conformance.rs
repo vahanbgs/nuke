@@ -26,6 +26,7 @@ fn faults() -> Vec<(&'static str, ErrorKind)> {
         ("exponent-leading-zero.nuke", spelling("1e05")),
         ("exponent-plus.nuke", spelling("1e+5")),
         ("hex-literal.nuke", ErrorKind::TrailingInput),
+        ("interpolated-string.nuke", ErrorKind::SurfaceInterpolation),
         (
             "ident-as-map-key.nuke",
             ErrorKind::IdentAsValue("a".to_owned()),

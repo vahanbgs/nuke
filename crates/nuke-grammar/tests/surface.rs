@@ -37,10 +37,14 @@ fn every_canonical_document_is_a_surface_document() {
 }
 
 #[test]
-fn the_surface_language_admits_two_documents_the_canonical_form_refuses_and_no_others() {
+fn the_surface_language_admits_three_documents_the_canonical_form_refuses_and_no_others() {
     let canonical = Grammar::canonical().unwrap();
     let surface = Grammar::surface().unwrap();
-    let admits = ["bare-ident.nuke", "ident-as-map-key.nuke"];
+    let admits = [
+        "bare-ident.nuke",
+        "ident-as-map-key.nuke",
+        "interpolated-string.nuke",
+    ];
     for fixture in nuke_fixtures::invalid() {
         assert!(
             canonical.parse(&fixture.source).is_err(),
@@ -284,6 +288,11 @@ fn a_projection_is_a_shape_of_its_own_until_it_is_reduced() {
         ("[{a = 1}.a]", Shape::List(vec![scalar("access")])),
         ("@import \"p.nuke\"", scalar("call")),
         ("@import \"p.nuke\".accent", scalar("access")),
+        (r#"$"a{b}""#, scalar("interpolation")),
+        (
+            r#"{a = $"x"}"#,
+            Shape::Tuple(vec![("a".to_owned(), scalar("interpolation"))]),
+        ),
         (
             "{a = @import \"p.nuke\"}",
             Shape::Tuple(vec![("a".to_owned(), scalar("call"))]),
@@ -295,4 +304,71 @@ fn a_projection_is_a_shape_of_its_own_until_it_is_reduced() {
             .unwrap_or_else(|error| panic!("{source} should parse, but: {error}"));
         assert_eq!(parse.shape(), expected, "for {source}");
     }
+}
+
+#[test]
+fn an_interpolated_string_holds_text_holes_and_doubled_braces() {
+    let grammar = Grammar::surface().unwrap();
+    admitted(
+        &grammar,
+        &[
+            r#"$"a""#,
+            r#"$"""#,
+            r##"$"#{accent}""##,
+            r#"$"{a}{b}""#,
+            r#"$"{ a }""#,
+            r#"$"{p.a}""#,
+            r#"$"{@import "./p.nuke"}""#,
+            r#"$"a{{b}}c""#,
+            r#"$"{ {a = 1}.a }""#,
+            r#"$"{$"{a}"}""#,
+            r#"$"tab\there \u{2713}""#,
+            r#"[$"a" $"b"]"#,
+            r#"{a = $"x{y}"}"#,
+            r#"$"a" . b"#,
+        ],
+    );
+}
+
+#[test]
+fn a_plain_string_is_all_text_however_many_braces_it_holds() {
+    let grammar = Grammar::surface().unwrap();
+    admitted(
+        &grammar,
+        &[r#""a{b}""#, r#""{icon} {percentage}%""#, r#""}""#],
+    );
+}
+
+#[test]
+fn a_hole_holds_one_value_and_a_lone_brace_closes_nothing() {
+    let grammar = Grammar::surface().unwrap();
+    refused(
+        &grammar,
+        &[
+            r#"$"a}""#,
+            r#"$"{}""#,
+            r#"$"{a b}""#,
+            r#"$"{a := 1}""#,
+            r#"$"a"#,
+            r#"$"{a""#,
+            r#"$ "a""#,
+            r#"$a"#,
+            r#"$"#,
+        ],
+    );
+}
+
+#[test]
+fn the_canonical_form_has_no_interpolation_at_all() {
+    let grammar = Grammar::canonical().unwrap();
+    refused(
+        &grammar,
+        &[
+            r#"$"a""#,
+            r#"$"{a}""#,
+            r#"[$"a"]"#,
+            r#"{a = $"b"}"#,
+            r#"1 $"a""#,
+        ],
+    );
 }

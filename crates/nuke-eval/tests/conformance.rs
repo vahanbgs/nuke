@@ -35,6 +35,7 @@ fn standing() -> Vec<(&'static str, Standing)> {
             ),
         ),
         ("ident-as-map-key.nuke", unbound("a")),
+        ("interpolated-string.nuke", unbound("x")),
         ("leading-plus.nuke", Standing::Refused),
         ("list-double-zero.nuke", Standing::Refused),
         ("list-leading-zero.nuke", Standing::Refused),
@@ -129,6 +130,18 @@ fn refusals() -> Vec<(&'static str, Fault)> {
         (
             "an-import-path-that-is-not-a-literal.nuke",
             Fault::Kind(ErrorKind::ExpectedImportPath),
+        ),
+        (
+            "a-hole-that-holds-a-float.nuke",
+            Fault::Kind(ErrorKind::NoText),
+        ),
+        (
+            "a-hole-that-holds-an-atom.nuke",
+            Fault::Kind(ErrorKind::NoText),
+        ),
+        (
+            "a-hole-that-holds-a-collection.nuke",
+            Fault::Kind(ErrorKind::NoText),
         ),
         (
             "a-concat-of-one-string.nuke",

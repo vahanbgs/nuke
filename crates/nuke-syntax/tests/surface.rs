@@ -1,5 +1,5 @@
 use nuke_grammar::Grammar;
-use nuke_syntax::{ErrorKind, ExprKind, parse, surface};
+use nuke_syntax::{ErrorKind, ExprKind, Piece, parse, surface};
 
 fn faults() -> Vec<(&'static str, ErrorKind)> {
     vec![
@@ -25,6 +25,19 @@ fn faults() -> Vec<(&'static str, ErrorKind)> {
             ErrorKind::ExpectedBuiltinName,
         ),
         ("a-call-without-an-operand.nuke", ErrorKind::ExpectedValue),
+        (
+            "a-lone-brace-in-an-interpolation.nuke",
+            ErrorKind::UnmatchedBrace,
+        ),
+        ("a-hole-with-no-value.nuke", ErrorKind::ExpectedValue),
+        (
+            "a-hole-that-holds-two-values.nuke",
+            ErrorKind::ExpectedHoleClose,
+        ),
+        (
+            "an-interpolation-that-is-never-closed.nuke",
+            ErrorKind::UnterminatedString,
+        ),
     ]
 }
 
@@ -328,4 +341,107 @@ fn the_canonical_form_refuses_the_call_by_name_where_it_reaches_it() {
             .unwrap_or_else(|| panic!("{source} should have been rejected"));
         assert_eq!(error.kind(), &ErrorKind::SurfaceCall, "for {source}");
     }
+}
+
+fn pieces(source: &str) -> Vec<Piece> {
+    let ExprKind::Interpolation(pieces) = document(source).value.kind else {
+        panic!("{source} should be an interpolation");
+    };
+    pieces
+}
+
+fn text(piece: &Piece) -> &str {
+    match piece {
+        Piece::Text(text) => text,
+        Piece::Hole(_) => panic!("this piece is a hole"),
+    }
+}
+
+#[test]
+fn an_interpolation_alternates_text_and_holes() {
+    let parts = pieces(r#"$"a{b}c""#);
+    assert_eq!(text(&parts[0]), "a");
+    assert!(matches!(&parts[1], Piece::Hole(hole)
+        if matches!(&hole.kind, ExprKind::Reference(name) if name.as_str() == "b")));
+    assert_eq!(text(&parts[2]), "c");
+
+    assert!(
+        pieces(r#"$"""#).is_empty(),
+        "no pieces make the empty string"
+    );
+    assert_eq!(pieces(r#"$"only text""#).len(), 1);
+    assert_eq!(
+        pieces(r#"$"{a}{b}""#).len(),
+        2,
+        "two holes touch with no text between them"
+    );
+    assert!(
+        matches!(pieces(r#"$"{p.a}""#).first(), Some(Piece::Hole(hole))
+            if matches!(hole.kind, ExprKind::Access { .. })),
+        "a hole takes a value, so a projection needs no parentheses it has not got"
+    );
+}
+
+#[test]
+fn a_doubled_brace_is_one_brace_and_a_lone_one_is_a_fault() {
+    assert_eq!(text(&pieces(r#"$"{{}}""#)[0]), "{}");
+    assert_eq!(text(&pieces(r#"$"a{{b}}c""#)[0]), "a{b}c");
+    assert_eq!(
+        text(&pieces(r#"$"body {{ font-size: 12px; }}""#)[0]),
+        "body { font-size: 12px; }"
+    );
+    assert_eq!(fault(r#"$"a}b""#), ErrorKind::UnmatchedBrace);
+    assert_eq!(
+        fault(r#"$"\{""#),
+        ErrorKind::UnknownEscape('{'),
+        "the escape set belongs to the shared token layer, so this one is not widened"
+    );
+    assert!(
+        matches!(document(r#""a{b} }""#).value.kind, ExprKind::String(text) if text == "a{b} }"),
+        "a plain string keeps every brace it holds, which is what the prefix buys"
+    );
+}
+
+#[test]
+fn a_hole_holds_one_value_and_is_a_level_of_the_expression() {
+    assert_eq!(fault(r#"$"{}""#), ErrorKind::ExpectedValue);
+    assert_eq!(fault(r#"$"{a b}""#), ErrorKind::ExpectedHoleClose);
+    assert_eq!(fault(r#"$"{a := 1}""#), ErrorKind::MisplacedBinding);
+    assert_eq!(fault(r#"$"{a"#), ErrorKind::UnterminatedHole);
+    assert_eq!(fault(r#"$"a"#), ErrorKind::UnterminatedString);
+    assert_eq!(fault(r#"$"{a}"#), ErrorKind::UnterminatedString);
+    assert_eq!(
+        fault(r#"$"{a""#),
+        ErrorKind::UnterminatedString,
+        "a hole may hold a string, so a quote inside one opens rather than closes"
+    );
+    assert_eq!(fault("$"), ErrorKind::UnexpectedCharacter('$'));
+    assert_eq!(fault(r#"$ "a""#), ErrorKind::UnexpectedCharacter('$'));
+
+    document(r#"$"{ {a = 1}.a }""#);
+    document(r#"$"{$"{a}"}""#);
+    document(r#"$"{@import "./p.nuke".accent}""#);
+    assert_eq!(
+        fault(&format!(r#"$"{{{}}}""#, "[".repeat(200))),
+        ErrorKind::TooDeep,
+        "a hole nests the tree the evaluator walks, so it spends the depth budget"
+    );
+}
+
+#[test]
+fn the_canonical_form_refuses_an_interpolation_by_name_where_it_reaches_it() {
+    for source in [r#"$"a""#, r#"[$"a"]"#, r#"{a = $"b"}"#, r#"{$"a" => 1}"#] {
+        let error = parse(source)
+            .err()
+            .unwrap_or_else(|| panic!("{source} should have been rejected"));
+        assert_eq!(
+            error.kind(),
+            &ErrorKind::SurfaceInterpolation,
+            "for {source}"
+        );
+    }
+    assert!(
+        parse(r#""a{b}""#).is_ok(),
+        "the canonical form reads the braces as the text they are"
+    );
 }

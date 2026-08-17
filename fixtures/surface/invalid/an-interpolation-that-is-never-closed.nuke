@@ -1,0 +1,3 @@
+# The text runs to the end of the file, and a raw newline is no more a string's
+# than it is a plain one's.
+$"a{1}b

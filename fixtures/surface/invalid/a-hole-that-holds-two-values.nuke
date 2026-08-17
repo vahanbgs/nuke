@@ -1,0 +1,3 @@
+# A hole holds one value for the reason a call takes one operand: nothing between
+# two of them would say where the first ends.
+$"{1 2}"

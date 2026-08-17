@@ -1,0 +1,3 @@
+# A hole holds a value, and there is none here. Nuke has no argument list for an
+# empty hole to point into.
+$"a{}b"

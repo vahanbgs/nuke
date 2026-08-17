@@ -1,0 +1,14 @@
+# `$"…"` interpolates: text and holes alternate, and a hole holds a value rather
+# than only a name, the braces having done the grouping a call cannot. The prefix
+# is what keeps a plain string literal to its last character.
+accent := "FE8019"
+theme := {name = "gruvbox" pad = 4}
+
+[
+  $"#{accent}"
+  $"{theme.name}-{theme.pad}"
+  $"{accent}{accent}"
+  $"no holes at all"
+  $""
+  "{icon} {percentage}%"
+]

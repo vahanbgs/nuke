@@ -1,0 +1,4 @@
+# An atom is uninterpreted, and its text would be `True` rather than the `true` a
+# dot file wants. Answering either would be Nuke deciding what an atom means, which
+# a backend does only because its target leaves it nowhere else to put one.
+$"vsync {True}"

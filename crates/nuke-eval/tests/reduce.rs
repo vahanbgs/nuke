@@ -208,6 +208,69 @@ fn only_a_list_of_strings_concatenates() {
     }
 }
 
+#[test]
+fn a_hole_hands_over_the_text_of_what_it_holds() {
+    assert_eq!(reduced("c := \"FE8019\" $\"#{c}\""), reduced("\"#FE8019\""));
+    assert_eq!(
+        reduced("size := 12 [size $\"{size}px\"]"),
+        reduced("[12 \"12px\"]"),
+        "one number reaching a reader that wants a number and one that wants text"
+    );
+    assert_eq!(
+        reduced("n := -0 $\"{n}\""),
+        reduced("\"0\""),
+        "an integer carries its own text, and `-0` was settled as `0` when it was read"
+    );
+    assert_eq!(reduced("$\"\""), reduced("\"\""));
+    assert_eq!(reduced("$\"only text\""), reduced("\"only text\""));
+    assert_eq!(
+        reduced("a := \"x\" b := \"y\" $\"{a}{b}\""),
+        reduced("\"xy\""),
+        "two holes touch, and no text between them is no piece"
+    );
+    assert_eq!(
+        reduced("p := {a = {b = 4}} $\"{p.a.b}\""),
+        reduced("\"4\""),
+        "a hole holds a value, so a projection needs no grouping Nuke has not got"
+    );
+    assert_eq!(
+        reduced("s := 2 $\"{$\"{s}\"}em\""),
+        reduced("\"2em\""),
+        "an interpolation is a value, so one nests in a hole"
+    );
+    assert_eq!(
+        reduced("s := 12 $\"body {{ font-size: {s}px; }}\""),
+        reduced("\"body { font-size: 12px; }\""),
+        "a doubled brace is one brace, and the CSS a dot file wants comes out whole"
+    );
+    assert_eq!(
+        reduced("\"{icon} {percentage}%\""),
+        reduced("\"{icon} {percentage}%\""),
+        "a plain string keeps its braces, which is what the prefix was spent on"
+    );
+}
+
+#[test]
+fn only_a_string_and_an_integer_have_text_a_hole_can_hand_over() {
+    for source in [
+        "$\"{1.5}\"",
+        "$\"{0.0}\"",
+        "$\"{Dark}\"",
+        "$\"{True}\"",
+        "$\"{[1]}\"",
+        "$\"{ {a = 1} }\"",
+        "$\"{ {\"a\" => 1} }\"",
+    ] {
+        assert_eq!(refused(source).kind(), &ErrorKind::NoText, "for {source}");
+    }
+    let error = refused("opacity := 0.9 $\"a{opacity}b\"");
+    assert_eq!(
+        error.span(),
+        nuke_syntax::Span::new(19, 26),
+        "the fault is named at the hole and not at the string it was building"
+    );
+}
+
 fn doubling(lines: usize) -> String {
     let mut source = String::from("s0 := \"0123456789\"\n");
     for level in 1..lines {

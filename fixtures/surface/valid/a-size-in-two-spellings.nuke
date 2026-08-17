@@ -1,0 +1,9 @@
+# The size is written once and as a number. Alacritty wants it as one, waybar
+# wants it inside text, and a hole is the only place Nuke turns the one into the
+# other — which is what it was built for.
+size := 12
+
+{
+  alacritty = {font_size = size}
+  waybar = {font = $"JetBrainsMono Nerd Font {size}" padding = $"{size}px"}
+}
