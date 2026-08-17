@@ -92,8 +92,8 @@ We are taking baby steps.
   - [x] Names. `:=` binds and contributes nothing; scope is sequential, so a cycle cannot be
         written; a field is not a binding. `docs/surface.md` argues it, and the invariant that
         holds it to the canonical form is that evaluating a canonical document is the identity.
-  - [ ] Field access `.`, the first infix operator, which does not compose freely with greedy
-        tokens: `frac = "." *DIGIT` makes `1.b` a malformed number rather than a projection.
+  - [x] Field access `.`. Postfix, whitespace insensitive, a tuple's operation alone, and its
+        operand is any value. The token layer did not move, so `1.b` is a malformed number.
   - [ ] Imports, which need a cycle rule of their own; hex, octal and binary, which widen the
         shared `number` token; then operators and conditionals.
 - [ ] The formatter, the linter, the LSP server.

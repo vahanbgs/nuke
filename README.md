@@ -8,17 +8,18 @@ once, in one language, and shared between the programs that need it.
 
 ```nuke
 # A dot file, with what it repeats named once.
-accent := "#fe8019"
+palette := {accent = "#fe8019" muted = "#928374"}
 
 {
   editor = {
     theme = "gruvbox-dark"
-    cursor = accent
+    cursor = palette.accent
     line_numbers = Relative
   }
 
   shell = {
-    prompt_color = accent
+    prompt_color = palette.accent
+    comment_color = palette.muted
     aliases = {
       "ll" => "eza -l"
       "gs" => "git status"
@@ -34,7 +35,8 @@ whitespace only matters where two tokens would otherwise run together.
 
 `:=` binds a name and puts nothing in the result. A binding is visible below itself and
 inside the blocks nested there, and its value is read before its own name exists — so a
-reference cycle has no spelling, which is how a language with names stays total.
+reference cycle has no spelling, which is how a language with names stays total. `.`
+projects a field out of a tuple, so one named value can hold what several places need.
 
 ## Status
 
@@ -55,11 +57,11 @@ what is left to write when a target has no specification and no quoted form for 
 [`docs/gitconfig.md`](docs/gitconfig.md) records what a backend does when the target cannot
 spell a name the language guarantees.
 
-The surface language has begun. [`grammar/surface.abnf`](grammar/surface.abnf) adds bindings,
-`crates/nuke-eval` reduces a document to the canonical form, and
+The surface language has begun. [`grammar/surface.abnf`](grammar/surface.abnf) adds bindings
+and field access, `crates/nuke-eval` reduces a document to the canonical form, and
 [`docs/surface.md`](docs/surface.md) argues the rules the grammar cannot state. What holds the
-two languages together is a test: evaluating a canonical document is the identity. Field
-access, imports and the tooling are still ahead.
+two languages together is a test: evaluating a canonical document is the identity. Imports
+and the tooling are still ahead.
 
 ## Development
 
