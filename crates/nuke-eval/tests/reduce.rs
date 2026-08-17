@@ -185,6 +185,14 @@ fn reduced_in(root: &tempfile::TempDir, name: &str) -> Value {
         .unwrap_or_else(|error| panic!("{name} should reduce, but: {error}"))
 }
 
+fn innermost(error: Error) -> Error {
+    let mut error = error;
+    while let ErrorKind::Import { cause, .. } = error.kind().clone() {
+        error = *cause;
+    }
+    error
+}
+
 fn refused_in(root: &tempfile::TempDir, name: &str) -> Error {
     let path = root.path().join(name);
     let source = std::fs::read_to_string(&path).expect("a file to read");
@@ -298,10 +306,7 @@ fn a_cycle_between_files_is_refused_from_whichever_end_it_is_entered() {
         ("spelled.nuke", "@import \"././spelled.nuke\""),
     ]);
     for name in ["a.nuke", "b.nuke", "c.nuke"] {
-        let mut error = refused_in(&root, name);
-        while let ErrorKind::Import { cause, .. } = error.kind().clone() {
-            error = *cause;
-        }
+        let error = innermost(refused_in(&root, name));
         assert!(
             matches!(error.kind(), ErrorKind::ImportCycle(_)),
             "entering the loop at {name} should close it, but: {error}"
@@ -428,13 +433,114 @@ fn a_chain_of_files_deeper_than_the_bound_is_refused_rather_than_overflowing() {
         .map(|(name, source)| (name.as_str(), source.as_str()))
         .collect();
     let root = tree(&borrowed);
-    let mut error = refused_in(&root, "f0.nuke");
-    while let ErrorKind::Import { cause, .. } = error.kind().clone() {
-        error = *cause;
-    }
+    let error = innermost(refused_in(&root, "f0.nuke"));
     assert_eq!(
         error.kind(),
         &ErrorKind::ImportsTooDeep,
         "a chain is finite and acyclic, so only a bound of its own stops it"
+    );
+}
+
+fn list_of(values: usize) -> String {
+    let mut source = String::with_capacity(values * 2 + 2);
+    source.push('[');
+    for _ in 1..values {
+        source.push_str("1 ");
+    }
+    source.push(']');
+    source
+}
+
+#[test]
+fn a_file_is_read_once_however_often_a_document_imports_it() {
+    let size = nuke_eval::MAX_VALUES * 3 / 10;
+    let root = tree(&[
+        ("m.nuke", &list_of(size)),
+        (
+            "twice.nuke",
+            "{a = @import \"./m.nuke\" b = @import \"./m.nuke\"}",
+        ),
+    ]);
+    reduced_in(&root, "twice.nuke");
+}
+
+#[test]
+fn an_import_costs_its_size_at_every_site_that_names_it() {
+    let size = nuke_eval::MAX_VALUES * 4 / 10;
+    let root = tree(&[
+        ("m.nuke", &list_of(size)),
+        ("once.nuke", "{a = @import \"./m.nuke\"}"),
+        (
+            "twice.nuke",
+            "{a = @import \"./m.nuke\" b = @import \"./m.nuke\"}",
+        ),
+    ]);
+    reduced_in(&root, "once.nuke");
+    assert_eq!(
+        refused_in(&root, "twice.nuke").kind(),
+        &ErrorKind::TooLarge,
+        "a file costs building it once, plus its size at every site that names it"
+    );
+}
+
+#[test]
+fn the_budget_is_one_document_wide_however_many_files_it_reads() {
+    let size = nuke_eval::MAX_VALUES * 4 / 10;
+    let root = tree(&[
+        ("one.nuke", &list_of(size)),
+        ("other.nuke", &list_of(size)),
+        ("alone.nuke", "@import \"./one.nuke\""),
+        (
+            "both.nuke",
+            "{a = @import \"./one.nuke\" b = @import \"./other.nuke\"}",
+        ),
+    ]);
+    reduced_in(&root, "alone.nuke");
+    assert_eq!(
+        innermost(refused_in(&root, "both.nuke")).kind(),
+        &ErrorKind::TooLarge,
+        "two files that each fit need not fit together, and the second runs out \
+         while it is still being built, so the fault stands inside it"
+    );
+}
+
+#[test]
+fn an_import_nested_past_what_the_canonical_parser_would_read_back_is_refused() {
+    let deep = format!(
+        "{}1{}",
+        "[".repeat(nuke_syntax::MAX_DEPTH - 1),
+        "]".repeat(nuke_syntax::MAX_DEPTH - 1)
+    );
+    let root = tree(&[
+        ("deep.nuke", &deep),
+        ("flat.nuke", "@import \"./deep.nuke\""),
+        ("wrapped.nuke", "[@import \"./deep.nuke\"]"),
+    ]);
+    reduced_in(&root, "flat.nuke");
+    assert_eq!(
+        refused_in(&root, "wrapped.nuke").kind(),
+        &ErrorKind::TooDeep,
+        "an import charges its measured depth at the use site, the way a bound name does"
+    );
+}
+
+#[test]
+fn a_fault_below_a_file_reads_as_one_line_naming_every_file_it_passed_through() {
+    let root = tree(&[
+        ("a.nuke", "{x = @import \"./b.nuke\"}"),
+        ("b.nuke", "[@import \"./c.nuke\"]"),
+        ("c.nuke", "{y = missing}"),
+    ]);
+    let b = root.path().join("b.nuke").canonicalize().unwrap();
+    let c = root.path().join("c.nuke").canonicalize().unwrap();
+    assert_eq!(
+        refused_in(&root, "a.nuke").to_string(),
+        format!(
+            "importing `{}` failed at 1:2: importing `{}` failed at 1:6: \
+             `missing` is not bound here; a name is visible below its own binding, and only \
+             inside the block that makes it",
+            b.display(),
+            c.display()
+        )
     );
 }
