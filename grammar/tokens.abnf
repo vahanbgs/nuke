@@ -1,0 +1,63 @@
+; Nuke — the token layer.
+;
+; This file is a fragment. A grammar of Nuke is this file followed by a syntax
+; layer, read in that order, and the assembly is what is normative — the way an
+; ABNF specification includes RFC 5234's core rules by reference rather than
+; restating them. `grammar/canonical.abnf` is the canonical form's syntax layer.
+;
+; The token layer is written once because both languages spell a token the same
+; way. Nothing here may be redefined by a syntax layer: a second definition of a
+; rule would silently replace this one.
+;
+; It is written in ABNF (RFC 5234) with the case-sensitive string literals of
+; RFC 7405. ABNF strings are case-insensitive by default, so a plain "e" would
+; admit `1E5` and a plain "n" would admit `\N`.
+;
+; Tokens are matched greedily: at any position a token extends as far as it can.
+; Whitespace is therefore never required between two values, only between two
+; values that would otherwise run together into one token — `[12]` holds one
+; element and `[1 2]` holds two.
+;
+; `ows` marks every position where whitespace and comments are permitted; a
+; syntax layer permits them nowhere else.
+
+atom       = upper *( ALPHA / DIGIT )
+ident      = lower *( lower / DIGIT / "_" )
+
+string     = DQUOTE *char DQUOTE
+char       = unescaped / escape
+unescaped  = %x20-21 / %x23-5B / %x5D-10FFFF
+escape     = %x5C ( DQUOTE / %x5C / %s"n" / %s"r" / %s"t" / unicode )
+unicode    = %s"u{" 1*6hexdig %x7D
+
+; A number token takes the whole run that could belong to a number, so that a
+; misspelling is one bad token rather than two good ones: `1E5` is a single
+; number and not the number 1 beside the atom E5. A token is well formed only
+; if it also matches the rule refining it, which is where the one-spelling rules
+; live — no leading zeros, lowercase `e`, no `+`, a digit either side of the
+; point. Every syntax layer names its own refinement; both name the one below.
+
+number           = [ "-" ] 1*DIGIT [ frac ] [ exp ]
+frac             = "." *DIGIT
+exp              = ( %s"e" / %s"E" ) [ "-" / "+" ] *DIGIT
+
+canonical-number = [ "-" ] uint [ canonical-frac ] [ canonical-exp ]
+canonical-frac   = "." 1*DIGIT
+canonical-exp    = %s"e" [ "-" ] uint
+uint             = "0" / ( %x31-39 *DIGIT )
+
+ows        = *( wschar / comment )
+comment    = "#" *( %x09 / %x20-10FFFF )
+wschar     = %x20 / %x09 / %x0A
+
+; ---- character classes ------------------------------------------------------
+
+upper      = %x41-5A
+lower      = %x61-7A
+hexdig     = DIGIT / %x41-46
+
+; ---- core rules (RFC 5234 appendix B) ---------------------------------------
+
+ALPHA      = %x41-5A / %x61-7A
+DIGIT      = %x30-39
+DQUOTE     = %x22

@@ -2,8 +2,8 @@
 
 Every Nuke file is an expression. Evaluating it reduces it to the **canonical form**: the
 subset of Nuke that carries data and nothing else. It is to Nuke what JSON is to JavaScript,
-and it is the input every transpiler backend consumes. `grammar/canonical.abnf` is the
-normative grammar; this document records what the grammar cannot say.
+and it is the input every transpiler backend consumes. `grammar/tokens.abnf` then
+`grammar/canonical.abnf` are the normative grammar; this document records what it cannot say.
 
 ## Values
 

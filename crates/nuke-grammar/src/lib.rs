@@ -1,6 +1,9 @@
 use std::fmt;
 
+use abnf_to_pest::escape_rulename;
 use pest_vm::Vm;
+
+pub const TOKENS_ABNF: &str = include_str!("../../../grammar/tokens.abnf");
 
 pub const CANONICAL_ABNF: &str = include_str!("../../../grammar/canonical.abnf");
 
@@ -8,7 +11,26 @@ pub const DOCUMENT: &str = "document";
 
 pub const NUMBER: &str = "number";
 
-pub const CANONICAL_NUMBER: &str = "canonical_number";
+pub const CANONICAL_NUMBER: &str = "canonical-number";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Layer {
+    pub fragments: &'static [&'static str],
+    pub start: &'static str,
+    pub refined: &'static [(&'static str, &'static str)],
+}
+
+impl Layer {
+    pub fn abnf(&self) -> String {
+        self.fragments.join("\n")
+    }
+}
+
+pub const CANONICAL: Layer = Layer {
+    fragments: &[TOKENS_ABNF, CANONICAL_ABNF],
+    start: DOCUMENT,
+    refined: &[(NUMBER, CANONICAL_NUMBER)],
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Rejection {
@@ -53,15 +75,17 @@ pub fn to_pest(abnf: &str) -> Result<String, Error> {
 
 pub struct Grammar {
     vm: Vm,
+    layer: Layer,
+    start: String,
 }
 
 impl Grammar {
     pub fn canonical() -> Result<Self, Error> {
-        Self::from_abnf(CANONICAL_ABNF)
+        Self::new(CANONICAL)
     }
 
-    pub fn from_abnf(abnf: &str) -> Result<Self, Error> {
-        let pest = to_pest(abnf)?;
+    pub fn new(layer: Layer) -> Result<Self, Error> {
+        let pest = to_pest(&layer.abnf())?;
         let (_, rules) = pest_meta::parse_and_optimize(&pest).map_err(|errors| {
             Error::Pest(
                 errors
@@ -71,13 +95,17 @@ impl Grammar {
                     .join("\n"),
             )
         })?;
-        Ok(Self { vm: Vm::new(rules) })
+        Ok(Self {
+            vm: Vm::new(rules),
+            layer,
+            start: escape_rulename(layer.start),
+        })
     }
 
     pub fn parse<'a>(&'a self, input: &'a str) -> Result<Parse<'a>, Rejection> {
         let pairs = self
             .vm
-            .parse(DOCUMENT, input)
+            .parse(&self.start, input)
             .map_err(|error| Rejection::Syntax(error.to_string()))?;
         let consumed = pairs
             .clone()
@@ -89,27 +117,32 @@ impl Grammar {
                 input.len()
             )));
         }
-        for token in pairs
-            .clone()
-            .flatten()
-            .filter(|pair| pair.as_rule() == NUMBER)
-        {
-            let token = token.as_str();
-            if !self.matches(CANONICAL_NUMBER, token) {
-                return Err(Rejection::Number(token.to_owned()));
+        for (token, refining) in self.layer.refined {
+            let token = escape_rulename(token);
+            for pair in pairs
+                .clone()
+                .flatten()
+                .filter(|pair| pair.as_rule() == token.as_str())
+            {
+                let spelling = pair.as_str();
+                if !self.matches(refining, spelling) {
+                    return Err(Rejection::Number(spelling.to_owned()));
+                }
             }
         }
         Ok(Parse { pairs })
     }
 
     pub fn matches(&self, rule: &str, input: &str) -> bool {
-        self.vm.parse(rule, input).is_ok_and(|pairs| {
-            pairs
-                .clone()
-                .next()
-                .map(|pair| pair.as_span().end_pos().pos())
-                == Some(input.len())
-        })
+        self.vm
+            .parse(&escape_rulename(rule), input)
+            .is_ok_and(|pairs| {
+                pairs
+                    .clone()
+                    .next()
+                    .map(|pair| pair.as_span().end_pos().pos())
+                    == Some(input.len())
+            })
     }
 
     pub fn accepts(&self, input: &str) -> bool {

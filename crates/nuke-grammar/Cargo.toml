@@ -13,6 +13,7 @@ pest_meta = "2"
 pest_vm = "2"
 
 [dev-dependencies]
+abnf = "0.13"
 nuke-fixtures.workspace = true
 
 [lints]

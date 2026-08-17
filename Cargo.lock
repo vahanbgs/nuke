@@ -803,6 +803,7 @@ version = "0.0.0"
 name = "nuke-grammar"
 version = "0.0.0"
 dependencies = [
+ "abnf",
  "abnf_to_pest",
  "nuke-fixtures",
  "pest",

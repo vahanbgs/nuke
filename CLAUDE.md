@@ -20,15 +20,15 @@ of the various tools used to work with the language.
 
 ## Layout
 
-- `grammar/canonical.abnf` — the normative grammar of the canonical form.
+- `grammar/` — `tokens.abnf` then `canonical.abnf`; a grammar is that assembly, and normative.
 - `docs/canonical-form.md` — the rules ABNF cannot express.
 - `docs/serde.md` — where Nuke and serde's data model disagree, and how the binding settles it.
 - `docs/json.md`, `docs/yaml.md`, `docs/toml.md`, `docs/xml.md`, `docs/kdl.md`, `docs/lua.md`,
   `docs/ini.md`, `docs/gitconfig.md` — each mapping, and what it degrades or refuses.
 - `fixtures/valid`, `fixtures/invalid` — conformance fixtures, shared by every crate.
 - `crates/nuke-fixtures` — reads that tree, so no crate keeps its own copy of the walker.
-- `crates/nuke-grammar` — translates the ABNF to pest at test time and checks the fixtures
-  against it, so the grammar file is executable and cannot drift from the implementation.
+- `crates/nuke-grammar` — assembles a `Layer`'s ABNF, translates it to pest at test time and
+  checks the fixtures against it, so the grammar is executable and cannot drift from the code.
 - `crates/nuke-syntax` — the hand-written lexer and parser. It carries the rules ABNF
   cannot state, and a test asserts it agrees with the grammar on every fixture. Its
   `serde` feature adds `from_str`, `from_value` and `to_value` over the same `Value`.
