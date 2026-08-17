@@ -2,7 +2,12 @@ use nuke_fixtures::Fixture;
 use nuke_syntax::{Value, parse};
 use nuke_transpile::json::{ErrorKind, to_string, to_string_compact};
 use nuke_transpile::toml as toml_backend;
+use nuke_transpile::xml;
 use nuke_transpile::yaml;
+use quick_xml::Reader;
+use quick_xml::escape::resolve_predefined_entity;
+use quick_xml::events::Event;
+use quick_xml::name::QName;
 use saphyr::{LoadableYamlNode, Yaml};
 
 fn refusals() -> Vec<(&'static str, ErrorKind, &'static str)> {
@@ -292,4 +297,244 @@ fn table<'a>(loaded: &'a toml::Value, at: &str) -> &'a toml::Table {
     loaded
         .as_table()
         .unwrap_or_else(|| panic!("{at} should be a table, not {loaded:?}"))
+}
+
+fn xml_refusals() -> Vec<(&'static str, xml::ErrorKind, &'static str)> {
+    vec![(
+        "strings.nuke",
+        xml::ErrorKind::UnrepresentableCharacter('\u{0}'),
+        "[5]",
+    )]
+}
+
+#[test]
+fn every_fixture_xml_cannot_carry_is_refused_by_the_error_that_names_its_fault() {
+    for (name, kind, path) in xml_refusals() {
+        let fixture = fixture(name);
+        let error = xml::to_string(&value_of(&fixture))
+            .err()
+            .unwrap_or_else(|| panic!("{name} should have been refused"));
+        assert_eq!(error.kind(), &kind, "for {name}");
+        assert_eq!(error.path().to_string(), path, "for {name}");
+    }
+}
+
+#[test]
+fn every_fixture_but_the_one_holding_a_character_xml_forbids_crosses_whole() {
+    let refused = xml_refusals();
+    for fixture in nuke_fixtures::valid() {
+        if refused.iter().any(|(name, _, _)| *name == fixture.name()) {
+            continue;
+        }
+        xml::to_string(&value_of(&fixture))
+            .unwrap_or_else(|error| panic!("{} should transpile: {error}", fixture.display()));
+    }
+}
+
+#[test]
+fn what_the_backend_writes_is_the_document_a_real_xml_parser_reads_back() {
+    for (name, value, written) in written_as_xml() {
+        let mut reader = Reader::from_str(&written);
+        open(&mut reader, "nuke", &name);
+        reads(&value, &mut reader, "nuke", &name);
+        assert!(
+            matches!(reader.read_event(), Ok(Event::Eof)),
+            "{name} writes something beside its root\n{written}"
+        );
+    }
+}
+
+#[test]
+fn every_element_the_backend_writes_holds_text_or_children_and_never_both() {
+    for (name, _, written) in written_as_xml() {
+        let mut reader = Reader::from_str(&written);
+        let mut stack: Vec<(bool, bool)> = Vec::new();
+        loop {
+            match reader.read_event() {
+                Ok(Event::Start(_)) => {
+                    if let Some((_, children)) = stack.last_mut() {
+                        *children = true;
+                    }
+                    stack.push((false, false));
+                }
+                Ok(Event::End(_)) => {
+                    let (text, children) = stack.pop().expect("an end tag closes an open element");
+                    assert!(
+                        !(text && children),
+                        "{name} mixes text and elements\n{written}"
+                    );
+                }
+                Ok(Event::Text(chunk)) => {
+                    let content = chunk.xml10_content().expect("the text decodes");
+                    if !content.trim().is_empty()
+                        && let Some((text, _)) = stack.last_mut()
+                    {
+                        *text = true;
+                    }
+                }
+                Ok(Event::GeneralRef(_)) => {
+                    if let Some((text, _)) = stack.last_mut() {
+                        *text = true;
+                    }
+                }
+                Ok(Event::Eof) => break,
+                Ok(other) => panic!("{name} writes {other:?} beside elements and text"),
+                Err(error) => panic!("the XML of {name} does not parse: {error}\n{written}"),
+            }
+        }
+    }
+}
+
+#[test]
+fn the_escapes_survive_a_round_trip_through_an_xml_parser() {
+    let Value::List(items) = value_of(&fixture("strings.nuke")) else {
+        panic!("the strings fixture is a list");
+    };
+    let carried: Vec<Value> = items
+        .into_iter()
+        .filter(|item| xml::to_string(item).is_ok())
+        .collect();
+    assert_eq!(
+        carried.len(),
+        10,
+        "two of the twelve hold a character XML cannot carry"
+    );
+
+    let value = Value::List(carried);
+    let written = xml::to_string(&value).expect("the rest should transpile");
+    let mut reader = Reader::from_str(&written);
+    open(&mut reader, "nuke", "strings.nuke");
+    reads(&value, &mut reader, "nuke", "strings.nuke");
+}
+
+fn written_as_xml() -> Vec<(String, Value, String)> {
+    let refused = xml_refusals();
+    nuke_fixtures::valid()
+        .into_iter()
+        .filter(|fixture| !refused.iter().any(|(name, _, _)| *name == fixture.name()))
+        .map(|fixture| {
+            let value = value_of(&fixture);
+            let written = xml::to_string(&value)
+                .unwrap_or_else(|error| panic!("{} should transpile: {error}", fixture.display()));
+            (fixture.name().to_owned(), value, written)
+        })
+        .collect()
+}
+
+fn reads(value: &Value, xml: &mut Reader<&[u8]>, name: &str, at: &str) {
+    match value {
+        Value::Tuple(tuple) if !tuple.is_empty() => {
+            for (field, item) in tuple.iter() {
+                let at = format!("{at}.{field}");
+                open(xml, field.as_str(), &at);
+                reads(item, xml, field.as_str(), &at);
+            }
+            close(xml, name, at);
+        }
+        Value::Map(map) if !map.is_empty() => {
+            for (position, (key, item)) in map.iter().enumerate() {
+                let at = format!("{at}#{}", position + 1);
+                open(xml, "_entry", &at);
+                open(xml, "_key", &at);
+                reads(key, xml, "_key", &at);
+                open(xml, "_value", &at);
+                reads(item, xml, "_value", &at);
+                close(xml, "_entry", &at);
+            }
+            close(xml, name, at);
+        }
+        Value::List(items) if !items.is_empty() => {
+            for (index, item) in items.iter().enumerate() {
+                let at = format!("{at}[{index}]");
+                open(xml, "_item", &at);
+                reads(item, xml, "_item", &at);
+            }
+            close(xml, name, at);
+        }
+        Value::Atom(atom) => assert_eq!(content(xml, name, at), atom.as_str(), "at {at}"),
+        Value::String(text) => assert_eq!(content(xml, name, at), text.as_str(), "at {at}"),
+        Value::Integer(integer) => {
+            assert_eq!(content(xml, name, at), integer.as_str(), "at {at}");
+        }
+        Value::Float(number) => {
+            let text = content(xml, name, at);
+            let read: f64 = text
+                .parse()
+                .unwrap_or_else(|_| panic!("{at} should be a double, not {text}"));
+            assert_eq!(read.to_bits(), number.get().to_bits(), "at {at}");
+        }
+        Value::Tuple(_) | Value::Map(_) | Value::List(_) => {
+            assert_eq!(content(xml, name, at), "", "{at} is empty");
+        }
+    }
+}
+
+fn open(xml: &mut Reader<&[u8]>, expected: &str, at: &str) {
+    match between(xml, at) {
+        Event::Start(start) => {
+            assert_eq!(tag(start.name()), expected, "{at} opens the wrong element");
+        }
+        other => panic!("{at} should open `{expected}`, not {other:?}"),
+    }
+}
+
+fn close(xml: &mut Reader<&[u8]>, expected: &str, at: &str) {
+    match between(xml, at) {
+        Event::End(end) => {
+            assert_eq!(tag(end.name()), expected, "{at} closes the wrong element");
+        }
+        other => panic!("{at} should close `{expected}`, not {other:?}"),
+    }
+}
+
+fn content(xml: &mut Reader<&[u8]>, name: &str, at: &str) -> String {
+    let mut text = String::new();
+    loop {
+        match read(xml, at) {
+            Event::Text(chunk) => {
+                text.push_str(&chunk.xml10_content().expect("the text decodes"));
+            }
+            Event::GeneralRef(reference) => {
+                let resolved = reference.resolve_char_ref().expect("a reference resolves");
+                match resolved {
+                    Some(character) => text.push(character),
+                    None => {
+                        let entity = reference.decode().expect("a reference decodes");
+                        text.push_str(resolve_predefined_entity(&entity).unwrap_or_else(|| {
+                            panic!("{at} writes the entity `{entity}`, which XML does not define")
+                        }));
+                    }
+                }
+            }
+            Event::End(end) => {
+                assert_eq!(tag(end.name()), name, "{at} closes the wrong element");
+                return text;
+            }
+            other => panic!("{at} should hold text, not {other:?}"),
+        }
+    }
+}
+
+fn between<'a>(xml: &mut Reader<&'a [u8]>, at: &str) -> Event<'a> {
+    loop {
+        match read(xml, at) {
+            Event::Text(chunk) => {
+                let content = chunk.xml10_content().expect("the text decodes");
+                assert!(
+                    content.trim().is_empty(),
+                    "{at} holds the text {content:?} beside its children"
+                );
+            }
+            other => return other,
+        }
+    }
+}
+
+fn read<'a>(xml: &mut Reader<&'a [u8]>, at: &str) -> Event<'a> {
+    xml.read_event()
+        .unwrap_or_else(|error| panic!("the XML of {at} does not parse: {error}"))
+}
+
+fn tag<'a>(name: QName<'a>) -> &'a str {
+    std::str::from_utf8(name.into_inner()).expect("a name the backend writes is UTF-8")
 }
