@@ -23,8 +23,8 @@ of the various tools used to work with the language.
 - `grammar/canonical.abnf` — the normative grammar of the canonical form.
 - `docs/canonical-form.md` — the rules ABNF cannot express.
 - `docs/serde.md` — where Nuke and serde's data model disagree, and how the binding settles it.
-- `docs/json.md`, `docs/yaml.md`, `docs/toml.md`, `docs/xml.md`, `docs/kdl.md`, `docs/lua.md` —
-  each mapping, and what it degrades or refuses.
+- `docs/json.md`, `docs/yaml.md`, `docs/toml.md`, `docs/xml.md`, `docs/kdl.md`, `docs/lua.md`,
+  `docs/ini.md` — each mapping, and what it degrades or refuses.
 - `fixtures/valid`, `fixtures/invalid` — conformance fixtures, shared by every crate.
 - `crates/nuke-fixtures` — reads that tree, so no crate keeps its own copy of the walker.
 - `crates/nuke-grammar` — translates the ABNF to pest at test time and checks the fixtures
@@ -35,7 +35,7 @@ of the various tools used to work with the language.
 - `crates/nuke-transpile` — the backends, each owning its own `ErrorKind` and its own answer
   to what the target can spell: `json` laid out or compact, `yaml` block style, `toml` a
   section wherever a header fits, `xml` elements under one named root, `kdl` a node per field
-  or entry, `lua` a chunk returning one value. `docs/` carries the argument for each.
+  or entry, `lua` a chunk returning one value, `ini` keys then sections. `docs/` argues each.
 
 Work inside the devshell: `nix develop -c cargo test --workspace --all-features`. Serde
 support sits behind an off-by-default `serde` feature, so `--all-features` is what covers it.
@@ -92,7 +92,8 @@ We are taking baby steps.
       outranks giving every table a header; XML that a target can keep a tuple and a map apart,
       and that it can refuse a character; KDL that room which is not a distinction is declined;
       Lua that a target can be a family of implementations rather than one language, so the
-      mapping is written for their intersection. INI, cfg and gitconfig remain; the first two
-      have no specification at all, and all three name sections more narrowly than a string.
+      mapping is written for their intersection; INI that a target may give a name no quoted
+      form, so the alphabet falls inside the strings XML declined to split, and that a finite
+      shape leaves the depth guard nothing to guard. cfg and gitconfig inherit that argument.
 - [ ] The surface language: the expressions that reduce to the canonical form, and imports.
 - [ ] The formatter, the linter, the LSP server.
