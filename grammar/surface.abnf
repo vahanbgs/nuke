@@ -29,7 +29,36 @@ document   = ows *( binding ows ) value ows
 
 value      = operand *( ows access )
 access     = "." ows ident
-operand    = tuple / map / list / reference / atom / string / number
+operand    = call / tuple / map / list / reference / atom / string / number
+
+; `@` calls a builtin, and `import` is the first of them. It is a sigil and
+; not the word `import` for the reason `:=` is not `let` — the canonical form
+; has no reserved words — and the sigil is what keeps it that way: `import` is
+; a name only after `@`, so `import := 1` and `{import = 1}` stay legal and
+; unrelated. Which builtins exist is not a question a grammar can answer, so
+; `call` names none; an unknown one is a fault the evaluator raises.
+;
+; `@` is what is left. Arithmetic is owed `+ - * / %`, comparison `< > = !`,
+; and — since a language without reserved words cannot spell `and`, `or` or
+; `not` as words — conjunction is owed `& | !` too. A conditional is owed `?`
+; and needs a bare `:` to stay untokenised, and grouping is owed `( )`. Of
+; what remains, `@` is the one that reads as "at", which is what a path is.
+;
+; A call takes exactly one operand, and that is forced rather than chosen: a
+; collection carries no separators, so in `[@f a b]` nothing could tell a call
+; of two operands from a call beside a value. A builtin wanting more takes a
+; list or a tuple.
+;
+; It takes an `operand` and not a `value`, so `@import "p.nuke".accent`
+; projects out of the imported document rather than out of the path. The cost
+; is that `@f p.a` is `(@f p).a` and the other reading has no spelling, which
+; is a bill grouping settles when operators arrive.
+;
+; `ows` stands on both sides of the name because every other operator takes
+; it, and here it is free: `@` begins and continues no other token, so unlike
+; `.` there is no greedy token to collide with and nothing to argue.
+
+call       = "@" ows ident ows operand
 
 ; A binding names a value and contributes nothing to the result. It stands at
 ; the head of the document or of a brace block, before any pair. A list holds

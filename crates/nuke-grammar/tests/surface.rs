@@ -208,6 +208,70 @@ fn the_dot_takes_whitespace_the_way_every_other_operator_does() {
 }
 
 #[test]
+fn a_call_names_a_builtin_with_an_identifier_and_takes_exactly_one_operand() {
+    let grammar = Grammar::surface().unwrap();
+    admitted(
+        &grammar,
+        &[
+            "@import \"p.nuke\"",
+            "@import\"p.nuke\"",
+            "@ import \"p.nuke\"",
+            "@import # here\n\"p.nuke\"",
+            "@import @import \"p.nuke\"",
+            "@length [1 2]",
+            "@merge {a = 1}",
+            "p := \"p.nuke\" @import p",
+        ],
+    );
+    refused(
+        &grammar,
+        &[
+            "@",
+            "@import",
+            "@\"p.nuke\"",
+            "@Import \"p.nuke\"",
+            "@1 \"p.nuke\"",
+            "@import \"a.nuke\" \"b.nuke\"",
+            "\"p.nuke\"@",
+            "@:= \"p.nuke\"",
+        ],
+    );
+}
+
+#[test]
+fn a_call_stands_where_a_value_stands_and_the_dot_takes_what_it_yields() {
+    let grammar = Grammar::surface().unwrap();
+    admitted(
+        &grammar,
+        &[
+            "[@import \"p.nuke\"]",
+            "{a = @import \"p.nuke\"}",
+            "{@import \"p.nuke\" => 1}",
+            "{1 => @import \"p.nuke\"}",
+            "p := @import \"p.nuke\" [p]",
+            "@import \"p.nuke\".accent",
+            "@import \"p.nuke\" . accent",
+            "@import \"p.nuke\".a.b",
+        ],
+    );
+}
+
+#[test]
+fn the_canonical_form_has_no_call_at_all() {
+    let grammar = Grammar::canonical().unwrap();
+    refused(
+        &grammar,
+        &[
+            "@import \"p.nuke\"",
+            "[@import \"p.nuke\"]",
+            "{a = @import \"p.nuke\"}",
+            "{@import \"p.nuke\" => 1}",
+            "1 @import \"p.nuke\"",
+        ],
+    );
+}
+
+#[test]
 fn a_projection_is_a_shape_of_its_own_until_it_is_reduced() {
     let grammar = Grammar::surface().unwrap();
     let cases = [
@@ -218,6 +282,12 @@ fn a_projection_is_a_shape_of_its_own_until_it_is_reduced() {
             Shape::Tuple(vec![("b".to_owned(), scalar("access"))]),
         ),
         ("[{a = 1}.a]", Shape::List(vec![scalar("access")])),
+        ("@import \"p.nuke\"", scalar("call")),
+        ("@import \"p.nuke\".accent", scalar("access")),
+        (
+            "{a = @import \"p.nuke\"}",
+            Shape::Tuple(vec![("a".to_owned(), scalar("call"))]),
+        ),
     ];
     for (source, expected) in cases {
         let parse = grammar
