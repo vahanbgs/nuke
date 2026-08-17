@@ -11,6 +11,7 @@ nuke-syntax.workspace = true
 ryu.workspace = true
 
 [dev-dependencies]
+gix-config.workspace = true
 kdl.workspace = true
 mlua.workspace = true
 nuke-fixtures.workspace = true

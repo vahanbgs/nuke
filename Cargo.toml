@@ -16,6 +16,7 @@ rust-version = "1.85"
 nuke-fixtures = { path = "crates/nuke-fixtures" }
 nuke-grammar = { path = "crates/nuke-grammar" }
 nuke-syntax = { path = "crates/nuke-syntax" }
+gix-config = { version = "0.59", features = ["sha1"] }
 indexmap = "2"
 kdl = "6"
 mlua = { version = "0.11", features = ["lua54", "vendored"] }
