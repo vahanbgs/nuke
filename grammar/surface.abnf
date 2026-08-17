@@ -29,7 +29,7 @@ document   = ows *( binding ows ) value ows
 
 value      = operand *( ows access )
 access     = "." ows ident
-operand    = call / tuple / map / list / reference / atom / string / number
+operand    = call / interpolation / tuple / map / list / reference / atom / string / number
 
 ; `@` calls a builtin, and `import` is the first of them. It is a sigil and
 ; not the word `import` for the reason `:=` is not `let` — the canonical form
@@ -59,6 +59,37 @@ operand    = call / tuple / map / list / reference / atom / string / number
 ; `.` there is no greedy token to collide with and nothing to argue.
 
 call       = "@" ows ident ows operand
+
+; `$"a{expr}b"` interpolates. The prefix is a sigil and not Python's `f` because
+; tokens are greedy and `f` and `"a"` do not run together into one of them: today
+; `[f "a"]` and `[f"a"]` are the same two elements, and gluing an identifier to a
+; following string would break the rule that whitespace is required only where a
+; token would otherwise continue. `$` begins no token at all, so `$"` glues with
+; nothing to argue and `$ "a"` stays two things, neither of which is a value.
+;
+; A hole lives here and never in `string`, which the token layer shares with the
+; canonical form: a canonical string may hold any text, so a sigil given meaning
+; inside `"…"` would change what some canonical document already means. Nothing
+; crosses the other way — an interpolation reduces to an ordinary string, and the
+; canonical form gains no rule from this one.
+;
+; `{{` and `}}` are the literal braces, which is Rust's spelling and not `\{`
+; because `escape` belongs to the shared token layer: widening it would leave the
+; two languages disagreeing about what an escape is, and confining the rule to
+; `doubled` leaves it untouched. A lone `}` is therefore a fault rather than a
+; brace, the one spelling a plain string keeps and this one does not.
+;
+; A hole takes a `value` rather than an `operand`, the braces having already done
+; the grouping a call cannot, so `{p.a}` reads the way it looks. `ows` stands
+; inside them like it stands inside every other bracket, which is also how a
+; tuple reaches a hole: `{{` is a brace, so `{ {a = 1}.a }` needs its space.
+
+interpolation = %s"$" DQUOTE *piece DQUOTE
+piece         = literal / hole
+literal       = 1*( plain / escape / doubled )
+plain         = %x20-21 / %x23-5B / %x5D-7A / %x7C / %x7E-10FFFF
+doubled       = "{{" / "}}"
+hole          = "{" ows value ows "}"
 
 ; A binding names a value and contributes nothing to the result. It stands at
 ; the head of the document or of a brace block, before any pair. A list holds

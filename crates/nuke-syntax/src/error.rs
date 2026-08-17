@@ -49,6 +49,8 @@ pub enum ErrorKind {
     SurrogateEscape(u32),
     ScalarOutOfRange(u32),
     UnterminatedString,
+    UnterminatedHole,
+    UnmatchedBrace,
     NumberSpelling(String),
     FloatOutOfRange,
     EmptyDocument,
@@ -56,7 +58,9 @@ pub enum ErrorKind {
     SurfaceBinder,
     SurfaceDot,
     SurfaceCall,
+    SurfaceInterpolation,
     ExpectedValue,
+    ExpectedHoleClose,
     ExpectedFieldName,
     ExpectedAccessName,
     ExpectedBuiltinName,
@@ -113,6 +117,12 @@ impl fmt::Display for ErrorKind {
                 write!(f, "U+{value:04X} is past the last scalar value, U+10FFFF")
             }
             Self::UnterminatedString => write!(f, "this string is never closed"),
+            Self::UnterminatedHole => write!(f, "this hole is never closed"),
+            Self::UnmatchedBrace => write!(
+                f,
+                "a lone `}}` is no brace inside `$\"…\"`; a literal one is written `}}}}`, \
+                 as `{{` is written `{{{{`"
+            ),
             Self::NumberSpelling(token) => {
                 write!(f, "`{token}` is not how the canonical form spells a number")
             }
@@ -141,7 +151,17 @@ impl fmt::Display for ErrorKind {
                 "`@` calls a builtin in the surface language, and the canonical form carries \
                  data alone"
             ),
+            Self::SurfaceInterpolation => write!(
+                f,
+                "`$\"…\"` interpolates in the surface language, and the canonical form carries \
+                 data alone"
+            ),
             Self::ExpectedValue => write!(f, "expected a value"),
+            Self::ExpectedHoleClose => write!(
+                f,
+                "a hole holds one value, and `}}` closes it; a builtin wanting more takes a \
+                 collection, and so does a hole"
+            ),
             Self::ExpectedFieldName => write!(
                 f,
                 "expected a field name; this block is a tuple, because its first pair uses `=`"

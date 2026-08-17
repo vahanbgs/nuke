@@ -15,6 +15,11 @@ pub enum TokenKind {
     Ident,
     String,
     Number,
+    InterpolationOpen,
+    InterpolationClose,
+    Text,
+    HoleOpen,
+    HoleClose,
     Whitespace,
     Comment,
 }
@@ -38,14 +43,25 @@ pub(crate) enum NumberKind {
     Float,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Mode {
+    Text { open: usize },
+    Hole { open: usize, braces: usize },
+}
+
 pub struct Lexer<'a> {
     source: &'a str,
     offset: usize,
+    modes: Vec<Mode>,
 }
 
 impl<'a> Lexer<'a> {
     pub const fn new(source: &'a str) -> Self {
-        Self { source, offset: 0 }
+        Self {
+            source,
+            offset: 0,
+            modes: Vec::new(),
+        }
     }
 
     fn token(&mut self, kind: TokenKind, end: usize) -> Token<'a> {
@@ -77,6 +93,10 @@ impl<'a> Lexer<'a> {
             b':' if bytes.get(at + 1) == Some(&b'=') => Ok(self.token(TokenKind::Binder, at + 2)),
             b'.' => Ok(self.token(TokenKind::Dot, at + 1)),
             b'@' => Ok(self.token(TokenKind::At, at + 1)),
+            b'$' if bytes.get(at + 1) == Some(&b'"') => {
+                self.modes.push(Mode::Text { open: at });
+                Ok(self.token(TokenKind::InterpolationOpen, at + 2))
+            }
             b'"' => self.scan_string(),
             b'A'..=b'Z' => {
                 let mut end = at + 1;
@@ -101,6 +121,100 @@ impl<'a> Lexer<'a> {
                 } else {
                     Err(Error::new(ErrorKind::UnexpectedCharacter(character), span))
                 }
+            }
+        }
+    }
+
+    fn step(&mut self) -> Result<Token<'a>, Error> {
+        match self.modes.last().copied() {
+            Some(Mode::Text { open }) => self.scan_text(open),
+            Some(Mode::Hole { .. }) => self.scan_in_hole(),
+            None => self.scan(),
+        }
+    }
+
+    fn scan_in_hole(&mut self) -> Result<Token<'a>, Error> {
+        let at = self.offset;
+        match self.source.as_bytes()[at] {
+            b'{' => {
+                if let Some(Mode::Hole { braces, .. }) = self.modes.last_mut() {
+                    *braces += 1;
+                }
+                Ok(self.token(TokenKind::BraceOpen, at + 1))
+            }
+            b'}' if matches!(self.modes.last(), Some(Mode::Hole { braces: 0, .. })) => {
+                self.modes.pop();
+                Ok(self.token(TokenKind::HoleClose, at + 1))
+            }
+            b'}' => {
+                if let Some(Mode::Hole { braces, .. }) = self.modes.last_mut() {
+                    *braces -= 1;
+                }
+                Ok(self.token(TokenKind::BraceClose, at + 1))
+            }
+            _ => self.scan(),
+        }
+    }
+
+    fn scan_text(&mut self, open: usize) -> Result<Token<'a>, Error> {
+        let bytes = self.source.as_bytes();
+        let at = self.offset;
+        match bytes[at] {
+            b'"' => {
+                self.modes.pop();
+                Ok(self.token(TokenKind::InterpolationClose, at + 1))
+            }
+            b'{' if bytes.get(at + 1) != Some(&b'{') => {
+                self.modes.push(Mode::Hole {
+                    open: at,
+                    braces: 0,
+                });
+                Ok(self.token(TokenKind::HoleOpen, at + 1))
+            }
+            b'}' if bytes.get(at + 1) != Some(&b'}') => {
+                Err(Error::new(ErrorKind::UnmatchedBrace, Span::new(at, at + 1)))
+            }
+            _ => {
+                let end = self.scan_run(open)?;
+                Ok(self.token(TokenKind::Text, end))
+            }
+        }
+    }
+
+    fn scan_run(&mut self, open: usize) -> Result<usize, Error> {
+        let bytes = self.source.as_bytes();
+        let mut end = self.offset;
+        loop {
+            let Some(character) = self.source[end..].chars().next() else {
+                return Err(Error::new(
+                    ErrorKind::UnterminatedString,
+                    Span::new(open, end),
+                ));
+            };
+            match character {
+                '"' => return Ok(end),
+                '{' | '}' if bytes.get(end + 1) == Some(&bytes[end]) => end += 2,
+                '{' | '}' => return Ok(end),
+                '\\' => end = escape(self.source, end)?.1,
+                '\n' => {
+                    return Err(Error::new(
+                        ErrorKind::UnterminatedString,
+                        Span::new(open, end),
+                    ));
+                }
+                '\r' => {
+                    return Err(Error::new(
+                        ErrorKind::CarriageReturn,
+                        Span::new(end, end + 1),
+                    ));
+                }
+                control if control < '\u{20}' => {
+                    return Err(Error::new(
+                        ErrorKind::ControlCharacter(control),
+                        Span::new(end, end + 1),
+                    ));
+                }
+                other => end += other.len_utf8(),
             }
         }
     }
@@ -216,11 +330,24 @@ impl<'a> Iterator for Lexer<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.offset >= self.source.len() {
-            return None;
+            let unclosed = self.modes.last().copied();
+            self.modes.clear();
+            return match unclosed {
+                Some(Mode::Text { open }) => Some(Err(Error::new(
+                    ErrorKind::UnterminatedString,
+                    Span::new(open, self.offset),
+                ))),
+                Some(Mode::Hole { open, .. }) => Some(Err(Error::new(
+                    ErrorKind::UnterminatedHole,
+                    Span::new(open, self.offset),
+                ))),
+                None => None,
+            };
         }
-        let scanned = self.scan();
+        let scanned = self.step();
         if scanned.is_err() {
             self.offset = self.source.len();
+            self.modes.clear();
         }
         Some(scanned)
     }
@@ -278,23 +405,34 @@ pub fn escape(source: &str, at: usize) -> Result<(char, usize), Error> {
 }
 
 pub fn unescape(source: &str, span: Span) -> Result<String, Error> {
-    let end = span.end.saturating_sub(1);
-    let mut at = span.start.saturating_add(1);
+    let interior = Span::new(span.start.saturating_add(1), span.end.saturating_sub(1));
+    cook(source, interior, false)
+}
+
+pub(crate) fn cook(source: &str, span: Span, doubled: bool) -> Result<String, Error> {
+    let mut at = span.start;
     let mut cooked = String::new();
-    while at < end {
+    while at < span.end {
         let Some(character) = source
-            .get(at..end)
+            .get(at..span.end)
             .and_then(|remaining| remaining.chars().next())
         else {
             return Err(Error::new(ErrorKind::UnterminatedString, span));
         };
-        if character == '\\' {
-            let (decoded, next) = escape(source, at)?;
-            cooked.push(decoded);
-            at = next;
-        } else {
-            cooked.push(character);
-            at += character.len_utf8();
+        match character {
+            '\\' => {
+                let (decoded, next) = escape(source, at)?;
+                cooked.push(decoded);
+                at = next;
+            }
+            '{' | '}' if doubled => {
+                cooked.push(character);
+                at += 2;
+            }
+            other => {
+                cooked.push(other);
+                at += other.len_utf8();
+            }
         }
     }
     Ok(cooked)

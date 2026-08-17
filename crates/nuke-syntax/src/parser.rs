@@ -64,6 +64,9 @@ impl Parser<'_> {
             TokenKind::Binder => Err(Error::new(ErrorKind::SurfaceBinder, token.span)),
             TokenKind::Dot => Err(Error::new(ErrorKind::SurfaceDot, token.span)),
             TokenKind::At => Err(Error::new(ErrorKind::SurfaceCall, token.span)),
+            TokenKind::InterpolationOpen => {
+                Err(Error::new(ErrorKind::SurfaceInterpolation, token.span))
+            }
             _ => Err(Error::new(ErrorKind::ExpectedValue, token.span)),
         }
     }

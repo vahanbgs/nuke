@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use crate::MAX_DEPTH;
 use crate::cursor::{Cursor, Number, number};
 use crate::error::{Error, ErrorKind, Span};
-use crate::expr::{Binding, Document, Entry, Expr, ExprKind, Field, Name};
-use crate::lexer::{TokenKind, unescape};
+use crate::expr::{Binding, Document, Entry, Expr, ExprKind, Field, Name, Piece};
+use crate::lexer::{TokenKind, cook, unescape};
 use crate::value::{Atom, Ident};
 
 pub fn parse(source: &str) -> Result<Document, Error> {
@@ -116,6 +116,7 @@ impl Parser<'_> {
             TokenKind::BracketOpen => return self.list(depth),
             TokenKind::BraceOpen => return self.block(depth),
             TokenKind::At => return self.call(token.span, depth),
+            TokenKind::InterpolationOpen => return self.interpolation(token.span, depth),
             TokenKind::Ident => {
                 self.cursor.bump()?;
                 ExprKind::Reference(Ident::new(token.text))
@@ -170,6 +171,47 @@ impl Parser<'_> {
             },
             span,
         })
+    }
+
+    fn interpolation(&mut self, at: Span, depth: usize) -> Result<Expr, Error> {
+        self.cursor.bump()?;
+        let mut pieces = Vec::new();
+        loop {
+            let Some(token) = self.cursor.peek(0)? else {
+                return Err(Error::new(ErrorKind::UnterminatedString, at));
+            };
+            match token.kind {
+                TokenKind::InterpolationClose => {
+                    self.cursor.bump()?;
+                    return Ok(Expr {
+                        kind: ExprKind::Interpolation(pieces),
+                        span: Span::new(at.start, token.span.end),
+                    });
+                }
+                TokenKind::Text => {
+                    self.cursor.bump()?;
+                    let text = cook(self.cursor.source(), token.span, true)?;
+                    pieces.push(Piece::Text(text));
+                }
+                TokenKind::HoleOpen => {
+                    self.cursor.bump()?;
+                    pieces.push(Piece::Hole(self.hole(token.span, depth + 1)?));
+                }
+                _ => return Err(Error::new(ErrorKind::ExpectedValue, token.span)),
+            }
+        }
+    }
+
+    fn hole(&mut self, open: Span, depth: usize) -> Result<Expr, Error> {
+        let expr = self.value(depth)?;
+        match self.cursor.bump()? {
+            Some(token) if token.kind == TokenKind::HoleClose => Ok(expr),
+            Some(token) if token.kind == TokenKind::Binder => {
+                Err(Error::new(ErrorKind::MisplacedBinding, token.span))
+            }
+            Some(token) => Err(Error::new(ErrorKind::ExpectedHoleClose, token.span)),
+            None => Err(Error::new(ErrorKind::UnterminatedHole, open)),
+        }
     }
 
     fn list(&mut self, depth: usize) -> Result<Expr, Error> {

@@ -19,6 +19,7 @@ pub enum ErrorKind {
     NoSuchBuiltin(String),
     NotAList,
     NotAString,
+    NoText,
     ExpectedImportPath,
     NoOrigin,
     Unreadable {
@@ -66,6 +67,12 @@ impl fmt::Display for ErrorKind {
                 f,
                 "`@concat` puts strings end to end; a number, an atom or a collection meant \
                  as text is written as text"
+            ),
+            Self::NoText => write!(
+                f,
+                "only a string and an integer have text a hole can hand over; a float has no \
+                 one spelling until the formatter picks it, an atom is uninterpreted, and a \
+                 collection would be Nuke's own syntax"
             ),
             Self::ExpectedImportPath => write!(
                 f,

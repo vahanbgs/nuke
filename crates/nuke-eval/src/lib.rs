@@ -5,7 +5,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use nuke_syntax::expr::{Binding, Document, Expr, ExprKind, Name};
+use nuke_syntax::expr::{Binding, Document, Expr, ExprKind, Name, Piece};
 use nuke_syntax::{Ident, MAX_DEPTH, Map, Span, Tuple, Value, surface};
 
 pub use error::{Error, ErrorKind};
@@ -161,6 +161,7 @@ impl Reducer<'_> {
                 })
             }
             ExprKind::Call { name, operand } => self.call(name, operand, expr.span, depth),
+            ExprKind::Interpolation(pieces) => self.interpolate(pieces, expr.span, depth),
             ExprKind::List(items) => {
                 let mut values = Vec::with_capacity(items.len());
                 for item in items {
@@ -205,6 +206,23 @@ impl Reducer<'_> {
         }
     }
 
+    fn interpolate(&mut self, pieces: &[Piece], span: Span, depth: usize) -> Result<Value, Error> {
+        let mut text = String::new();
+        for piece in pieces {
+            match piece {
+                Piece::Text(literal) => grow(&mut text, literal, span)?,
+                Piece::Hole(hole) => {
+                    let value = self.value(hole, depth + 1)?;
+                    let written =
+                        written(&value).ok_or_else(|| Error::new(ErrorKind::NoText, hole.span))?;
+                    grow(&mut text, written, span)?;
+                }
+            }
+        }
+        self.spend(1, span)?;
+        Ok(Value::String(text))
+    }
+
     fn concat(&mut self, operand: &Expr, span: Span, depth: usize) -> Result<Value, Error> {
         let Value::List(parts) = self.value(operand, depth)? else {
             return Err(Error::new(ErrorKind::NotAList, operand.span));
@@ -214,10 +232,7 @@ impl Reducer<'_> {
             let Value::String(part) = part else {
                 return Err(Error::new(ErrorKind::NotAString, operand.span));
             };
-            if text.len() + part.len() > MAX_BYTES {
-                return Err(Error::new(ErrorKind::TooLong, span));
-            }
-            text.push_str(&part);
+            grow(&mut text, &part, span)?;
         }
         self.spend(1, span)?;
         Ok(Value::String(text))
@@ -279,6 +294,22 @@ impl Reducer<'_> {
         }
         self.session.budget -= values;
         Ok(())
+    }
+}
+
+fn grow(text: &mut String, part: &str, span: Span) -> Result<(), Error> {
+    if text.len() + part.len() > MAX_BYTES {
+        return Err(Error::new(ErrorKind::TooLong, span));
+    }
+    text.push_str(part);
+    Ok(())
+}
+
+fn written(value: &Value) -> Option<&str> {
+    match value {
+        Value::String(text) => Some(text),
+        Value::Integer(integer) => Some(integer.as_str()),
+        _ => None,
     }
 }
 

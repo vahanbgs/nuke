@@ -15,7 +15,7 @@ pub mod value;
 #[cfg(feature = "serde")]
 pub use de::{from_str, from_value};
 pub use error::{Error, ErrorKind, Location, Span};
-pub use expr::{Binding, Document, Entry, Expr, ExprKind, Field, Name};
+pub use expr::{Binding, Document, Entry, Expr, ExprKind, Field, Name, Piece};
 pub use lexer::{Lexer, Token, TokenKind};
 #[cfg(feature = "serde")]
 pub use ser::to_value;

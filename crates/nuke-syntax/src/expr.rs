@@ -32,11 +32,18 @@ pub enum ExprKind {
         name: Name,
         operand: Box<Expr>,
     },
+    Interpolation(Vec<Piece>),
     Reference(Ident),
     Atom(Atom),
     String(String),
     Integer(Integer),
     Float(Float),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Piece {
+    Text(String),
+    Hole(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
