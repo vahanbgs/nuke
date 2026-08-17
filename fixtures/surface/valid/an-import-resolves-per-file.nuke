@@ -1,0 +1,4 @@
+# The module imported here imports a sibling of its own, which resolves against
+# that file's directory rather than against the document that started the
+# reduction. Read from this file, `./palette.nuke` would not exist.
+@import "../modules/theme.nuke"

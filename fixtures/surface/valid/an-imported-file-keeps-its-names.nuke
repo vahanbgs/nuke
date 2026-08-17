@@ -1,0 +1,2 @@
+# A module's bindings are private, so what crosses is its value alone.
+{a = @import "../modules/keeps-a-name.nuke"}

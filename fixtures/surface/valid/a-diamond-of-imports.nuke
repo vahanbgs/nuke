@@ -1,0 +1,6 @@
+# Two files may import one third. What must be acyclic is what is being reduced
+# while, not what is reached from.
+{
+  theme = @import "../modules/theme.nuke"
+  palette = @import "../modules/palette.nuke"
+}

@@ -1,0 +1,2 @@
+# A file has to parse before it can be imported.
+{a = ,}

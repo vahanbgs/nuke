@@ -1,0 +1,2 @@
+# Nothing binds `secret` here, and a file that imports this one cannot lend it.
+[secret]

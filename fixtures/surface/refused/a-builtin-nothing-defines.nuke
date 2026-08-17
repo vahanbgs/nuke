@@ -1,0 +1,3 @@
+# The grammar reads `@ ident operand` and knows no builtin names, so an unknown
+# one is a fault the reduction raises.
+{theme = @nope "../modules/palette.nuke"}

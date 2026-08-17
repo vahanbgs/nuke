@@ -1,0 +1,3 @@
+# The fault is in the file this imports, so it is wrapped in one that names the
+# file and carries where in it the fault stands.
+@import "../modules/needs-a-name.nuke"

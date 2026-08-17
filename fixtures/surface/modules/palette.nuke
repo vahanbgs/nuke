@@ -1,0 +1,3 @@
+# A module is an ordinary document. Its fields are its surface, so it needs no
+# export marker and nothing here says it is imported.
+{accent = "#FE8019" muted = "#928374"}

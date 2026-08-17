@@ -1,4 +1,7 @@
-use nuke_eval::{ErrorKind, eval};
+use std::ffi::OsStr;
+
+use nuke_eval::{Error, ErrorKind, eval, eval_at};
+use nuke_fixtures::Fixture;
 use nuke_syntax::{Value, surface};
 
 enum Standing {
@@ -49,26 +52,112 @@ fn standing() -> Vec<(&'static str, Standing)> {
     ]
 }
 
-fn refusals() -> Vec<(&'static str, ErrorKind)> {
+#[derive(Debug)]
+enum Fault {
+    Kind(ErrorKind),
+    Syntax,
+    Cycle(&'static str),
+    Inside(&'static str, Box<Fault>),
+}
+
+fn nothing_binds(name: &str) -> Fault {
+    Fault::Kind(ErrorKind::Unbound(name.to_owned()))
+}
+
+fn inside(file: &'static str, fault: Fault) -> Fault {
+    Fault::Inside(file, Box::new(fault))
+}
+
+fn refusals() -> Vec<(&'static str, Fault)> {
     vec![
-        ("access-after-a-number.nuke", ErrorKind::NotATuple),
-        ("access-on-a-map.nuke", ErrorKind::NotATuple),
         (
-            "field-is-not-a-binding.nuke",
-            ErrorKind::Unbound("a".to_owned()),
+            "access-after-a-number.nuke",
+            Fault::Kind(ErrorKind::NotATuple),
+        ),
+        ("access-on-a-map.nuke", Fault::Kind(ErrorKind::NotATuple)),
+        ("field-is-not-a-binding.nuke", nothing_binds("a")),
+        ("forward-reference.nuke", nothing_binds("later")),
+        (
+            "no-such-field.nuke",
+            Fault::Kind(ErrorKind::NoSuchField("b".to_owned())),
+        ),
+        ("out-of-scope-name.nuke", nothing_binds("n")),
+        ("self-reference.nuke", nothing_binds("n")),
+        ("unbound-name.nuke", nothing_binds("missing")),
+        (
+            "a-builtin-nothing-defines.nuke",
+            Fault::Kind(ErrorKind::NoSuchBuiltin("nope".to_owned())),
         ),
         (
-            "forward-reference.nuke",
-            ErrorKind::Unbound("later".to_owned()),
+            "a-cycle-between-two-files.nuke",
+            inside(
+                "cycles-back.nuke",
+                Fault::Cycle("a-cycle-between-two-files.nuke"),
+            ),
         ),
-        ("no-such-field.nuke", ErrorKind::NoSuchField("b".to_owned())),
-        ("out-of-scope-name.nuke", ErrorKind::Unbound("n".to_owned())),
-        ("self-reference.nuke", ErrorKind::Unbound("n".to_owned())),
         (
-            "unbound-name.nuke",
-            ErrorKind::Unbound("missing".to_owned()),
+            "a-fault-inside-an-imported-file.nuke",
+            inside("needs-a-name.nuke", nothing_binds("secret")),
+        ),
+        (
+            "a-field-an-imported-file-has-not-got.nuke",
+            Fault::Kind(ErrorKind::NoSuchField("nope".to_owned())),
+        ),
+        (
+            "a-file-that-imports-itself.nuke",
+            Fault::Cycle("a-file-that-imports-itself.nuke"),
+        ),
+        (
+            "a-file-that-is-not-a-document.nuke",
+            inside("is-not-a-document.nuke", Fault::Syntax),
+        ),
+        (
+            "a-name-an-imported-file-keeps-to-itself.nuke",
+            nothing_binds("secret"),
+        ),
+        (
+            "a-name-an-importer-cannot-lend.nuke",
+            inside("needs-a-name.nuke", nothing_binds("secret")),
+        ),
+        (
+            "an-import-of-a-file-that-is-not-there.nuke",
+            Fault::Kind(ErrorKind::Unreadable {
+                path: "./nowhere.nuke".to_owned(),
+                cause: std::io::ErrorKind::NotFound,
+            }),
+        ),
+        (
+            "an-import-path-that-is-not-a-literal.nuke",
+            Fault::Kind(ErrorKind::ExpectedImportPath),
         ),
     ]
+}
+
+fn named(path: &std::path::Path) -> Option<&str> {
+    path.file_name().and_then(OsStr::to_str)
+}
+
+fn check(expected: &Fault, error: &Error, fixture: &str) {
+    match (expected, error.kind()) {
+        (Fault::Kind(kind), found) => assert_eq!(found, kind, "for {fixture}"),
+        (Fault::Syntax, ErrorKind::Syntax(_)) => {}
+        (Fault::Cycle(file), ErrorKind::ImportCycle(path)) => {
+            assert_eq!(named(path), Some(*file), "for {fixture}");
+        }
+        (Fault::Inside(file, inner), ErrorKind::Import { path, cause, .. }) => {
+            assert_eq!(named(path), Some(*file), "for {fixture}");
+            check(inner, cause, fixture);
+        }
+        (expected, found) => {
+            panic!("{fixture} should be refused by {expected:?}, but was: {found}")
+        }
+    }
+}
+
+fn refused(fixture: &Fixture) -> Error {
+    eval_at(&fixture.source, &fixture.path)
+        .err()
+        .unwrap_or_else(|| panic!("{} should have been refused", fixture.display()))
 }
 
 fn same(left: &Value, right: &Value) -> bool {
@@ -144,7 +233,7 @@ fn every_surface_fixture_reduces_to_its_canonical_counterpart() {
     for pair in nuke_fixtures::reductions() {
         let expected = nuke_syntax::parse(&pair.reduced.source)
             .unwrap_or_else(|error| panic!("{} should parse: {error}", pair.reduced.display()));
-        let reduced = eval(&pair.source.source).unwrap_or_else(|error| {
+        let reduced = eval_at(&pair.source.source, &pair.source.path).unwrap_or_else(|error| {
             panic!(
                 "{} should reduce, but at {}: {error}",
                 pair.display(),
@@ -190,10 +279,7 @@ fn every_fixture_the_reduction_refuses_is_refused_by_the_fault_that_names_it() {
             .iter()
             .find(|(name, _)| *name == fixture.name())
             .unwrap_or_else(|| panic!("{} has no expected fault", fixture.name()));
-        let error = eval(&fixture.source)
-            .err()
-            .unwrap_or_else(|| panic!("{} should have been refused", fixture.display()));
-        assert_eq!(error.kind(), expected, "for {}", fixture.name());
+        check(expected, &refused(&fixture), fixture.name());
     }
 }
 
@@ -236,5 +322,28 @@ fn every_canonically_invalid_fixture_declares_where_it_stands_in_the_surface_lan
                 assert_eq!(error.kind(), kind, "for {}", fixture.name());
             }
         }
+    }
+}
+
+#[test]
+fn every_module_is_a_file_some_other_fixture_imports() {
+    let sources: Vec<(String, String)> = nuke_fixtures::surface_refused()
+        .into_iter()
+        .chain(nuke_fixtures::surface_modules())
+        .chain(
+            nuke_fixtures::reductions()
+                .into_iter()
+                .map(|pair| pair.source),
+        )
+        .map(|fixture| (fixture.name().to_owned(), fixture.source))
+        .collect();
+    for module in nuke_fixtures::surface_modules() {
+        assert!(
+            sources
+                .iter()
+                .any(|(name, source)| name != module.name() && source.contains(module.name())),
+            "{} is a module nothing imports; a module is an input to a fixture rather than one",
+            module.display()
+        );
     }
 }

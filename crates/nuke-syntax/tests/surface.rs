@@ -20,6 +20,11 @@ fn faults() -> Vec<(&'static str, ErrorKind)> {
         ("binding-as-a-value.nuke", ErrorKind::MisplacedBinding),
         ("binding-in-a-list.nuke", ErrorKind::MisplacedBinding),
         ("binding-without-a-document.nuke", ErrorKind::OnlyBindings),
+        (
+            "a-call-without-a-builtin-name.nuke",
+            ErrorKind::ExpectedBuiltinName,
+        ),
+        ("a-call-without-an-operand.nuke", ErrorKind::ExpectedValue),
     ]
 }
 
@@ -102,6 +107,7 @@ fn the_parser_and_the_grammar_agree_on_every_fixture() {
         .chain(nuke_fixtures::invalid())
         .chain(nuke_fixtures::surface_invalid())
         .chain(nuke_fixtures::surface_refused())
+        .chain(nuke_fixtures::surface_modules())
         .chain(
             nuke_fixtures::reductions()
                 .into_iter()

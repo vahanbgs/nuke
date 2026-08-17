@@ -1,0 +1,5 @@
+# And a module sees none of the importer's bindings either. Privacy runs both
+# ways, because each file is reduced in a scope of its own.
+secret := "#282828"
+
+@import "../modules/needs-a-name.nuke"

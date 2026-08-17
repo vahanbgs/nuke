@@ -1,0 +1,3 @@
+# The file this imports imports it back. A name cannot be written in a cycle
+# because a text has a top; a directory has none, so this needs a rule of its own.
+@import "../modules/cycles-back.nuke"

@@ -1,0 +1,4 @@
+{
+  theme = {fg = "#FE8019"}
+  palette = {accent = "#FE8019" muted = "#928374"}
+}

@@ -1,0 +1,3 @@
+# A file has to parse before it can be imported, and the parser's fault is
+# wrapped rather than flattened.
+{a = @import "../modules/is-not-a-document.nuke"}

@@ -1,0 +1,7 @@
+# What stands to the left of the dot is a value, so an import is projected
+# without being bound first — and naming the same file twice is reuse, not a
+# second reading of it.
+[
+  @import "../modules/palette.nuke".accent
+  @import "../modules/palette.nuke".muted
+]

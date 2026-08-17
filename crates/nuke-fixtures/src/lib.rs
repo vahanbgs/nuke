@@ -50,6 +50,10 @@ pub fn surface_refused() -> Vec<Fixture> {
     read("surface/refused")
 }
 
+pub fn surface_modules() -> Vec<Fixture> {
+    read("surface/modules")
+}
+
 pub fn reductions() -> Vec<Reduction> {
     let mut reduced = read("surface/reduced");
     let paired: Vec<Reduction> = read("surface/valid")

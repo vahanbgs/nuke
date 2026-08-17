@@ -1,0 +1,8 @@
+# An import is another document's reduced value, and a file's fields are its
+# surface, so `.` reads a module the way it reads any tuple.
+palette := @import "../modules/palette.nuke"
+
+{
+  editor = {theme = palette.accent}
+  status = {fg = palette.muted}
+}

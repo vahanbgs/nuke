@@ -1,0 +1,5 @@
+# `@import` takes a string literal, so that what a file imports is a property of
+# its text and a tool can read the graph without evaluating it.
+path := "../modules/palette.nuke"
+
+@import path

@@ -1,0 +1,5 @@
+# `secret` is a binding, so it contributes nothing to the value and nothing
+# that imports this file can reach it.
+secret := "#282828"
+
+{bg = secret}

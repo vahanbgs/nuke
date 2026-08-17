@@ -1,0 +1,4 @@
+# An importer sees the value a module hands over and none of its bindings.
+palette := @import "../modules/keeps-a-name.nuke"
+
+[palette secret]
