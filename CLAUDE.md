@@ -1,41 +1,39 @@
 # Nuke
 
-Nuke is a simple total configuration language.
-This repository contains its specification, its grammar in ABNF and implementations in Rust
-of the various tools used to work with the language.
+Nuke is a simple total configuration language. This repository holds its specification, its
+grammar in ABNF, and implementations in Rust of the tools used to work with it.
 
 ## A few facts about Nuke
 
 - Nuke is whitespace insensitive (except for its single-line comment syntax of course).
 - Nuke configuration files are Nuke expressions which are evaluated and reduced down to a
-  core canonical form.
-- This canonical form can be thought of as being what JSON is to Javascript.
+  core canonical form, which is to Nuke what JSON is to Javascript.
 - Nuke will transpile to all other mainstream configuration languages (JSON, YAML, TOML,
   XML, KDL, Lua, INI, gitconfig).
 - Nuke will first be used in a dot file manager which will allow users to write all of
-  their dot files using a single language.
-- Nuke will support imports which will make it easy to share values and logic between dot
-  files for different programs.
+  their dot files using a single language, sharing values between them with imports.
 - Nuke files use the `.nuke` extension.
 
 ## Layout
 
 - `grammar/` — `tokens.abnf` then `canonical.abnf` or `surface.abnf`; a grammar is that pair.
-- `docs/canonical-form.md`, `docs/surface.md` — the rules ABNF cannot express, one per language.
+- `docs/canonical-form.md`, `docs/surface.md` — the rules ABNF cannot express, one per language,
+  plus `docs/imports.md` for the ones about files rather than text.
 - `docs/serde.md` — where Nuke and serde's data model disagree, and how the binding settles it.
 - `docs/json.md` and its seven siblings — each mapping, and what it degrades or refuses.
 - `fixtures/valid`, `fixtures/invalid` — conformance fixtures. Under `fixtures/surface`, `valid`
-  pairs with `reduced` by name, `invalid` is what the parser refuses and `refused` what cannot.
+  pairs with `reduced` by name, `invalid` is what the parser refuses, `refused` what cannot, and
+  `modules` holds the files those fixtures import, which are inputs rather than fixtures.
 - `crates/nuke-fixtures` — reads those trees, so no crate keeps its own copy of the walker.
 - `crates/nuke-grammar` — assembles a `Layer`'s ABNF, translates it to pest at test time and
   checks the fixtures against it, so the grammar is executable and cannot drift from the code.
-- `crates/nuke-syntax` — one hand-written lexer and two parsers over it, `parse` for the
-  canonical form and `surface::parse` for the surface language. Each carries the rules ABNF
-  cannot state and agrees with its grammar on every fixture. `serde` adds `from_str`/`to_value`.
-- `crates/nuke-eval` — reduces a `Document` to a `Value`. Its errors carry a span, not a path.
-- `crates/nuke-transpile` — the backends, each owning its own `ErrorKind` and its own answer to
-  what the target can spell: JSON, YAML, TOML, XML, KDL, Lua, INI and gitconfig. `docs/` argues
-  each, and no two share a refusal set.
+- `crates/nuke-syntax` — one hand-written lexer and two parsers over it, `parse` for the canonical
+  form and `surface::parse` for the surface language. Each carries the rules ABNF cannot state and
+  agrees with its grammar on every fixture. `serde` adds `from_str`/`to_value`.
+- `crates/nuke-eval` — reduces a `Document` to a `Value`, and owns the filesystem: resolution, the
+  import cache and the cross-file cycle check. `eval_at` takes the file the source came from.
+- `crates/nuke-transpile` — the backends, each owning its own `ErrorKind` and its own answer to what
+  the target can spell: JSON, YAML, TOML, XML, KDL, Lua, INI and gitconfig. `docs/` argues each.
 
 Work inside the devshell: `nix develop -c cargo test --workspace --all-features`. Serde
 support sits behind an off-by-default `serde` feature, so `--all-features` is what covers it.
@@ -81,19 +79,21 @@ convention says nothing about bodies, so the two compose.
 We are taking baby steps.
 
 - [x] Design the grammar of Nuke's canonical form in ABNF.
-- [x] A hand-written lexer and parser for the canonical form, checked against the same
-  fixtures as the grammar and against the grammar itself.
-- [x] Serde support: `Value` as a self-describing data model, and `from_str` from text to a
-  user's type. It routes through `Value` rather than streaming; spans on data errors wait
-  for the lossless tree the formatter and the LSP server need anyway.
+- [x] A hand-written lexer and parser for the canonical form, checked against the same fixtures as
+  the grammar and against the grammar itself.
+- [x] Serde support: `Value` as a self-describing data model, and `from_str` from text to a user's
+  type. It routes through `Value` rather than streaming.
 - [x] The transpiler: eight backends, each owning its own `ErrorKind` and its own answer to what
       the target can spell, argued in `docs/`. cfg is declined — an extension is not a grammar.
-- [ ] The surface language: the expressions that reduce to the canonical form, and imports.
+- [ ] The surface language: the expressions that reduce to the canonical form.
   - [x] Names. `:=` binds and contributes nothing; scope is sequential, so a cycle cannot be
-        written; a field is not a binding. `docs/surface.md` argues it, and the invariant that
-        holds it to the canonical form is that evaluating a canonical document is the identity.
+        written; a field is not a binding. The invariant holding the surface language to the
+        canonical form is that evaluating a canonical document is the identity.
   - [x] Field access `.`. Postfix, whitespace insensitive, a tuple's operation alone, and its
         operand is any value. The token layer did not move, so `1.b` is a malformed number.
-  - [ ] Imports, which need a cycle rule of their own; hex, octal and binary, which widen the
-        shared `number` token; then operators and conditionals.
+  - [x] Imports. `@` calls a builtin and `import` is the first; its path is a literal, so what a
+        file imports is a property of its text. A file is its canonical path, its bindings are
+        private, and a cycle needs a detector because a directory has no top.
+  - [ ] Hex, octal and binary, which widen the shared `number` token; then operators and
+        conditionals, which will want grouping.
 - [ ] The formatter, the linter, the LSP server.

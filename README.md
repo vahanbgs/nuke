@@ -38,6 +38,26 @@ inside the blocks nested there, and its value is read before its own name exists
 reference cycle has no spelling, which is how a language with names stays total. `.`
 projects a field out of a tuple, so one named value can hold what several places need.
 
+`@` calls a builtin, and `@import` reads another file's value — which is what lets one
+palette be written once and read by every program that needs it:
+
+```nuke
+# ~/.config/nuke/palette.nuke
+{accent = "#fe8019" muted = "#928374"}
+```
+
+```nuke
+# ~/.config/nuke/shell.nuke
+palette := @import "./palette.nuke"
+
+{prompt_color = palette.accent comment_color = palette.muted}
+```
+
+The path is a string and never an expression, so a tool can list a file's dependencies
+without running it. An imported file's bindings stay private and its fields are its surface,
+so nothing needs exporting; a cycle between files is refused by name, because the ordering
+that makes a cycle unspellable inside one file has no counterpart in a directory.
+
 ## Status
 
 Early. A grammar is [`grammar/tokens.abnf`](grammar/tokens.abnf) — the token layer both
@@ -57,11 +77,12 @@ what is left to write when a target has no specification and no quoted form for 
 [`docs/gitconfig.md`](docs/gitconfig.md) records what a backend does when the target cannot
 spell a name the language guarantees.
 
-The surface language has begun. [`grammar/surface.abnf`](grammar/surface.abnf) adds bindings
-and field access, `crates/nuke-eval` reduces a document to the canonical form, and
-[`docs/surface.md`](docs/surface.md) argues the rules the grammar cannot state. What holds the
-two languages together is a test: evaluating a canonical document is the identity. Imports
-and the tooling are still ahead.
+The surface language has begun. [`grammar/surface.abnf`](grammar/surface.abnf) adds bindings,
+field access and calls, `crates/nuke-eval` reduces a document to the canonical form, and
+[`docs/surface.md`](docs/surface.md) argues the rules the grammar cannot state, with
+[`docs/imports.md`](docs/imports.md) taking the ones about files rather than text. What holds
+the two languages together is a test: evaluating a canonical document is the identity.
+Operators, conditionals and the tooling are still ahead.
 
 ## Development
 
