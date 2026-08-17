@@ -7,15 +7,18 @@ to JSON, YAML, TOML, XML, KDL, Lua, INI and gitconfig — so a dot file can be w
 once, in one language, and shared between the programs that need it.
 
 ```nuke
-# A dot file in the canonical form.
+# A dot file, with what it repeats named once.
+accent := "#fe8019"
+
 {
   editor = {
     theme = "gruvbox-dark"
-    tab_width = 2
+    cursor = accent
     line_numbers = Relative
   }
 
   shell = {
+    prompt_color = accent
     aliases = {
       "ll" => "eza -l"
       "gs" => "git status"
@@ -29,11 +32,16 @@ any value as a key, not just strings. Brackets hold a list. Unquoted `UpperCamel
 are atoms, which is all `True`, `False` and `Null` are. Nothing is separated by commas, and
 whitespace only matters where two tokens would otherwise run together.
 
+`:=` binds a name and puts nothing in the result. A binding is visible below itself and
+inside the blocks nested there, and its value is read before its own name exists — so a
+reference cycle has no spelling, which is how a language with names stays total.
+
 ## Status
 
-Early. The canonical form is specified — [`grammar/canonical.abnf`](grammar/canonical.abnf)
-is normative and [`docs/canonical-form.md`](docs/canonical-form.md) covers what the grammar
-cannot state. `crates/nuke-syntax` parses it, and its `serde` feature reads a document
+Early. A grammar is [`grammar/tokens.abnf`](grammar/tokens.abnf) — the token layer both
+languages share — followed by a syntax layer, and the assembly is normative.
+[`docs/canonical-form.md`](docs/canonical-form.md) covers what the grammar cannot state.
+`crates/nuke-syntax` parses both forms, and its `serde` feature reads a canonical document
 straight into a Rust type; [`docs/serde.md`](docs/serde.md) records what that carries and
 what it cannot. `crates/nuke-transpile` writes JSON, YAML, TOML, XML, KDL, Lua, INI and gitconfig:
 [`docs/json.md`](docs/json.md) settles how atoms, keys and numbers degrade for the targets
@@ -45,7 +53,13 @@ spells one value several ways, [`docs/lua.md`](docs/lua.md) records which Lua a 
 for when the target is a family rather than one language, [`docs/ini.md`](docs/ini.md) records
 what is left to write when a target has no specification and no quoted form for a name, and
 [`docs/gitconfig.md`](docs/gitconfig.md) records what a backend does when the target cannot
-spell a name the language guarantees. The surface language and the tooling are still ahead.
+spell a name the language guarantees.
+
+The surface language has begun. [`grammar/surface.abnf`](grammar/surface.abnf) adds bindings,
+`crates/nuke-eval` reduces a document to the canonical form, and
+[`docs/surface.md`](docs/surface.md) argues the rules the grammar cannot state. What holds the
+two languages together is a test: evaluating a canonical document is the identity. Field
+access, imports and the tooling are still ahead.
 
 ## Development
 
@@ -53,6 +67,6 @@ spell a name the language guarantees. The surface language and the tooling are s
 nix develop -c cargo test --workspace --all-features
 ```
 
-`crates/nuke-grammar` translates the ABNF to a pest grammar at test time and runs every
-fixture under `fixtures/` through it, so the specification is executable and cannot drift
-from the implementation.
+`crates/nuke-grammar` assembles each grammar's ABNF, translates it to pest at test time and
+runs every fixture under `fixtures/` through it, so the specification is executable and cannot
+drift from the implementation.

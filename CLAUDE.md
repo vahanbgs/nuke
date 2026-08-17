@@ -21,21 +21,21 @@ of the various tools used to work with the language.
 ## Layout
 
 - `grammar/` — `tokens.abnf` then `canonical.abnf` or `surface.abnf`; a grammar is that pair.
-- `docs/canonical-form.md` — the rules ABNF cannot express.
+- `docs/canonical-form.md`, `docs/surface.md` — the rules ABNF cannot express, one per language.
 - `docs/serde.md` — where Nuke and serde's data model disagree, and how the binding settles it.
-- `docs/json.md`, `docs/yaml.md`, `docs/toml.md`, `docs/xml.md`, `docs/kdl.md`, `docs/lua.md`,
-  `docs/ini.md`, `docs/gitconfig.md` — each mapping, and what it degrades or refuses.
-- `fixtures/valid`, `fixtures/invalid` — conformance fixtures, shared by every crate.
-- `crates/nuke-fixtures` — reads that tree, so no crate keeps its own copy of the walker.
+- `docs/json.md` and its seven siblings — each mapping, and what it degrades or refuses.
+- `fixtures/valid`, `fixtures/invalid` — conformance fixtures. Under `fixtures/surface`, `valid`
+  pairs with `reduced` by name, `invalid` is what the parser refuses and `refused` what cannot.
+- `crates/nuke-fixtures` — reads those trees, so no crate keeps its own copy of the walker.
 - `crates/nuke-grammar` — assembles a `Layer`'s ABNF, translates it to pest at test time and
   checks the fixtures against it, so the grammar is executable and cannot drift from the code.
-- `crates/nuke-syntax` — the hand-written lexer and parser. It carries the rules ABNF
-  cannot state, and a test asserts it agrees with the grammar on every fixture. Its
-  `serde` feature adds `from_str`, `from_value` and `to_value` over the same `Value`.
-- `crates/nuke-transpile` — the backends, each owning its own `ErrorKind` and its own answer
-  to what the target can spell: `json` laid out or compact, `yaml` block style, `toml` a
-  section wherever a header fits, `xml` elements under one root, `kdl` a node per field or
-  entry, `lua` one chunk, `ini` keys then sections, `gitconfig` three levels. `docs/` argues each.
+- `crates/nuke-syntax` — one hand-written lexer and two parsers over it, `parse` for the
+  canonical form and `surface::parse` for the surface language. Each carries the rules ABNF
+  cannot state and agrees with its grammar on every fixture. `serde` adds `from_str`/`to_value`.
+- `crates/nuke-eval` — reduces a `Document` to a `Value`. Its errors carry a span, not a path.
+- `crates/nuke-transpile` — the backends, each owning its own `ErrorKind` and its own answer to
+  what the target can spell: JSON, YAML, TOML, XML, KDL, Lua, INI and gitconfig. `docs/` argues
+  each, and no two share a refusal set.
 
 Work inside the devshell: `nix develop -c cargo test --workspace --all-features`. Serde
 support sits behind an off-by-default `serde` feature, so `--all-features` is what covers it.
@@ -86,14 +86,14 @@ We are taking baby steps.
 - [x] Serde support: `Value` as a self-describing data model, and `from_str` from text to a
   user's type. It routes through `Value` rather than streaming; spans on data errors wait
   for the lossless tree the formatter and the LSP server need anyway.
-- [x] The transpiler. JSON set the degradations every later backend inherits; YAML that a
-      backend takes the room a target gives it; TOML that a target's *shape* can refuse a
-      document, and that declaration order outranks giving every table a header; XML that a
-      target can keep a tuple and a map apart, and that it can refuse a character; KDL that
-      room which is not a distinction is declined; Lua that a target can be a family of
-      implementations rather than one language; INI that a target may give a name no quoted
-      form, and that a finite shape leaves the depth guard nothing to guard; gitconfig that a
-      target may not spell a name the language guarantees, and that a repeated key is a list
-      where the target's aggregate is the key. cfg is declined: an extension is not a grammar.
+- [x] The transpiler: eight backends, each owning its own `ErrorKind` and its own answer to what
+      the target can spell, argued in `docs/`. cfg is declined — an extension is not a grammar.
 - [ ] The surface language: the expressions that reduce to the canonical form, and imports.
+  - [x] Names. `:=` binds and contributes nothing; scope is sequential, so a cycle cannot be
+        written; a field is not a binding. `docs/surface.md` argues it, and the invariant that
+        holds it to the canonical form is that evaluating a canonical document is the identity.
+  - [ ] Field access `.`, the first infix operator, which does not compose freely with greedy
+        tokens: `frac = "." *DIGIT` makes `1.b` a malformed number rather than a projection.
+  - [ ] Imports, which need a cycle rule of their own; hex, octal and binary, which widen the
+        shared `number` token; then operators and conditionals.
 - [ ] The formatter, the linter, the LSP server.
