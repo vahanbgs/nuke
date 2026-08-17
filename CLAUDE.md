@@ -23,8 +23,8 @@ of the various tools used to work with the language.
 - `grammar/canonical.abnf` — the normative grammar of the canonical form.
 - `docs/canonical-form.md` — the rules ABNF cannot express.
 - `docs/serde.md` — where Nuke and serde's data model disagree, and how the binding settles it.
-- `docs/json.md`, `docs/yaml.md`, `docs/toml.md`, `docs/xml.md` — each mapping, and what it
-  degrades or refuses.
+- `docs/json.md`, `docs/yaml.md`, `docs/toml.md`, `docs/xml.md`, `docs/kdl.md` — each mapping,
+  and what it degrades or refuses.
 - `fixtures/valid`, `fixtures/invalid` — conformance fixtures, shared by every crate.
 - `crates/nuke-fixtures` — reads that tree, so no crate keeps its own copy of the walker.
 - `crates/nuke-grammar` — translates the ABNF to pest at test time and checks the fixtures
@@ -34,8 +34,8 @@ of the various tools used to work with the language.
   `serde` feature adds `from_str`, `from_value` and `to_value` over the same `Value`.
 - `crates/nuke-transpile` — the backends, each owning its own `ErrorKind` and its own answer
   to what the target can spell: `json` laid out or compact, `yaml` block style, `toml` a
-  section wherever a header fits, `xml` elements under one named root. `docs/` carries the
-  argument for each.
+  section wherever a header fits, `xml` elements under one named root, `kdl` a node per field
+  or entry. `docs/` carries the argument for each.
 
 Work inside the devshell: `nix develop -c cargo test --workspace --all-features`. Serde
 support sits behind an off-by-default `serde` feature, so `--all-features` is what covers it.
@@ -86,12 +86,13 @@ We are taking baby steps.
 - [x] Serde support: `Value` as a self-describing data model, and `from_str` from text to a
   user's type. It routes through `Value` rather than streaming; spans on data errors wait
   for the lossless tree the formatter and the LSP server need anyway.
-- [x] A transpiler to JSON: the first backend, and the one that settles how atoms, map keys
-  and numbers degrade for the targets that follow.
+- [x] A transpiler to JSON, the backend whose degradations every later one inherits.
 - [ ] The other transpiler targets. YAML settled that a backend takes the room a target gives
       it; TOML that a target's *shape* can refuse a document outright, and that declaration
-      order outranks giving every table a header; XML that a target can keep a tuple and a
-      map apart, and that it can refuse a character. KDL, Lua, INI, cfg and gitconfig
-      remain.
+      order outranks giving every table a header; XML that a target can keep a tuple and a map
+      apart, and that it can refuse a character; KDL that XML's answer is not the general one,
+      a target whose names are as wide as the form's strings needing no invented spelling for
+      a map, and that room which is not a distinction is declined. Lua, INI, cfg and gitconfig
+      remain, and the last three name sections more narrowly than a string.
 - [ ] The surface language: the expressions that reduce to the canonical form, and imports.
 - [ ] The formatter, the linter, the LSP server.
