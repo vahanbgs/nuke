@@ -8,11 +8,9 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
 - Nuke is whitespace insensitive (except for its single-line comment syntax of course).
 - Nuke configuration files are Nuke expressions which are evaluated and reduced down to a
   core canonical form, which is to Nuke what JSON is to Javascript.
-- Nuke will transpile to all other mainstream configuration languages (JSON, YAML, TOML,
-  XML, KDL, Lua, INI, gitconfig, Nix).
+- Nuke transpiles to the other mainstream configuration languages; `crates/nuke-transpile` lists them.
 - Nuke will first be used in a dot file manager which will allow users to write all of
   their dot files using a single language, sharing values between them with imports.
-- Nuke files use the `.nuke` extension.
 
 ## Layout
 
@@ -35,8 +33,7 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
 - `crates/nuke-transpile` — the backends, each owning its own `ErrorKind` and its own answer to what
   the target can spell: JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig, Nix. `docs/` argues each.
 
-Work inside the devshell: `nix develop -c cargo test --workspace --all-features`. Serde
-support sits behind an off-by-default `serde` feature, so `--all-features` is what covers it.
+Work in the devshell: `nix develop -c cargo test --workspace --all-features` covers serde too.
 
 ## Rules
 
@@ -53,9 +50,8 @@ support sits behind an off-by-default `serde` feature, so `--all-features` is wh
 - Make compilation fail if clippy emits warnings.
 - Never use directives to silence warnings.
 - Always run cargo fmt/rustfmt.
-- Use a Nix flake with a devshell to make our dev environment reproducible and to
-  distribute our tooling. Never install tools system-wide and try not to rely on tools
-  installed system-wide.
+- Use a Nix flake with a devshell to make our dev environment reproducible and to distribute
+  our tooling. Never install tools system-wide, and try not to rely on ones that are.
 - When possible use modern equivalents of CLI tools when interacting with the file system
   (ripgrep instead of grep, fd instead of find, etc..).
 
@@ -78,8 +74,8 @@ convention says nothing about bodies, so the two compose.
 We are taking baby steps.
 
 - [x] Design the grammar of Nuke's canonical form in ABNF.
-- [x] A hand-written lexer and parser for the canonical form, checked against the same fixtures as
-  the grammar and against the grammar itself.
+- [x] A hand-written lexer and parser for the canonical form, checked against the grammar itself
+  and against the same fixtures.
 - [x] Serde support: `Value` as a self-describing data model, and `from_str` from text to a user's
   type. It routes through `Value` rather than streaming.
 - [x] The transpiler: nine backends, each owning its own `ErrorKind` and its own answer to what
@@ -94,6 +90,10 @@ We are taking baby steps.
   - [x] Imports. `@` calls a builtin and `import` is the first; its path is a literal, so what a
         file imports is a property of its text. A file is its canonical path, its bindings are
         private, and a cycle needs a detector because a directory has no top.
-  - [ ] Hex, octal and binary, which widen the shared `number` token; then operators and
-        conditionals, which will want grouping.
+  - [x] `@concat`, the second builtin and the first about values rather than files, which makes
+        `@` a namespace. It does not stringify, and a string wants `MAX_BYTES` of its own.
+  - [ ] `expr.[key]`, settled in `5a7fa5a` and never built, so a map can be written and never read.
+        Hex, octal and binary go last: `#` opens a comment, so a dot file colour is text.
+- [ ] The dot file manager — a CLI, a manifest, and the targets the roster misses. This, and not
+      the language, is what the dot files are waiting on.
 - [ ] The formatter, the linter, the LSP server.

@@ -81,8 +81,10 @@ costs when the target is a programming language and its spelling depends on wher
 The surface language has begun. [`grammar/surface.abnf`](grammar/surface.abnf) adds bindings,
 field access and calls, `crates/nuke-eval` reduces a document to the canonical form, and
 [`docs/surface.md`](docs/surface.md) argues the rules the grammar cannot state, with
-[`docs/imports.md`](docs/imports.md) taking the ones about files rather than text. What holds
-the two languages together is a test: evaluating a canonical document is the identity.
+[`docs/imports.md`](docs/imports.md) taking the ones about files rather than text. There are two
+builtins: `@import` reads a file, and `@concat` puts strings end to end — the first one about
+values rather than files, which is what makes `@` a namespace rather than an import sigil. What
+holds the two languages together is a test: evaluating a canonical document is the identity.
 Operators, conditionals and the tooling are still ahead.
 
 ## Development
