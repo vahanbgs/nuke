@@ -3,6 +3,7 @@ use nuke_fixtures::Fixture;
 use nuke_syntax::{Value, parse};
 use nuke_transpile::json::{ErrorKind, to_string, to_string_compact};
 use nuke_transpile::kdl as kdl_backend;
+use nuke_transpile::lua;
 use nuke_transpile::toml as toml_backend;
 use nuke_transpile::xml;
 use nuke_transpile::yaml;
@@ -684,4 +685,191 @@ fn argument<'a>(node: &'a KdlNode, at: &str) -> &'a KdlValue {
 
 fn named(node: &KdlNode) -> &str {
     node.name().value()
+}
+
+fn lua_refusals() -> Vec<(&'static str, lua::ErrorKind, &'static str)> {
+    vec![
+        (
+            "collections.nuke",
+            lua::ErrorKind::UnrepresentableKey("list"),
+            "[6]#1",
+        ),
+        (
+            "maps.nuke",
+            lua::ErrorKind::UnrepresentableKey("list"),
+            "#5",
+        ),
+    ]
+}
+
+#[test]
+fn every_fixture_lua_cannot_carry_is_refused_by_the_error_that_names_its_fault() {
+    for (name, kind, path) in lua_refusals() {
+        let fixture = fixture(name);
+        let error = lua::to_string(&value_of(&fixture))
+            .err()
+            .unwrap_or_else(|| panic!("{name} should have been refused"));
+        assert_eq!(error.kind(), &kind, "for {name}");
+        assert_eq!(error.path().to_string(), path, "for {name}");
+    }
+}
+
+#[test]
+fn lua_stops_later_in_the_two_fixtures_json_also_refuses() {
+    let json: Vec<&str> = refusals().into_iter().map(|(name, _, _)| name).collect();
+    let lua: Vec<&str> = lua_refusals()
+        .into_iter()
+        .map(|(name, _, _)| name)
+        .collect();
+    assert_eq!(json, lua);
+    let json = refusals()
+        .into_iter()
+        .find(|(name, _, _)| *name == "maps.nuke");
+    let lua = lua_refusals()
+        .into_iter()
+        .find(|(name, _, _)| *name == "maps.nuke");
+    assert_eq!(json.map(|(_, _, path)| path), Some("#2"));
+    assert_eq!(lua.map(|(_, _, path)| path), Some("#5"));
+}
+
+#[test]
+fn what_the_backend_writes_is_the_value_a_real_lua_returns() {
+    let state = mlua::Lua::new();
+    let refused = lua_refusals();
+    for fixture in nuke_fixtures::valid() {
+        if refused.iter().any(|(name, _, _)| *name == fixture.name()) {
+            continue;
+        }
+        let value = value_of(&fixture);
+        let written = lua::to_string(&value).expect("it should transpile");
+        let loaded = state
+            .load(written.as_str())
+            .eval::<mlua::Value>()
+            .unwrap_or_else(|error| {
+                panic!(
+                    "the Lua of {} does not load: {error}\n{written}",
+                    fixture.name()
+                )
+            });
+        keeps(&state, &value, &loaded, fixture.name());
+    }
+}
+
+#[test]
+fn the_deepest_document_the_backend_writes_is_one_a_real_lua_still_loads() {
+    let mut value = Value::List(Vec::new());
+    for _ in 1..nuke_syntax::MAX_DEPTH + 1 {
+        value = Value::List(vec![value]);
+    }
+    let written = lua::to_string(&value).expect("the deepest document should transpile");
+    let state = mlua::Lua::new();
+    state
+        .load(written.as_str())
+        .eval::<mlua::Value>()
+        .expect("Lua caps its own nesting near 200 levels, and MAX_DEPTH is under it");
+}
+
+fn keeps(state: &mlua::Lua, value: &Value, loaded: &mlua::Value, at: &str) {
+    match value {
+        Value::Tuple(tuple) => {
+            let table = fields(loaded, at);
+            assert_eq!(count(table), tuple.len(), "{at} lost a field");
+            for (name, item) in tuple.iter() {
+                let at = format!("{at}.{name}");
+                keeps(state, item, &held(table, name.as_str(), &at), &at);
+            }
+        }
+        Value::Map(map) => {
+            let table = fields(loaded, at);
+            assert_eq!(count(table), map.len(), "{at} lost an entry");
+            for (position, (key, item)) in map.iter().enumerate() {
+                let at = format!("{at}#{}", position + 1);
+                keeps(state, item, &held(table, index(state, key, &at), &at), &at);
+            }
+        }
+        Value::List(items) => {
+            let table = fields(loaded, at);
+            assert_eq!(count(table), items.len(), "{at} lost an element");
+            assert_eq!(table.raw_len(), items.len(), "{at} is not an array");
+            for (position, item) in items.iter().enumerate() {
+                let at = format!("{at}[{position}]");
+                keeps(state, item, &held(table, position + 1, &at), &at);
+            }
+        }
+        other => means(other, loaded, at),
+    }
+}
+
+fn means(value: &Value, loaded: &mlua::Value, at: &str) {
+    match value {
+        Value::Atom(atom) => match atom.as_str() {
+            "True" => assert_eq!(loaded.as_boolean(), Some(true), "at {at}"),
+            "False" => assert_eq!(loaded.as_boolean(), Some(false), "at {at}"),
+            spelling => text(loaded, spelling, at),
+        },
+        Value::String(item) => text(loaded, item, at),
+        Value::Integer(integer) => {
+            let mlua::Value::Integer(read) = loaded else {
+                panic!("{at} should be an integer, not {loaded:?}");
+            };
+            assert_eq!(Some(*read), integer.to_i64(), "at {at}");
+        }
+        Value::Float(number) => {
+            let mlua::Value::Number(read) = loaded else {
+                panic!("{at} should be a float, not {loaded:?}");
+            };
+            assert_eq!(read.to_bits(), number.get().to_bits(), "at {at}");
+        }
+        Value::Tuple(_) | Value::Map(_) | Value::List(_) => {}
+    }
+}
+
+fn text(loaded: &mlua::Value, spelling: &str, at: &str) {
+    let mlua::Value::String(read) = loaded else {
+        panic!("{at} should be a string, not {loaded:?}");
+    };
+    assert_eq!(&*read.as_bytes(), spelling.as_bytes(), "at {at}");
+}
+
+fn index(state: &mlua::Lua, key: &Value, at: &str) -> mlua::Value {
+    match key {
+        Value::Atom(atom) => match atom.as_str() {
+            "True" => mlua::Value::Boolean(true),
+            "False" => mlua::Value::Boolean(false),
+            spelling => spelled(state, spelling),
+        },
+        Value::String(item) => spelled(state, item),
+        Value::Integer(integer) => mlua::Value::Integer(
+            integer
+                .to_i64()
+                .unwrap_or_else(|| panic!("{at} keys with an integer Lua refused")),
+        ),
+        Value::Float(number) => mlua::Value::Number(number.get()),
+        other => panic!("{at} has a key Lua holds by identity: {other:?}"),
+    }
+}
+
+fn spelled(state: &mlua::Lua, text: &str) -> mlua::Value {
+    mlua::Value::String(state.create_string(text).expect("a string is created"))
+}
+
+fn held(table: &mlua::Table, key: impl mlua::IntoLua, at: &str) -> mlua::Value {
+    table
+        .get(key)
+        .unwrap_or_else(|error| panic!("{at} cannot be read back: {error}"))
+}
+
+fn fields<'a>(loaded: &'a mlua::Value, at: &str) -> &'a mlua::Table {
+    loaded
+        .as_table()
+        .unwrap_or_else(|| panic!("{at} should be a table, not {loaded:?}"))
+}
+
+fn count(table: &mlua::Table) -> usize {
+    let mut pairs = 0;
+    for pair in table.clone().pairs::<mlua::Value, mlua::Value>() {
+        assert!(pair.is_ok(), "a pair of the table does not read back");
+        pairs += 1;
+    }
+    pairs
 }
