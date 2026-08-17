@@ -12,6 +12,8 @@ pub use error::{Error, ErrorKind};
 
 pub const MAX_VALUES: usize = 1 << 20;
 
+pub const MAX_BYTES: usize = 1 << 20;
+
 pub const MAX_IMPORTS: usize = 64;
 
 pub fn eval(source: &str) -> Result<Value, Error> {
@@ -195,11 +197,30 @@ impl Reducer<'_> {
     ) -> Result<Value, Error> {
         match name.ident.as_str() {
             "import" => self.import(operand, span, depth),
+            "concat" => self.concat(operand, span, depth),
             other => Err(Error::new(
                 ErrorKind::NoSuchBuiltin(other.to_owned()),
                 name.span,
             )),
         }
+    }
+
+    fn concat(&mut self, operand: &Expr, span: Span, depth: usize) -> Result<Value, Error> {
+        let Value::List(parts) = self.value(operand, depth)? else {
+            return Err(Error::new(ErrorKind::NotAList, operand.span));
+        };
+        let mut text = String::new();
+        for part in parts {
+            let Value::String(part) = part else {
+                return Err(Error::new(ErrorKind::NotAString, operand.span));
+            };
+            if text.len() + part.len() > MAX_BYTES {
+                return Err(Error::new(ErrorKind::TooLong, span));
+            }
+            text.push_str(&part);
+        }
+        self.spend(1, span)?;
+        Ok(Value::String(text))
     }
 
     fn import(&mut self, operand: &Expr, span: Span, depth: usize) -> Result<Value, Error> {

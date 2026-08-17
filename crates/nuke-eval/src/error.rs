@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use nuke_syntax::{Location, MAX_DEPTH, Span};
 
-use crate::{MAX_IMPORTS, MAX_VALUES};
+use crate::{MAX_BYTES, MAX_IMPORTS, MAX_VALUES};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorKind {
@@ -15,7 +15,10 @@ pub enum ErrorKind {
     DuplicateKey,
     TooDeep,
     TooLarge,
+    TooLong,
     NoSuchBuiltin(String),
+    NotAList,
+    NotAString,
     ExpectedImportPath,
     NoOrigin,
     Unreadable {
@@ -49,9 +52,20 @@ impl fmt::Display for ErrorKind {
             Self::DuplicateKey => write!(f, "this key is already in this map"),
             Self::TooDeep => write!(f, "this value nests deeper than {MAX_DEPTH} levels"),
             Self::TooLarge => write!(f, "this document expands past {MAX_VALUES} values"),
+            Self::TooLong => write!(f, "this string grows past {MAX_BYTES} bytes"),
             Self::NoSuchBuiltin(name) => write!(
                 f,
                 "there is no builtin `{name}`; `@` names one, and the name is not a binding"
+            ),
+            Self::NotAList => write!(
+                f,
+                "`@concat` takes a list, because a call takes one operand and a builtin \
+                 wanting more takes a collection"
+            ),
+            Self::NotAString => write!(
+                f,
+                "`@concat` puts strings end to end; a number, an atom or a collection meant \
+                 as text is written as text"
             ),
             Self::ExpectedImportPath => write!(
                 f,
