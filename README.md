@@ -38,6 +38,9 @@ inside the blocks nested there, and its value is read before its own name exists
 reference cycle has no spelling, which is how a language with names stays total. `.`
 projects a field out of a tuple, so one named value can hold what several places need.
 
+`$"…"` interpolates: `$"#{accent}"` and `$"{size}px"` build a string, a hole being the one place
+a value becomes text, with Rust's specifier after a `:`. A plain string never pays for it.
+
 `@` calls a builtin, and `@import` reads another file's value — which is what lets one
 palette be written once and read by every program that needs it:
 
@@ -66,26 +69,24 @@ languages share — followed by a syntax layer, and the assembly is normative.
 `crates/nuke-syntax` parses both forms, and its `serde` feature reads a canonical document
 straight into a Rust type; [`docs/serde.md`](docs/serde.md) records what that carries and
 what it cannot. `crates/nuke-transpile` writes JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig
-and Nix: [`docs/json.md`](docs/json.md) settles how atoms, keys and numbers degrade for the
-targets that follow, [`docs/yaml.md`](docs/yaml.md) records what a target wider than the
-canonical form does with the room, [`docs/toml.md`](docs/toml.md) records what a target of a
-different shape refuses, [`docs/xml.md`](docs/xml.md) records what a target with no data model
-at all can still carry, [`docs/kdl.md`](docs/kdl.md) records what a backend declines when a
-target spells one value several ways, [`docs/lua.md`](docs/lua.md) records which Lua a backend
-writes for when the target is a family rather than one language, [`docs/ini.md`](docs/ini.md)
-records what is left to write when a target has no specification and no quoted form for a name,
-[`docs/gitconfig.md`](docs/gitconfig.md) records what a backend does when the target cannot
-spell a name the language guarantees, and [`docs/nix.md`](docs/nix.md) records what a value
-costs when the target is a programming language and its spelling depends on where it stands.
+and Nix, and each has a document arguing what its target can spell and what it therefore
+degrades or refuses: [`docs/json.md`](docs/json.md) settles how atoms, keys and numbers degrade
+for the eight that follow it, and each of those names the lesson only that target teaches — a
+target wider than the canonical form, one of a different shape, one with no data model at all,
+one that spells a value several ways, one that is a family rather than a language, one with no
+specification, one that cannot spell a name Nuke guarantees, and one whose spelling depends on
+where the value stands.
 
 The surface language has begun. [`grammar/surface.abnf`](grammar/surface.abnf) adds bindings,
-field access and calls, `crates/nuke-eval` reduces a document to the canonical form, and
-[`docs/surface.md`](docs/surface.md) argues the rules the grammar cannot state, with
-[`docs/imports.md`](docs/imports.md) taking the ones about files rather than text. There are two
-builtins: `@import` reads a file, and `@concat` puts strings end to end — the first one about
-values rather than files, which is what makes `@` a namespace rather than an import sigil. What
-holds the two languages together is a test: evaluating a canonical document is the identity.
-Operators, conditionals and the tooling are still ahead.
+field access, calls and interpolation, `crates/nuke-eval` reduces a document to the canonical
+form, and [`docs/surface.md`](docs/surface.md) argues the rules the grammar cannot state, with
+[`docs/imports.md`](docs/imports.md) taking the ones about files and
+[`docs/interpolation.md`](docs/interpolation.md) the ones about text — where a hole is the one
+place a value becomes text, which is why it is syntax and not a builtin. There are two of those:
+`@import` reads a file, and `@concat` puts strings end to end. What holds the two languages
+together is a test: evaluating a canonical document is the identity, so nothing the surface
+language adds reaches the form that carries data. Operators, conditionals and the tooling are
+still ahead.
 
 ## Development
 

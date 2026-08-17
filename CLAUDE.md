@@ -5,10 +5,9 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
 
 ## A few facts about Nuke
 
-- Nuke is whitespace insensitive (except for its single-line comment syntax of course).
+- Nuke is whitespace insensitive, except inside a comment, a string, and a format specifier.
 - Nuke configuration files are Nuke expressions which are evaluated and reduced down to a
   core canonical form, which is to Nuke what JSON is to Javascript.
-- Nuke transpiles to the other mainstream configuration languages; `crates/nuke-transpile` lists them.
 - Nuke will first be used in a dot file manager which will allow users to write all of
   their dot files using a single language, sharing values between them with imports.
 
@@ -16,7 +15,7 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
 
 - `grammar/` — `tokens.abnf` then `canonical.abnf` or `surface.abnf`; a grammar is that pair.
 - `docs/canonical-form.md`, `docs/surface.md` — the rules ABNF cannot express, one per language,
-  plus `docs/imports.md` for the ones about files rather than text.
+  plus `docs/imports.md` for the ones about files and `docs/interpolation.md` for text.
 - `docs/serde.md` — where Nuke and serde's data model disagree, and how the binding settles it.
 - `docs/json.md` and its eight siblings — each mapping, and what it degrades or refuses.
 - `fixtures/valid`, `fixtures/invalid` — conformance fixtures. Under `fixtures/surface`, `valid`
@@ -25,11 +24,11 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
 - `crates/nuke-fixtures` — reads those trees, so no crate keeps its own copy of the walker.
 - `crates/nuke-grammar` — assembles a `Layer`'s ABNF, translates it to pest at test time and
   checks the fixtures against it, so the grammar is executable and cannot drift from the code.
-- `crates/nuke-syntax` — one hand-written lexer and two parsers over it, `parse` for the canonical
-  form and `surface::parse` for the surface language. Each carries the rules ABNF cannot state and
-  agrees with its grammar on every fixture. `serde` adds `from_str`/`to_value`.
-- `crates/nuke-eval` — reduces a `Document` to a `Value`, and owns the filesystem: resolution, the
-  import cache and the cross-file cycle check. `eval_at` takes the file the source came from.
+- `crates/nuke-syntax` — one hand-written lexer, whose mode stack is what interpolation needs, and
+  two parsers over it: `parse` for the canonical form, `surface::parse` for the surface language.
+  Each carries what ABNF cannot state. `serde` adds `from_str`/`to_value`.
+- `crates/nuke-eval` — reduces a `Document` to a `Value`; owns the filesystem (resolution, the
+  import cache, the cycle check) and `text.rs`, where a value becomes text under a specifier.
 - `crates/nuke-transpile` — the backends, each owning its own `ErrorKind` and its own answer to what
   the target can spell: JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig, Nix. `docs/` argues each.
 
@@ -76,11 +75,9 @@ We are taking baby steps.
 - [x] Design the grammar of Nuke's canonical form in ABNF.
 - [x] A hand-written lexer and parser for the canonical form, checked against the grammar itself
   and against the same fixtures.
-- [x] Serde support: `Value` as a self-describing data model, and `from_str` from text to a user's
-  type. It routes through `Value` rather than streaming.
-- [x] The transpiler: nine backends, each owning its own `ErrorKind` and its own answer to what
-      the target can spell, argued in `docs/`. A target earns one when its lesson can be named
-      before it is written; cfg is declined because an extension is not a grammar.
+- [x] Serde support: `Value` as a self-describing data model, and `from_str` into a user's type.
+- [x] The transpiler: nine backends, each owning its `ErrorKind` and its answer to what the target
+      can spell. A target earns one when its lesson can be named before it is written.
 - [ ] The surface language: the expressions that reduce to the canonical form.
   - [x] Names. `:=` binds and contributes nothing; scope is sequential, so a cycle cannot be
         written; a field is not a binding. The invariant holding the surface language to the
@@ -92,8 +89,11 @@ We are taking baby steps.
         private, and a cycle needs a detector because a directory has no top.
   - [x] `@concat`, the second builtin and the first about values rather than files, which makes
         `@` a namespace. It does not stringify, and a string wants `MAX_BYTES` of its own.
+  - [x] Interpolation. `$"a{expr:spec}b"` with Rust's specifier, and a hole is the one place a
+        value becomes text — so no `@text` was spent, lambdas being owed most builtins and no
+        syntax. A float needs a precision, `#` needs a radix, and a plain string never pays.
   - [ ] `expr.[key]`, settled in `5a7fa5a` and never built, so a map can be written and never read.
-        Hex, octal and binary go last: `#` opens a comment, so a dot file colour is text.
+        Hex, octal and binary go last, and `{n:06X}` is already their mirror.
 - [ ] The dot file manager — a CLI, a manifest, and the targets the roster misses. This, and not
       the language, is what the dot files are waiting on.
 - [ ] The formatter, the linter, the LSP server.
