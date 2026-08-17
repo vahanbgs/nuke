@@ -1,6 +1,8 @@
+use kdl::{KdlDocument, KdlNode, KdlValue};
 use nuke_fixtures::Fixture;
 use nuke_syntax::{Value, parse};
 use nuke_transpile::json::{ErrorKind, to_string, to_string_compact};
+use nuke_transpile::kdl as kdl_backend;
 use nuke_transpile::toml as toml_backend;
 use nuke_transpile::xml;
 use nuke_transpile::yaml;
@@ -537,4 +539,149 @@ fn read<'a>(xml: &mut Reader<&'a [u8]>, at: &str) -> Event<'a> {
 
 fn tag<'a>(name: QName<'a>) -> &'a str {
     std::str::from_utf8(name.into_inner()).expect("a name the backend writes is UTF-8")
+}
+
+fn kdl_refusals() -> Vec<(&'static str, kdl_backend::ErrorKind, &'static str)> {
+    vec![
+        (
+            "collections.nuke",
+            kdl_backend::ErrorKind::UnrepresentableKey("list"),
+            "[6]#1",
+        ),
+        (
+            "maps.nuke",
+            kdl_backend::ErrorKind::UnrepresentableKey("integer"),
+            "#2",
+        ),
+    ]
+}
+
+#[test]
+fn every_fixture_kdl_cannot_carry_is_refused_by_the_error_that_names_its_fault() {
+    for (name, kind, path) in kdl_refusals() {
+        let fixture = fixture(name);
+        let error = kdl_backend::to_string(&value_of(&fixture))
+            .err()
+            .unwrap_or_else(|| panic!("{name} should have been refused"));
+        assert_eq!(error.kind(), &kind, "for {name}");
+        assert_eq!(error.path().to_string(), path, "for {name}");
+    }
+}
+
+#[test]
+fn the_fixtures_kdl_refuses_are_the_ones_json_refuses_for_the_same_reason() {
+    let json: Vec<&str> = refusals().into_iter().map(|(name, _, _)| name).collect();
+    let kdl: Vec<&str> = kdl_refusals()
+        .into_iter()
+        .map(|(name, _, _)| name)
+        .collect();
+    assert_eq!(json, kdl);
+}
+
+#[test]
+fn what_the_backend_writes_is_the_document_a_real_kdl_parser_loads_back() {
+    let refused = kdl_refusals();
+    for fixture in nuke_fixtures::valid() {
+        if refused.iter().any(|(name, _, _)| *name == fixture.name()) {
+            continue;
+        }
+        let value = value_of(&fixture);
+        let written = kdl_backend::to_string(&value).expect("it should transpile");
+        let document = KdlDocument::parse_v2(&written).unwrap_or_else(|error| {
+            panic!(
+                "the KDL of {} does not parse: {error}\n{written}",
+                fixture.name()
+            )
+        });
+        carries(&value, document.nodes(), fixture.name());
+    }
+}
+
+fn carries(value: &Value, nodes: &[KdlNode], at: &str) {
+    match value {
+        Value::Tuple(tuple) => {
+            assert_eq!(nodes.len(), tuple.len(), "{at} lost a field");
+            for ((field, item), node) in tuple.iter().zip(nodes) {
+                assert_eq!(named(node), field.as_str(), "{at} renamed a field");
+                stands(item, node, &format!("{at}.{field}"));
+            }
+        }
+        Value::Map(map) => {
+            assert_eq!(nodes.len(), map.len(), "{at} lost an entry");
+            for (position, ((key, item), node)) in map.iter().zip(nodes).enumerate() {
+                let at = format!("{at}#{}", position + 1);
+                let spelling = match key {
+                    Value::String(text) => text.as_str(),
+                    Value::Atom(atom) => atom.as_str(),
+                    other => panic!("{at} has a key KDL cannot name: {other:?}"),
+                };
+                assert_eq!(named(node), spelling, "{at} renamed a key");
+                stands(item, node, &at);
+            }
+        }
+        Value::List(items) => {
+            assert_eq!(nodes.len(), items.len(), "{at} lost an element");
+            for (index, (item, node)) in items.iter().zip(nodes).enumerate() {
+                let at = format!("{at}[{index}]");
+                assert_eq!(named(node), "_item", "{at} is not an item");
+                stands(item, node, &at);
+            }
+        }
+        other => panic!("{at} is a scalar no KDL document can open with: {other:?}"),
+    }
+}
+
+fn stands(value: &Value, node: &KdlNode, at: &str) {
+    if matches!(value, Value::Tuple(_) | Value::Map(_) | Value::List(_)) {
+        carries(value, block(node, at), at);
+        return;
+    }
+    let loaded = argument(node, at);
+    match value {
+        Value::Atom(atom) => match atom.as_str() {
+            "True" => assert_eq!(loaded.as_bool(), Some(true), "at {at}"),
+            "False" => assert_eq!(loaded.as_bool(), Some(false), "at {at}"),
+            "Null" => assert!(loaded.is_null(), "{at} is {loaded} rather than null"),
+            spelling => assert_eq!(loaded.as_string(), Some(spelling), "at {at}"),
+        },
+        Value::String(text) => assert_eq!(loaded.as_string(), Some(text.as_str()), "at {at}"),
+        Value::Integer(integer) => assert_eq!(loaded.as_integer(), integer.to_i128(), "at {at}"),
+        Value::Float(number) => {
+            let read = loaded
+                .as_float()
+                .unwrap_or_else(|| panic!("{at} should be a float, not {loaded}"));
+            assert_eq!(read.to_bits(), number.get().to_bits(), "at {at}");
+        }
+        Value::Tuple(_) | Value::Map(_) | Value::List(_) => {}
+    }
+}
+
+fn block<'a>(node: &'a KdlNode, at: &str) -> &'a [KdlNode] {
+    assert!(
+        node.entries().is_empty(),
+        "{at} carries an argument beside its children"
+    );
+    node.children().map_or(&[][..], KdlDocument::nodes)
+}
+
+fn argument<'a>(node: &'a KdlNode, at: &str) -> &'a KdlValue {
+    assert!(
+        node.children().is_none(),
+        "{at} opens a block around a scalar"
+    );
+    let [entry] = node.entries() else {
+        panic!(
+            "{at} should carry one argument, not {}",
+            node.entries().len()
+        );
+    };
+    assert!(
+        entry.name().is_none(),
+        "{at} writes a property rather than an argument"
+    );
+    entry.value()
+}
+
+fn named(node: &KdlNode) -> &str {
+    node.name().value()
 }
