@@ -3,7 +3,7 @@
 A simple total configuration language.
 
 Nuke files are expressions. Evaluating one reduces it to a canonical form, which transpiles
-to JSON, YAML, TOML, XML, KDL, Lua, INI, cfg and gitconfig — so a dot file can be written
+to JSON, YAML, TOML, XML, KDL, Lua, INI and gitconfig — so a dot file can be written
 once, in one language, and shared between the programs that need it.
 
 ```nuke
@@ -45,7 +45,7 @@ spells one value several ways, [`docs/lua.md`](docs/lua.md) records which Lua a 
 for when the target is a family rather than one language, [`docs/ini.md`](docs/ini.md) records
 what is left to write when a target has no specification and no quoted form for a name, and
 [`docs/gitconfig.md`](docs/gitconfig.md) records what a backend does when the target cannot
-spell a name the language guarantees. cfg, the surface language and the tooling are still ahead.
+spell a name the language guarantees. The surface language and the tooling are still ahead.
 
 ## Development
 

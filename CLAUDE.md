@@ -11,7 +11,7 @@ of the various tools used to work with the language.
   core canonical form.
 - This canonical form can be thought of as being what JSON is to Javascript.
 - Nuke will transpile to all other mainstream configuration languages (JSON, YAML, TOML,
-  XML, KDL, Lua, INI, cfg, gitconfig).
+  XML, KDL, Lua, INI, gitconfig).
 - Nuke will first be used in a dot file manager which will allow users to write all of
   their dot files using a single language.
 - Nuke will support imports which will make it easy to share values and logic between dot
@@ -86,14 +86,14 @@ We are taking baby steps.
 - [x] Serde support: `Value` as a self-describing data model, and `from_str` from text to a
   user's type. It routes through `Value` rather than streaming; spans on data errors wait
   for the lossless tree the formatter and the LSP server need anyway.
-- [x] A transpiler to JSON, the backend whose degradations every later one inherits.
-- [ ] The other transpiler targets. YAML settled that a backend takes the room a target gives
-      it; TOML that a target's *shape* can refuse a document, and that declaration order
-      outranks giving every table a header; XML that a target can keep a tuple and a map apart,
-      and that it can refuse a character; KDL that room which is not a distinction is declined;
-      Lua that a target can be a family of implementations rather than one language; INI that a
-      target may give a name no quoted form, and that a finite shape leaves the depth guard
-      nothing to guard; gitconfig that a target may not spell a name the language guarantees,
-      and that a repeated key is a list where the target's aggregate is the key. cfg is next.
+- [x] The transpiler. JSON set the degradations every later backend inherits; YAML that a
+      backend takes the room a target gives it; TOML that a target's *shape* can refuse a
+      document, and that declaration order outranks giving every table a header; XML that a
+      target can keep a tuple and a map apart, and that it can refuse a character; KDL that
+      room which is not a distinction is declined; Lua that a target can be a family of
+      implementations rather than one language; INI that a target may give a name no quoted
+      form, and that a finite shape leaves the depth guard nothing to guard; gitconfig that a
+      target may not spell a name the language guarantees, and that a repeated key is a list
+      where the target's aggregate is the key. cfg is declined: an extension is not a grammar.
 - [ ] The surface language: the expressions that reduce to the canonical form, and imports.
 - [ ] The formatter, the linter, the LSP server.
