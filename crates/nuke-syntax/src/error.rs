@@ -55,9 +55,11 @@ pub enum ErrorKind {
     IdentAsValue(String),
     SurfaceBinder,
     SurfaceDot,
+    SurfaceCall,
     ExpectedValue,
     ExpectedFieldName,
     ExpectedAccessName,
+    ExpectedBuiltinName,
     ExpectedEquals,
     ExpectedArrow,
     ExpectedBindingName,
@@ -134,6 +136,11 @@ impl fmt::Display for ErrorKind {
                 "`.` projects a field in the surface language, and the canonical form carries \
                  data alone"
             ),
+            Self::SurfaceCall => write!(
+                f,
+                "`@` calls a builtin in the surface language, and the canonical form carries \
+                 data alone"
+            ),
             Self::ExpectedValue => write!(f, "expected a value"),
             Self::ExpectedFieldName => write!(
                 f,
@@ -143,6 +150,12 @@ impl fmt::Display for ErrorKind {
                 write!(
                     f,
                     "`.` projects a field, and a field is named by an identifier"
+                )
+            }
+            Self::ExpectedBuiltinName => {
+                write!(
+                    f,
+                    "`@` calls a builtin, and a builtin is named by an identifier"
                 )
             }
             Self::ExpectedEquals => write!(f, "expected `=` after a field name"),

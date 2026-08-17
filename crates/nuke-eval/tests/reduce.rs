@@ -165,3 +165,276 @@ fn every_fault_carries_the_span_of_what_raised_it() {
         "a value that has no fields is named at itself, not at the field asked for"
     );
 }
+
+fn tree(files: &[(&str, &str)]) -> tempfile::TempDir {
+    let root = tempfile::tempdir().expect("a temporary directory");
+    for (name, source) in files {
+        let path = root.path().join(name);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).expect("a directory for the file");
+        }
+        std::fs::write(&path, source).expect("a file to write");
+    }
+    root
+}
+
+fn reduced_in(root: &tempfile::TempDir, name: &str) -> Value {
+    let path = root.path().join(name);
+    let source = std::fs::read_to_string(&path).expect("a file to read");
+    nuke_eval::eval_at(&source, &path)
+        .unwrap_or_else(|error| panic!("{name} should reduce, but: {error}"))
+}
+
+fn refused_in(root: &tempfile::TempDir, name: &str) -> Error {
+    let path = root.path().join(name);
+    let source = std::fs::read_to_string(&path).expect("a file to read");
+    nuke_eval::eval_at(&source, &path).expect_err("the document should be refused")
+}
+
+#[test]
+fn an_import_is_the_reduced_value_of_the_file_it_names_wherever_a_value_stands() {
+    let root = tree(&[
+        ("p.nuke", "{accent = \"#FE8019\"}"),
+        ("bound.nuke", "p := @import \"./p.nuke\" [p p.accent]"),
+        ("field.nuke", "{a = @import \"./p.nuke\"}"),
+        ("key.nuke", "{@import \"./p.nuke\" => 1}"),
+        ("naked.nuke", "@import \"./p.nuke\".accent"),
+        ("bare.nuke", "@import \"p.nuke\""),
+    ]);
+    assert_eq!(
+        reduced_in(&root, "bound.nuke"),
+        reduced("[{accent = \"#FE8019\"} \"#FE8019\"]")
+    );
+    assert_eq!(
+        reduced_in(&root, "field.nuke"),
+        reduced("{a = {accent = \"#FE8019\"}}")
+    );
+    assert_eq!(
+        reduced_in(&root, "key.nuke"),
+        reduced("{{accent = \"#FE8019\"} => 1}")
+    );
+    assert_eq!(reduced_in(&root, "naked.nuke"), reduced("\"#FE8019\""));
+    assert_eq!(
+        reduced_in(&root, "bare.nuke"),
+        reduced("{accent = \"#FE8019\"}"),
+        "a path with no `./` in front of it names the same file"
+    );
+}
+
+#[test]
+fn an_import_resolves_against_the_file_that_spells_it() {
+    let root = tree(&[
+        ("sub/p.nuke", "{accent = \"#FE8019\"}"),
+        ("sub/theme.nuke", "{fg = @import \"./p.nuke\".accent}"),
+        ("main.nuke", "@import \"./sub/theme.nuke\""),
+        ("up/deep/leaf.nuke", "@import \"../../sub/p.nuke\""),
+    ]);
+    assert_eq!(
+        reduced_in(&root, "main.nuke"),
+        reduced("{fg = \"#FE8019\"}"),
+        "`./p.nuke` inside sub/theme.nuke is sub/p.nuke, not a sibling of the entry"
+    );
+    assert_eq!(
+        reduced_in(&root, "up/deep/leaf.nuke"),
+        reduced("{accent = \"#FE8019\"}"),
+        "`..` is an ordinary component with no ceiling"
+    );
+}
+
+#[test]
+fn an_imported_file_hands_over_its_value_and_not_its_names() {
+    let root = tree(&[
+        ("keeps.nuke", "secret := 1 {a = secret}"),
+        ("needs.nuke", "[secret]"),
+        ("reads.nuke", "p := @import \"./keeps.nuke\" [p secret]"),
+        ("lends.nuke", "secret := 1 @import \"./needs.nuke\""),
+    ]);
+    assert_eq!(reduced_in(&root, "keeps.nuke"), reduced("{a = 1}"));
+    assert!(
+        matches!(refused_in(&root, "reads.nuke").kind(), ErrorKind::Unbound(name) if name == "secret"),
+        "an importer cannot see the names the file it imports keeps"
+    );
+    let ErrorKind::Import { cause, .. } = refused_in(&root, "lends.nuke").kind().clone() else {
+        panic!("a fault inside an imported file is wrapped in one that names the file");
+    };
+    assert!(
+        matches!(cause.kind(), ErrorKind::Unbound(name) if name == "secret"),
+        "and an imported file cannot see the names of the file that imported it"
+    );
+}
+
+#[test]
+fn a_diamond_is_not_a_cycle_and_one_file_imported_twice_is_reuse() {
+    let root = tree(&[
+        ("p.nuke", "{accent = \"#FE8019\"}"),
+        ("left.nuke", "@import \"./p.nuke\""),
+        ("right.nuke", "@import \"./p.nuke\""),
+        (
+            "top.nuke",
+            "{a = @import \"./left.nuke\" b = @import \"./right.nuke\"}",
+        ),
+        (
+            "twice.nuke",
+            "{a = @import \"./p.nuke\".accent b = @import \"./p.nuke\".accent}",
+        ),
+    ]);
+    assert_eq!(
+        reduced_in(&root, "top.nuke"),
+        reduced("{a = {accent = \"#FE8019\"} b = {accent = \"#FE8019\"}}")
+    );
+    assert_eq!(
+        reduced_in(&root, "twice.nuke"),
+        reduced("{a = \"#FE8019\" b = \"#FE8019\"}")
+    );
+}
+
+#[test]
+fn a_cycle_between_files_is_refused_from_whichever_end_it_is_entered() {
+    let root = tree(&[
+        ("a.nuke", "@import \"./b.nuke\""),
+        ("b.nuke", "@import \"./c.nuke\""),
+        ("c.nuke", "@import \"./a.nuke\""),
+        ("self.nuke", "@import \"./self.nuke\""),
+        ("spelled.nuke", "@import \"././spelled.nuke\""),
+    ]);
+    for name in ["a.nuke", "b.nuke", "c.nuke"] {
+        let mut error = refused_in(&root, name);
+        while let ErrorKind::Import { cause, .. } = error.kind().clone() {
+            error = *cause;
+        }
+        assert!(
+            matches!(error.kind(), ErrorKind::ImportCycle(_)),
+            "entering the loop at {name} should close it, but: {error}"
+        );
+    }
+    assert!(matches!(
+        refused_in(&root, "self.nuke").kind(),
+        ErrorKind::ImportCycle(_)
+    ));
+    assert!(
+        matches!(
+            refused_in(&root, "spelled.nuke").kind(),
+            ErrorKind::ImportCycle(_)
+        ),
+        "a file is identified by where it is, not by how the path was spelled"
+    );
+}
+
+#[test]
+fn a_file_that_cannot_be_read_is_refused_where_the_import_stands() {
+    let root = tree(&[
+        ("gone.nuke", "{a = @import \"./nowhere.nuke\"}"),
+        ("dir.nuke", "{a = @import \"./sub\"}"),
+        ("sub/p.nuke", "{}"),
+    ]);
+    assert_eq!(
+        refused_in(&root, "gone.nuke").kind(),
+        &ErrorKind::Unreadable {
+            path: "./nowhere.nuke".to_owned(),
+            cause: std::io::ErrorKind::NotFound,
+        },
+        "the fault names the path as it was written, which is what an author can act on"
+    );
+    assert!(
+        matches!(
+            refused_in(&root, "dir.nuke").kind(),
+            ErrorKind::Unreadable { .. }
+        ),
+        "there is no index.nuke, because that would be a second spelling of one import"
+    );
+}
+
+#[test]
+fn a_fault_inside_an_imported_file_is_located_in_that_file() {
+    let root = tree(&[
+        ("broken.nuke", "{a = 1\n b = missing}"),
+        ("torn.nuke", "{a = ,}"),
+        ("needs.nuke", "\n{a = @import \"./broken.nuke\"}"),
+        ("reads.nuke", "{a = @import \"./torn.nuke\"}"),
+    ]);
+    let error = refused_in(&root, "needs.nuke");
+    let source = std::fs::read_to_string(root.path().join("needs.nuke")).unwrap();
+    assert_eq!(
+        error.location(&source).to_string(),
+        "2:6",
+        "the outer span indexes the file the caller handed in"
+    );
+    let ErrorKind::Import { path, at, cause } = error.kind() else {
+        panic!("a fault below a file boundary is wrapped in one that names the file");
+    };
+    assert!(path.ends_with("broken.nuke"));
+    assert_eq!(
+        at.to_string(),
+        "2:6",
+        "and the location inside the imported file is resolved where its source was in hand"
+    );
+    assert!(matches!(cause.kind(), ErrorKind::Unbound(name) if name == "missing"));
+
+    let ErrorKind::Import { cause, .. } = refused_in(&root, "reads.nuke").kind().clone() else {
+        panic!("a file that is not a document is not importable");
+    };
+    assert!(matches!(cause.kind(), ErrorKind::Syntax(_)));
+}
+
+#[test]
+fn a_builtin_is_named_at_reduction_and_import_takes_a_literal() {
+    let root = tree(&[
+        ("p.nuke", "{}"),
+        ("nope.nuke", "{a = @nope \"p.nuke\"}"),
+        ("computed.nuke", "n := \"./p.nuke\" {a = @import n}"),
+        ("joined.nuke", "{a = @import {b = \"x\"}.b}"),
+    ]);
+    assert_eq!(
+        refused_in(&root, "nope.nuke").kind(),
+        &ErrorKind::NoSuchBuiltin("nope".to_owned())
+    );
+    for name in ["computed.nuke", "joined.nuke"] {
+        assert_eq!(
+            refused_in(&root, name).kind(),
+            &ErrorKind::ExpectedImportPath,
+            "for {name}"
+        );
+    }
+}
+
+#[test]
+fn a_document_with_no_file_of_its_own_resolves_no_import() {
+    assert_eq!(
+        refused("@import \"./p.nuke\"").kind(),
+        &ErrorKind::NoOrigin,
+        "the working directory is the process's, not the document's"
+    );
+    assert_eq!(
+        reduced("{a = 1}"),
+        eval("{a = 1}").unwrap(),
+        "and a document that imports nothing needs no file"
+    );
+}
+
+#[test]
+fn a_chain_of_files_deeper_than_the_bound_is_refused_rather_than_overflowing() {
+    let deep = nuke_eval::MAX_IMPORTS + 2;
+    let mut files: Vec<(String, String)> = (0..deep)
+        .map(|at| {
+            (
+                format!("f{at}.nuke"),
+                format!("@import \"./f{}.nuke\"", at + 1),
+            )
+        })
+        .collect();
+    files.push((format!("f{deep}.nuke"), "{}".to_owned()));
+    let borrowed: Vec<(&str, &str)> = files
+        .iter()
+        .map(|(name, source)| (name.as_str(), source.as_str()))
+        .collect();
+    let root = tree(&borrowed);
+    let mut error = refused_in(&root, "f0.nuke");
+    while let ErrorKind::Import { cause, .. } = error.kind().clone() {
+        error = *cause;
+    }
+    assert_eq!(
+        error.kind(),
+        &ErrorKind::ImportsTooDeep,
+        "a chain is finite and acyclic, so only a bound of its own stops it"
+    );
+}

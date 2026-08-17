@@ -115,6 +115,7 @@ impl Parser<'_> {
         let kind = match token.kind {
             TokenKind::BracketOpen => return self.list(depth),
             TokenKind::BraceOpen => return self.block(depth),
+            TokenKind::At => return self.call(token.span, depth),
             TokenKind::Ident => {
                 self.cursor.bump()?;
                 ExprKind::Reference(Ident::new(token.text))
@@ -142,6 +143,32 @@ impl Parser<'_> {
         Ok(Expr {
             kind,
             span: token.span,
+        })
+    }
+
+    fn call(&mut self, at: Span, depth: usize) -> Result<Expr, Error> {
+        self.cursor.bump()?;
+        let name = match self.cursor.bump()? {
+            Some(token) if token.kind == TokenKind::Ident => Name {
+                ident: Ident::new(token.text),
+                span: token.span,
+            },
+            Some(token) => return Err(Error::new(ErrorKind::ExpectedBuiltinName, token.span)),
+            None => {
+                return Err(Error::new(
+                    ErrorKind::ExpectedBuiltinName,
+                    self.cursor.end(),
+                ));
+            }
+        };
+        let operand = self.operand(depth + 1)?;
+        let span = Span::new(at.start, operand.span.end);
+        Ok(Expr {
+            kind: ExprKind::Call {
+                name,
+                operand: Box::new(operand),
+            },
+            span,
         })
     }
 

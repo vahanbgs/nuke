@@ -1,37 +1,77 @@
 pub mod error;
 
-use nuke_syntax::expr::{Binding, Document, Expr, ExprKind};
+use std::collections::HashMap;
+use std::fs;
+use std::io;
+use std::path::{Path, PathBuf};
+
+use nuke_syntax::expr::{Binding, Document, Expr, ExprKind, Name};
 use nuke_syntax::{Ident, MAX_DEPTH, Map, Span, Tuple, Value, surface};
 
 pub use error::{Error, ErrorKind};
 
 pub const MAX_VALUES: usize = 1 << 20;
 
+pub const MAX_IMPORTS: usize = 64;
+
 pub fn eval(source: &str) -> Result<Value, Error> {
     reduce(&surface::parse(source)?)
 }
 
+pub fn eval_at(source: &str, path: &Path) -> Result<Value, Error> {
+    reduce_at(&surface::parse(source)?, path)
+}
+
 pub fn reduce(document: &Document) -> Result<Value, Error> {
+    Session::new().document(document, None)
+}
+
+pub fn reduce_at(document: &Document, path: &Path) -> Result<Value, Error> {
+    let anchor = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    let origin = anchor.parent().map(Path::to_path_buf);
     let mut session = Session::new();
-    session.document(document)
+    session.open.push(anchor);
+    session.document(document, origin)
 }
 
 struct Session {
     budget: usize,
+    open: Vec<PathBuf>,
+    loaded: HashMap<PathBuf, Measured>,
 }
 
 impl Session {
-    const fn new() -> Self {
-        Self { budget: MAX_VALUES }
+    fn new() -> Self {
+        Self {
+            budget: MAX_VALUES,
+            open: Vec::new(),
+            loaded: HashMap::new(),
+        }
     }
 
-    fn document(&mut self, document: &Document) -> Result<Value, Error> {
+    fn document(&mut self, document: &Document, origin: Option<PathBuf>) -> Result<Value, Error> {
         let mut reducer = Reducer {
             session: self,
             scope: Vec::new(),
+            origin,
         };
         reducer.bind(&document.bindings, 0)?;
         reducer.value(&document.value, 0)
+    }
+
+    fn load(&mut self, path: &Path, literal: &str, span: Span) -> Result<Measured, Error> {
+        if self.open.len() >= MAX_IMPORTS {
+            return Err(Error::new(ErrorKind::ImportsTooDeep, span));
+        }
+        let source = fs::read_to_string(path).map_err(|error| unreadable(literal, &error, span))?;
+        let document = surface::parse(&source)
+            .map_err(|error| imported(path, &source, Error::from(error), span))?;
+        self.open.push(path.to_path_buf());
+        let reduced = self.document(&document, path.parent().map(Path::to_path_buf));
+        self.open.pop();
+        Ok(Measured::new(
+            reduced.map_err(|error| imported(path, &source, error, span))?,
+        ))
     }
 }
 
@@ -60,6 +100,7 @@ struct Bound {
 struct Reducer<'a> {
     session: &'a mut Session,
     scope: Vec<Bound>,
+    origin: Option<PathBuf>,
 }
 
 impl Reducer<'_> {
@@ -117,6 +158,7 @@ impl Reducer<'_> {
                     )
                 })
             }
+            ExprKind::Call { name, operand } => self.call(name, operand, expr.span, depth),
             ExprKind::List(items) => {
                 let mut values = Vec::with_capacity(items.len());
                 for item in items {
@@ -142,6 +184,46 @@ impl Reducer<'_> {
                 Ok(Value::Float(*float))
             }
         }
+    }
+
+    fn call(
+        &mut self,
+        name: &Name,
+        operand: &Expr,
+        span: Span,
+        depth: usize,
+    ) -> Result<Value, Error> {
+        match name.ident.as_str() {
+            "import" => self.import(operand, span, depth),
+            other => Err(Error::new(
+                ErrorKind::NoSuchBuiltin(other.to_owned()),
+                name.span,
+            )),
+        }
+    }
+
+    fn import(&mut self, operand: &Expr, span: Span, depth: usize) -> Result<Value, Error> {
+        let ExprKind::String(literal) = &operand.kind else {
+            return Err(Error::new(ErrorKind::ExpectedImportPath, operand.span));
+        };
+        let joined = match self.origin.as_deref() {
+            Some(origin) => origin.join(literal),
+            None => return Err(Error::new(ErrorKind::NoOrigin, span)),
+        };
+        let path = joined
+            .canonicalize()
+            .map_err(|error| unreadable(literal, &error, span))?;
+        if self.session.open.contains(&path) {
+            return Err(Error::new(ErrorKind::ImportCycle(path), span));
+        }
+        if !self.session.loaded.contains_key(&path) {
+            let measured = self.session.load(&path, literal, span)?;
+            self.session.loaded.insert(path.clone(), measured);
+        }
+        let values = self.session.loaded[&path].values;
+        let reach = self.session.loaded[&path].depth;
+        self.charge(values, reach, span, depth)?;
+        Ok(self.session.loaded[&path].value.clone())
     }
 
     fn reference(&mut self, name: &Ident, span: Span, depth: usize) -> Result<Value, Error> {
@@ -177,6 +259,28 @@ impl Reducer<'_> {
         self.session.budget -= values;
         Ok(())
     }
+}
+
+fn unreadable(path: &str, error: &io::Error, span: Span) -> Error {
+    Error::new(
+        ErrorKind::Unreadable {
+            path: path.to_owned(),
+            cause: error.kind(),
+        },
+        span,
+    )
+}
+
+fn imported(path: &Path, source: &str, error: Error, span: Span) -> Error {
+    let at = error.location(source);
+    Error::new(
+        ErrorKind::Import {
+            path: path.to_path_buf(),
+            at,
+            cause: Box::new(error),
+        },
+        span,
+    )
 }
 
 fn measure(value: &Value) -> (usize, usize) {

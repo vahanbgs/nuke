@@ -28,6 +28,10 @@ pub enum ExprKind {
         operand: Box<Expr>,
         field: Name,
     },
+    Call {
+        name: Name,
+        operand: Box<Expr>,
+    },
     Reference(Ident),
     Atom(Atom),
     String(String),

@@ -14,7 +14,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let value = match nuke_eval::eval(&source) {
+    let value = match nuke_eval::eval_at(&source, &path) {
         Ok(value) => value,
         Err(error) => {
             eprintln!("{}:{}: {error}", path.display(), error.location(&source));

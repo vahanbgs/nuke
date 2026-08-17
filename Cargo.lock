@@ -803,6 +803,7 @@ dependencies = [
  "nuke-grammar",
  "nuke-syntax",
  "nuke-transpile",
+ "tempfile",
 ]
 
 [[package]]

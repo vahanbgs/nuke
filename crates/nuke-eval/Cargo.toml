@@ -13,6 +13,7 @@ nuke-syntax.workspace = true
 nuke-fixtures.workspace = true
 nuke-grammar.workspace = true
 nuke-transpile.workspace = true
+tempfile.workspace = true
 
 [lints]
 workspace = true

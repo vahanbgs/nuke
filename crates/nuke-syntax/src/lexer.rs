@@ -10,6 +10,7 @@ pub enum TokenKind {
     Arrow,
     Binder,
     Dot,
+    At,
     Atom,
     Ident,
     String,
@@ -75,6 +76,7 @@ impl<'a> Lexer<'a> {
             b'=' => Ok(self.token(TokenKind::Equals, at + 1)),
             b':' if bytes.get(at + 1) == Some(&b'=') => Ok(self.token(TokenKind::Binder, at + 2)),
             b'.' => Ok(self.token(TokenKind::Dot, at + 1)),
+            b'@' => Ok(self.token(TokenKind::At, at + 1)),
             b'"' => self.scan_string(),
             b'A'..=b'Z' => {
                 let mut end = at + 1;

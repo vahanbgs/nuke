@@ -259,3 +259,67 @@ fn the_canonical_form_refuses_the_dot_by_name_where_it_reaches_it() {
         "an identifier standing as a value is the earlier fault"
     );
 }
+
+#[test]
+fn a_call_names_a_builtin_with_an_identifier_and_takes_one_operand() {
+    let ExprKind::Call { name, operand } = document("@import \"p.nuke\"").value.kind else {
+        panic!("the document should be a call");
+    };
+    assert_eq!(name.ident.as_str(), "import");
+    assert!(matches!(operand.kind, ExprKind::String(text) if text == "p.nuke"));
+
+    document("@ import \"p.nuke\"");
+    document("@import # here\n\"p.nuke\"");
+    document("@import @import \"p.nuke\"");
+    document("p := \"p.nuke\" @import p");
+
+    for source in ["@\"p.nuke\"", "@Import \"p.nuke\"", "@1", "@", "[@]"] {
+        assert_eq!(
+            fault(source),
+            ErrorKind::ExpectedBuiltinName,
+            "a builtin is named by an identifier, for {source}"
+        );
+    }
+    assert_eq!(
+        fault("@:= 1"),
+        ErrorKind::ExpectedBindingName,
+        "a block dispatches on `ident :=` before it reads a value, so that is the earlier fault"
+    );
+    assert_eq!(
+        fault("@import \"a.nuke\" \"b.nuke\""),
+        ErrorKind::TrailingInput,
+        "a call takes one operand, because a collection carries no separators"
+    );
+}
+
+#[test]
+fn the_dot_takes_what_a_call_yields_rather_than_what_it_was_given() {
+    let ExprKind::Access { operand, field } = document("@import \"p.nuke\".accent").value.kind
+    else {
+        panic!("the dot should take the call, not the path");
+    };
+    assert_eq!(field.ident.as_str(), "accent");
+    assert!(matches!(operand.kind, ExprKind::Call { .. }));
+
+    document("[@import \"p.nuke\"]");
+    document("{a = @import \"p.nuke\"}");
+    document("{@import \"p.nuke\" => 1}");
+    document("p := @import \"p.nuke\" [p]");
+    document("@import \"p.nuke\" . accent");
+}
+
+#[test]
+fn the_canonical_form_refuses_the_call_by_name_where_it_reaches_it() {
+    for source in [
+        "@import \"p.nuke\"",
+        "[@import \"p.nuke\"]",
+        "{a = 1 b@import \"p\" = 2}",
+        "{\"a\" @import \"p\"}",
+        "1 @import \"p.nuke\"",
+    ] {
+        let error = parse(source)
+            .err()
+            .unwrap_or_else(|| panic!("{source} should have been rejected"));
+        assert_eq!(error.kind(), &ErrorKind::SurfaceCall, "for {source}");
+    }
+}
