@@ -41,14 +41,19 @@ pub enum ErrorKind {
     FloatOutOfRange,
     EmptyDocument,
     IdentAsValue(String),
+    SurfaceBinder,
     ExpectedValue,
     ExpectedFieldName,
     ExpectedEquals,
     ExpectedArrow,
+    ExpectedBindingName,
     MixedPairOperators,
+    MisplacedBinding,
+    OnlyBindings,
     UnterminatedList,
     UnterminatedBlock,
     DuplicateField(String),
+    DuplicateBinding(String),
     DuplicateKey,
     TrailingInput,
     TooDeep,
@@ -102,7 +107,13 @@ impl fmt::Display for ErrorKind {
             Self::EmptyDocument => write!(f, "a document is one value, and this one is empty"),
             Self::IdentAsValue(name) => write!(
                 f,
-                "`{name}` is an identifier, not a value; only a tuple's fields are named"
+                "`{name}` is an identifier, not a value; the canonical form names only a \
+                 tuple's fields"
+            ),
+            Self::SurfaceBinder => write!(
+                f,
+                "`:=` binds a name in the surface language, and the canonical form carries \
+                 data alone"
             ),
             Self::ExpectedValue => write!(f, "expected a value"),
             Self::ExpectedFieldName => write!(
@@ -115,14 +126,28 @@ impl fmt::Display for ErrorKind {
                 "expected `=>` after a map key; a pair bound with `=` is a tuple field, \
                  and a field is named by an identifier"
             ),
+            Self::ExpectedBindingName => {
+                write!(f, "`:=` binds a name, and a name is an identifier")
+            }
             Self::MixedPairOperators => write!(
                 f,
                 "a block is a tuple or a map, and cannot hold both `=` and `=>`"
             ),
+            Self::MisplacedBinding => write!(
+                f,
+                "a binding stands at the head of its block or of the document, before any \
+                 pair, and a list holds none"
+            ),
+            Self::OnlyBindings => {
+                write!(f, "a document is one value, and this one only binds names")
+            }
             Self::UnterminatedList => write!(f, "this list is never closed"),
             Self::UnterminatedBlock => write!(f, "this block is never closed"),
             Self::DuplicateField(name) => {
                 write!(f, "the field `{name}` is already in this tuple")
+            }
+            Self::DuplicateBinding(name) => {
+                write!(f, "the name `{name}` is already bound in this block")
             }
             Self::DuplicateKey => write!(f, "this key is already in this map"),
             Self::TrailingInput => {

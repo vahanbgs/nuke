@@ -1,2 +1,0 @@
-# A block binds a name once, as it holds a field name once.
-{n := 1 n := 2 a = n}

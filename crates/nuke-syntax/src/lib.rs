@@ -1,17 +1,21 @@
+mod cursor;
 #[cfg(feature = "serde")]
 pub mod de;
 pub mod error;
+pub mod expr;
 #[cfg(feature = "serde")]
 mod hint;
 pub mod lexer;
 mod parser;
 #[cfg(feature = "serde")]
 pub mod ser;
+pub mod surface;
 pub mod value;
 
 #[cfg(feature = "serde")]
 pub use de::{from_str, from_value};
 pub use error::{Error, ErrorKind, Location, Span};
+pub use expr::{Binding, Document, Entry, Expr, ExprKind, Field, Name};
 pub use lexer::{Lexer, Token, TokenKind};
 #[cfg(feature = "serde")]
 pub use ser::to_value;
