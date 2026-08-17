@@ -61,6 +61,7 @@ pub enum ErrorKind {
     SurfaceInterpolation,
     ExpectedValue,
     ExpectedHoleClose,
+    MalformedSpec,
     ExpectedFieldName,
     ExpectedAccessName,
     ExpectedBuiltinName,
@@ -157,6 +158,11 @@ impl fmt::Display for ErrorKind {
                  data alone"
             ),
             Self::ExpectedValue => write!(f, "expected a value"),
+            Self::MalformedSpec => write!(
+                f,
+                "a format specifier is `[[fill]align][+][#][0][width][.precision][boxXe]`, \
+                 spelled as Rust spells it, and `{{a}}` is the hole that asks for nothing"
+            ),
             Self::ExpectedHoleClose => write!(
                 f,
                 "a hole holds one value, and `}}` closes it; a builtin wanting more takes a \

@@ -20,6 +20,9 @@ pub enum ErrorKind {
     NotAList,
     NotAString,
     NoText,
+    NeedsPrecision,
+    UnfitSpec,
+    TooWide,
     ExpectedImportPath,
     NoOrigin,
     Unreadable {
@@ -70,9 +73,27 @@ impl fmt::Display for ErrorKind {
             ),
             Self::NoText => write!(
                 f,
-                "only a string and an integer have text a hole can hand over; a float has no \
-                 one spelling until the formatter picks it, an atom is uninterpreted, and a \
-                 collection would be Nuke's own syntax"
+                "an atom is uninterpreted and a collection's text would be Nuke's own syntax, \
+                 so neither is text a hole can hand over; a string and an integer are, and a \
+                 float is once it is told a precision"
+            ),
+            Self::NeedsPrecision => write!(
+                f,
+                "a float has more than one canonical spelling, so a hole is told how many \
+                 digits follow the point: `{{opacity:.2}}`"
+            ),
+            Self::UnfitSpec => write!(
+                f,
+                "this specifier asks for what this form has not got: a precision counts the \
+                 digits after a point, a radix respells an integer that is not negative, \
+                 Nuke's integers having no width for a two's complement to depend on, a sign \
+                 belongs to a number, `#` to a radix, and `0` to a width it does not share \
+                 with a fill or an alignment"
+            ),
+            Self::TooWide => write!(
+                f,
+                "this integer is past what another radix can be computed in; a decimal one is \
+                 the text it was written as, and any other is arithmetic"
             ),
             Self::ExpectedImportPath => write!(
                 f,

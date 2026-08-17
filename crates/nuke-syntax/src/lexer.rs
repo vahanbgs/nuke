@@ -18,6 +18,7 @@ pub enum TokenKind {
     InterpolationOpen,
     InterpolationClose,
     Text,
+    Spec,
     HoleOpen,
     HoleClose,
     Whitespace,
@@ -134,8 +135,10 @@ impl<'a> Lexer<'a> {
     }
 
     fn scan_in_hole(&mut self) -> Result<Token<'a>, Error> {
+        let bytes = self.source.as_bytes();
         let at = self.offset;
-        match self.source.as_bytes()[at] {
+        match bytes[at] {
+            b':' if bytes.get(at + 1) != Some(&b'=') => Ok(self.scan_spec()),
             b'{' => {
                 if let Some(Mode::Hole { braces, .. }) = self.modes.last_mut() {
                     *braces += 1;
@@ -154,6 +157,18 @@ impl<'a> Lexer<'a> {
             }
             _ => self.scan(),
         }
+    }
+
+    fn scan_spec(&mut self) -> Token<'a> {
+        let mut end = self.offset + 1;
+        while let Some(character) = self.source[end..].chars().next() {
+            if matches!(character, '{' | '}' | '"') {
+                break;
+            }
+            end += character.len_utf8();
+        }
+        self.offset += 1;
+        self.token(TokenKind::Spec, end)
     }
 
     fn scan_text(&mut self, open: usize) -> Result<Token<'a>, Error> {

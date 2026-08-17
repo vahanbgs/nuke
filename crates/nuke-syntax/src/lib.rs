@@ -9,6 +9,7 @@ pub mod lexer;
 mod parser;
 #[cfg(feature = "serde")]
 pub mod ser;
+pub mod spec;
 pub mod surface;
 pub mod value;
 
@@ -19,6 +20,7 @@ pub use expr::{Binding, Document, Entry, Expr, ExprKind, Field, Name, Piece};
 pub use lexer::{Lexer, Token, TokenKind};
 #[cfg(feature = "serde")]
 pub use ser::to_value;
+pub use spec::{Align, Notation, Spec};
 pub use value::{Atom, Float, Ident, Integer, Map, Tuple, Value};
 
 pub const MAX_DEPTH: usize = 128;

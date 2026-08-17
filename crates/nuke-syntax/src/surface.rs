@@ -5,6 +5,7 @@ use crate::cursor::{Cursor, Number, number};
 use crate::error::{Error, ErrorKind, Span};
 use crate::expr::{Binding, Document, Entry, Expr, ExprKind, Field, Name, Piece};
 use crate::lexer::{TokenKind, cook, unescape};
+use crate::spec::Spec;
 use crate::value::{Atom, Ident};
 
 pub fn parse(source: &str) -> Result<Document, Error> {
@@ -195,17 +196,26 @@ impl Parser<'_> {
                 }
                 TokenKind::HoleOpen => {
                     self.cursor.bump()?;
-                    pieces.push(Piece::Hole(self.hole(token.span, depth + 1)?));
+                    pieces.push(self.hole(token.span, depth + 1)?);
                 }
                 _ => return Err(Error::new(ErrorKind::ExpectedValue, token.span)),
             }
         }
     }
 
-    fn hole(&mut self, open: Span, depth: usize) -> Result<Expr, Error> {
+    fn hole(&mut self, open: Span, depth: usize) -> Result<Piece, Error> {
         let expr = self.value(depth)?;
+        let mut spec = None;
+        if let Some(token) = self
+            .cursor
+            .peek(0)?
+            .filter(|next| next.kind == TokenKind::Spec)
+        {
+            self.cursor.bump()?;
+            spec = Some(Spec::parse(token.text, token.span)?);
+        }
         match self.cursor.bump()? {
-            Some(token) if token.kind == TokenKind::HoleClose => Ok(expr),
+            Some(token) if token.kind == TokenKind::HoleClose => Ok(Piece::Hole { expr, spec }),
             Some(token) if token.kind == TokenKind::Binder => {
                 Err(Error::new(ErrorKind::MisplacedBinding, token.span))
             }

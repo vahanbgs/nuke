@@ -1,4 +1,5 @@
 use crate::error::Span;
+use crate::spec::Spec;
 use crate::value::{Atom, Float, Ident, Integer};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,7 +44,7 @@ pub enum ExprKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Piece {
     Text(String),
-    Hole(Expr),
+    Hole { expr: Expr, spec: Option<Spec> },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

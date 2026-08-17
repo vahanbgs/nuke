@@ -1,4 +1,5 @@
 pub mod error;
+mod text;
 
 use std::collections::HashMap;
 use std::fs;
@@ -211,11 +212,11 @@ impl Reducer<'_> {
         for piece in pieces {
             match piece {
                 Piece::Text(literal) => grow(&mut text, literal, span)?,
-                Piece::Hole(hole) => {
-                    let value = self.value(hole, depth + 1)?;
+                Piece::Hole { expr, spec } => {
+                    let value = self.value(expr, depth + 1)?;
                     let written =
-                        written(&value).ok_or_else(|| Error::new(ErrorKind::NoText, hole.span))?;
-                    grow(&mut text, written, span)?;
+                        text::of(&value, *spec).map_err(|kind| Error::new(kind, expr.span))?;
+                    grow(&mut text, &written, span)?;
                 }
             }
         }
@@ -303,14 +304,6 @@ fn grow(text: &mut String, part: &str, span: Span) -> Result<(), Error> {
     }
     text.push_str(part);
     Ok(())
-}
-
-fn written(value: &Value) -> Option<&str> {
-    match value {
-        Value::String(text) => Some(text),
-        Value::Integer(integer) => Some(integer.as_str()),
-        _ => None,
-    }
 }
 
 fn unreadable(path: &str, error: &io::Error, span: Span) -> Error {

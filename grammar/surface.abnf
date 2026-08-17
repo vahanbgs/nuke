@@ -83,13 +83,35 @@ call       = "@" ows ident ows operand
 ; the grouping a call cannot, so `{p.a}` reads the way it looks. `ows` stands
 ; inside them like it stands inside every other bracket, which is also how a
 ; tuple reaches a hole: `{{` is a brace, so `{ {a = 1}.a }` needs its space.
+;
+; `:` opens a format specifier, spelled as Rust spells it. `ows` stands before it
+; as it stands before every operator and behind it never, which is the one place
+; this language is whitespace sensitive outside a string — a fill character may be
+; a space, so `{a: >8}` pads with them and `{a:>8 }` is a specifier that does not
+; end. The specifier is a raw tail running to the `}` that closes the hole.
+;
+; A width is a `uint` rather than a run of digits, so `{n:007}` is refused for the
+; reason `[01]` is, and it is refused here rather than in Rust's company.
+;
+; `spec` admits the empty string and the parser does not, `{a}` being the one
+; spelling of a hole with nothing asked of it. What is missing against Rust is
+; missing on purpose: `?` would mean "spell this as Nuke syntax", which is what
+; a formatter does and not what an evaluator does, and `w$` points into an
+; argument list that a language putting expressions in its holes has not got.
 
 interpolation = %s"$" DQUOTE *piece DQUOTE
 piece         = literal / hole
 literal       = 1*( plain / escape / doubled )
 plain         = %x20-21 / %x23-5B / %x5D-7A / %x7C / %x7E-10FFFF
 doubled       = "{{" / "}}"
-hole          = "{" ows value ows "}"
+hole          = "{" ows value ows [ ":" spec ] "}"
+
+spec          = [ aligned ] [ "+" ] [ "#" ] [ "0" ] [ uint ] [ "." uint ]
+                [ notation ]
+aligned       = ( fill align ) / align
+align         = "<" / "^" / ">"
+fill          = %x20-21 / %x23-7A / %x7C / %x7E-10FFFF
+notation      = %s"b" / %s"o" / %s"x" / %s"X" / %s"e"
 
 ; A binding names a value and contributes nothing to the result. It stands at
 ; the head of the document or of a brace block, before any pair. A list holds
