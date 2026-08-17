@@ -1,5 +1,5 @@
 use nuke_grammar::Grammar;
-use nuke_syntax::{ErrorKind, ExprKind, Piece, parse, surface};
+use nuke_syntax::{Align, ErrorKind, ExprKind, Notation, Piece, Spec, parse, surface};
 
 fn faults() -> Vec<(&'static str, ErrorKind)> {
     vec![
@@ -38,6 +38,7 @@ fn faults() -> Vec<(&'static str, ErrorKind)> {
             "an-interpolation-that-is-never-closed.nuke",
             ErrorKind::UnterminatedString,
         ),
+        ("a-specifier-that-is-not-one.nuke", ErrorKind::MalformedSpec),
     ]
 }
 
@@ -145,6 +146,7 @@ fn the_parser_is_stricter_than_the_grammar_where_the_spec_says_so() {
         "{a = 1 a = 2}",
         "[\"\\u{D800}\"]",
         "[1e400]",
+        r#"$"{a:}""#,
         &chain,
     ] {
         assert!(grammar.accepts(source), "the grammar should admit {source}");
@@ -206,12 +208,18 @@ fn the_canonical_form_refuses_the_binder_by_name_where_it_reaches_it() {
 }
 
 #[test]
-fn a_colon_that_binds_nothing_is_still_no_token_at_all() {
+fn a_colon_is_a_token_inside_a_hole_and_nowhere_else() {
     assert_eq!(fault("{x: 1}"), ErrorKind::UnexpectedCharacter(':'));
     assert_eq!(
         parse("{x: 1}").unwrap_err().kind(),
         &ErrorKind::UnexpectedCharacter(':')
     );
+    assert_eq!(
+        pieces(r#"$"{a}: {b}""#).len(),
+        3,
+        "a colon in an interpolation's text is text, and opens nothing"
+    );
+    document(r#"a := 1 $"{a:>4}""#);
 }
 
 #[test]
@@ -353,7 +361,7 @@ fn pieces(source: &str) -> Vec<Piece> {
 fn text(piece: &Piece) -> &str {
     match piece {
         Piece::Text(text) => text,
-        Piece::Hole(_) => panic!("this piece is a hole"),
+        Piece::Hole { .. } => panic!("this piece is a hole"),
     }
 }
 
@@ -361,8 +369,8 @@ fn text(piece: &Piece) -> &str {
 fn an_interpolation_alternates_text_and_holes() {
     let parts = pieces(r#"$"a{b}c""#);
     assert_eq!(text(&parts[0]), "a");
-    assert!(matches!(&parts[1], Piece::Hole(hole)
-        if matches!(&hole.kind, ExprKind::Reference(name) if name.as_str() == "b")));
+    assert!(matches!(&parts[1], Piece::Hole { expr, .. }
+        if matches!(&expr.kind, ExprKind::Reference(name) if name.as_str() == "b")));
     assert_eq!(text(&parts[2]), "c");
 
     assert!(
@@ -376,8 +384,8 @@ fn an_interpolation_alternates_text_and_holes() {
         "two holes touch with no text between them"
     );
     assert!(
-        matches!(pieces(r#"$"{p.a}""#).first(), Some(Piece::Hole(hole))
-            if matches!(hole.kind, ExprKind::Access { .. })),
+        matches!(pieces(r#"$"{p.a}""#).first(), Some(Piece::Hole { expr, .. })
+            if matches!(expr.kind, ExprKind::Access { .. })),
         "a hole takes a value, so a projection needs no parentheses it has not got"
     );
 }
@@ -444,4 +452,94 @@ fn the_canonical_form_refuses_an_interpolation_by_name_where_it_reaches_it() {
         parse(r#""a{b}""#).is_ok(),
         "the canonical form reads the braces as the text they are"
     );
+}
+
+fn spec(source: &str) -> Spec {
+    match pieces(source).pop() {
+        Some(Piece::Hole {
+            spec: Some(spec), ..
+        }) => spec,
+        _ => panic!("{source} should end in a hole carrying a specifier"),
+    }
+}
+
+#[test]
+fn a_specifier_is_read_the_way_rust_reads_one() {
+    assert_eq!(
+        spec(r#"$"{a:6}""#),
+        Spec {
+            width: Some(6),
+            ..Spec::default()
+        }
+    );
+    assert_eq!(
+        spec(r#"$"{a:*^6}""#),
+        Spec {
+            fill: Some('*'),
+            align: Some(Align::Centre),
+            width: Some(6),
+            ..Spec::default()
+        },
+        "a fill is a fill only when an alignment follows it"
+    );
+    assert_eq!(
+        spec(r#"$"{a:>6}""#),
+        Spec {
+            align: Some(Align::Right),
+            width: Some(6),
+            ..Spec::default()
+        },
+        "and `>` alone is the alignment rather than a fill with nothing to align"
+    );
+    assert_eq!(
+        spec(r#"$"{a: >6}""#).fill,
+        Some(' '),
+        "a space is a fill, which is why no whitespace is allowed behind the colon"
+    );
+    assert_eq!(
+        spec(r#"$"{a:#010X}""#),
+        Spec {
+            prefixed: true,
+            zeroed: true,
+            width: Some(10),
+            notation: Some(Notation::UpperHex),
+            ..Spec::default()
+        }
+    );
+    assert_eq!(
+        spec(r#"$"{a:+.3e}""#),
+        Spec {
+            sign: true,
+            precision: Some(3),
+            notation: Some(Notation::Exponent),
+            ..Spec::default()
+        }
+    );
+    assert!(
+        matches!(
+            pieces(r#"$"{a}""#).pop(),
+            Some(Piece::Hole { spec: None, .. })
+        ),
+        "a hole that asks for nothing carries no specifier at all"
+    );
+}
+
+#[test]
+fn a_specifier_is_refused_where_it_is_not_one() {
+    for source in [
+        r#"$"{a:}""#,
+        r#"$"{a:z}""#,
+        r#"$"{a:.}""#,
+        r#"$"{a:>>>}""#,
+        r#"$"{a:{b}}""#,
+        r#"$"{a:>8 }""#,
+    ] {
+        assert_eq!(fault(source), ErrorKind::MalformedSpec, "for {source}");
+    }
+    assert_eq!(
+        fault(r#"$"{a:007}""#),
+        ErrorKind::MalformedSpec,
+        "a width is a `uint`, so a leading zero is refused for the reason `[01]` is"
+    );
+    document(r#"$"{a :6}""#);
 }

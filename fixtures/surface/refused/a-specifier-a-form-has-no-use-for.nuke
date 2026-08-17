@@ -1,0 +1,6 @@
+# A precision counts the digits after a point, and an integer has none. Every
+# specifier is refused this way rather than ignored, which is where Rust differs:
+# there, an integer's `Display` reads a precision and does nothing with it.
+tab := 2
+
+$"{tab:.2}"

@@ -1,6 +1,6 @@
 # A float has more than one canonical spelling — `1e5` and `100000.0` are both one
-# — and the canonical form gives that choice to the formatter. A hole cannot make
-# it early, so it refuses and the text is written as text.
+# — and the canonical form gives that choice to the formatter. So a hole asks for a
+# precision rather than guessing: `{opacity:.2}` has one answer and this has none.
 opacity := 0.9
 
 $"opacity {opacity}"

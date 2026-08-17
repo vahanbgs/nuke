@@ -133,7 +133,11 @@ fn refusals() -> Vec<(&'static str, Fault)> {
         ),
         (
             "a-hole-that-holds-a-float.nuke",
-            Fault::Kind(ErrorKind::NoText),
+            Fault::Kind(ErrorKind::NeedsPrecision),
+        ),
+        (
+            "a-specifier-a-form-has-no-use-for.nuke",
+            Fault::Kind(ErrorKind::UnfitSpec),
         ),
         (
             "a-hole-that-holds-an-atom.nuke",

@@ -1,0 +1,5 @@
+{
+  alacritty = {cursor = "#FE8019"}
+  ghostty = {palette = "0=#FE8019"}
+  fish = {fish_color_command = "fe8019"}
+}

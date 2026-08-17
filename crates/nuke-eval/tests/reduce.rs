@@ -251,10 +251,8 @@ fn a_hole_hands_over_the_text_of_what_it_holds() {
 }
 
 #[test]
-fn only_a_string_and_an_integer_have_text_a_hole_can_hand_over() {
+fn an_atom_and_a_collection_have_no_text_a_hole_can_hand_over() {
     for source in [
-        "$\"{1.5}\"",
-        "$\"{0.0}\"",
         "$\"{Dark}\"",
         "$\"{True}\"",
         "$\"{[1]}\"",
@@ -263,11 +261,95 @@ fn only_a_string_and_an_integer_have_text_a_hole_can_hand_over() {
     ] {
         assert_eq!(refused(source).kind(), &ErrorKind::NoText, "for {source}");
     }
-    let error = refused("opacity := 0.9 $\"a{opacity}b\"");
+    let error = refused("mode := Dark $\"a{mode}b\"");
     assert_eq!(
         error.span(),
-        nuke_syntax::Span::new(19, 26),
+        nuke_syntax::Span::new(17, 21),
         "the fault is named at the hole and not at the string it was building"
+    );
+}
+
+#[test]
+fn a_specifier_pads_and_respells_exactly_as_rust_does() {
+    let cases = [
+        (r#"n := "ab" $"[{n:6}]""#, "[ab    ]"),
+        (r#"n := "ab" $"[{n:<6}]""#, "[ab    ]"),
+        (r#"n := "ab" $"[{n:>6}]""#, "[    ab]"),
+        (r#"n := "ab" $"[{n:^6}]""#, "[  ab  ]"),
+        (r#"n := "ab" $"[{n:*^6}]""#, "[**ab**]"),
+        (r#"n := "ab" $"[{n:#^6}]""#, "[##ab##]"),
+        (r#"n := 42 $"[{n:6}]""#, "[    42]"),
+        (r#"n := 42 $"[{n:06}]""#, "[000042]"),
+        (r#"n := -7 $"[{n:06}]""#, "[-00007]"),
+        (r#"n := 42 $"[{n:+}]""#, "[+42]"),
+        (r#"n := 255 $"{n:x}""#, "ff"),
+        (r#"n := 255 $"{n:X}""#, "FF"),
+        (r#"n := 255 $"{n:#X}""#, "0xFF"),
+        (r#"n := 255 $"{n:#b}""#, "0b11111111"),
+        (r#"n := 255 $"{n:o}""#, "377"),
+        (r#"n := 255 $"{n:#08X}""#, "0x0000FF"),
+        (r#"n := 0.9 $"{n:.2}""#, "0.90"),
+        (r#"n := 0.9 $"{n:.3e}""#, "9.000e-1"),
+        (r#"n := 0.9 $"[{n:>8.2}]""#, "[    0.90]"),
+        (r#"n := 12 $"{n:>4} {n}""#, "  12 12"),
+    ];
+    for (source, expected) in cases {
+        assert_eq!(
+            reduced(source),
+            reduced(&format!("\"{expected}\"")),
+            "for {source}"
+        );
+    }
+}
+
+#[test]
+fn a_float_reaches_a_hole_only_once_it_is_told_a_precision() {
+    assert_eq!(
+        refused("o := 0.9 $\"{o}\"").kind(),
+        &ErrorKind::NeedsPrecision,
+        "the spelling is the formatter's to pick, so a hole asks rather than guesses"
+    );
+    assert_eq!(reduced("o := 0.9 $\"{o:.1}\""), reduced("\"0.9\""));
+    assert_eq!(
+        reduced("o := 100000.0 $\"{o:.0}\""),
+        reduced("\"100000\""),
+        "`1e5` and `100000.0` are one float, and a precision is what picks between them"
+    );
+}
+
+#[test]
+fn a_specifier_is_refused_where_the_form_has_not_got_what_it_asks_for() {
+    for source in [
+        "$\"{\"ab\":.1}\"",
+        "$\"{42:.1}\"",
+        "$\"{\"ab\":x}\"",
+        "$\"{\"ab\":+}\"",
+        "$\"{0.9:.2x}\"",
+        "$\"{42:e}\"",
+        "$\"{42:#}\"",
+        "$\"{42:0}\"",
+        "$\"{42:*<06}\"",
+        "$\"{-7:x}\"",
+    ] {
+        assert_eq!(
+            refused(source).kind(),
+            &ErrorKind::UnfitSpec,
+            "for {source}"
+        );
+    }
+    for source in ["$\"{True:>4}\"", "$\"{[1]:>4}\"", "$\"{ {a = 1}:>4}\""] {
+        assert_eq!(refused(source).kind(), &ErrorKind::NoText, "for {source}");
+    }
+    let wide = format!("n := {} $\"{{n:x}}\"", "9".repeat(40));
+    assert_eq!(
+        refused(&wide).kind(),
+        &ErrorKind::TooWide,
+        "a decimal integer is the text it was written as, and another radix is arithmetic"
+    );
+    assert_eq!(
+        reduced(&format!("n := {} $\"{{n}}\"", "9".repeat(40))),
+        reduced(&format!("\"{}\"", "9".repeat(40))),
+        "which is why the same integer reaches a hole without one"
     );
 }
 

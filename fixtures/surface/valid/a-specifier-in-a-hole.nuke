@@ -1,0 +1,18 @@
+# Rust's specifier, spelled as Rust spells it. A width alone right-aligns a number
+# and left-aligns a string, which is Rust's default and not a rule of Nuke's own; a
+# precision is what admits a float at all; and `#` asks a radix for its prefix.
+label := "cpu"
+gap := 4
+mode := 511
+load := 0.875
+
+[
+  $"[{label:<6}]"
+  $"[{label:.^7}]"
+  $"[{gap:3}]"
+  $"[{gap:03}]"
+  $"[{gap:+}]"
+  $"[{mode:#o}]"
+  $"[{load:.2}]"
+  $"[{load:>7.1}]"
+]

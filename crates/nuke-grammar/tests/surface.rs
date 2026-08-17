@@ -331,6 +331,41 @@ fn an_interpolated_string_holds_text_holes_and_doubled_braces() {
 }
 
 #[test]
+fn a_hole_carries_a_format_specifier_spelled_the_way_rust_spells_one() {
+    let grammar = Grammar::surface().unwrap();
+    admitted(
+        &grammar,
+        &[
+            r#"$"{a:6}""#,
+            r#"$"{a:<6}""#,
+            r#"$"{a:*^6}""#,
+            r#"$"{a:>>6}""#,
+            r#"$"{a: >6}""#,
+            r#"$"{a:#^6}""#,
+            r#"$"{a:+}""#,
+            r#"$"{a:#x}""#,
+            r#"$"{a:#010X}""#,
+            r#"$"{a:.2}""#,
+            r#"$"{a:.3e}""#,
+            r#"$"{a:>8.2}""#,
+            r#"$"{p.a:6}""#,
+            r#"$"{a :6}""#,
+        ],
+    );
+    refused(
+        &grammar,
+        &[
+            r#"$"{a:>8 }""#,
+            r#"$"{a:z}""#,
+            r#"$"{a:.}""#,
+            r#"$"{a:007}""#,
+            r#"$"{a:{b}}""#,
+            r#"$"{a:>>>}""#,
+        ],
+    );
+}
+
+#[test]
 fn a_plain_string_is_all_text_however_many_braces_it_holds() {
     let grammar = Grammar::surface().unwrap();
     admitted(
