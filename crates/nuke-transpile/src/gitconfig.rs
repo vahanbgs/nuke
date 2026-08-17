@@ -47,7 +47,7 @@ impl fmt::Display for ErrorKind {
             ),
             Self::UnrepresentableCharacter(character) => write!(
                 f,
-                "U+{:04X} is a character git cannot spell in this position",
+                "U+{:04X} is a control, and a newline and a tab are the only ones with a spelling here",
                 u32::from(*character)
             ),
             Self::UnspellableName(name) => write!(
