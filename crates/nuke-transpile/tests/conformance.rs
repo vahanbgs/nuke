@@ -1,6 +1,7 @@
 use kdl::{KdlDocument, KdlNode, KdlValue};
 use nuke_fixtures::Fixture;
 use nuke_syntax::{Value, parse};
+use nuke_transpile::gitconfig;
 use nuke_transpile::ini as ini_backend;
 use nuke_transpile::json::{ErrorKind, to_string, to_string_compact};
 use nuke_transpile::kdl as kdl_backend;
@@ -914,19 +915,20 @@ fn every_fixture_ini_cannot_carry_is_refused_by_the_error_that_names_its_fault()
 }
 
 #[test]
-fn ini_is_the_one_target_no_fixture_crosses_into_at_all() {
+fn the_flat_targets_are_the_ones_no_fixture_crosses_into_at_all() {
     let written: Vec<String> = nuke_fixtures::valid()
         .iter()
         .map(|fixture| fixture.name().to_owned())
         .collect();
-    let refused: Vec<String> = ini_refusals()
-        .into_iter()
-        .map(|(name, _, _)| name.to_owned())
-        .collect();
-    assert_eq!(
-        refused, written,
-        "no document written in this language is an INI file"
-    );
+    for (target, refused) in [
+        ("an INI", names(ini_refusals())),
+        ("a git config", names(gitconfig_refusals())),
+    ] {
+        assert_eq!(
+            refused, written,
+            "some document written in this language is {target} file"
+        );
+    }
 
     for (target, refusals) in [
         ("JSON", refusals().len()),
@@ -937,7 +939,7 @@ fn ini_is_the_one_target_no_fixture_crosses_into_at_all() {
     ] {
         assert!(
             refusals < written.len(),
-            "{target} refuses every fixture too, so INI is no longer the one that does"
+            "{target} refuses every fixture too, so the flat targets are no longer the ones that do"
         );
     }
 }
@@ -957,4 +959,80 @@ fn the_key_rule_ini_inherits_stops_it_where_json_stops() {
         ini, json,
         "a name is a string or an atom here for the reason it is there"
     );
+}
+
+fn gitconfig_refusals() -> Vec<(&'static str, gitconfig::ErrorKind, &'static str)> {
+    let root = gitconfig::ErrorKind::UnrepresentableRoot("list");
+    vec![
+        ("collections.nuke", root.clone(), "the document"),
+        ("comments.nuke", root.clone(), "the document"),
+        (
+            "dotfile.nuke",
+            gitconfig::ErrorKind::UnspellableName("tab_width".to_owned()),
+            "editor.tab_width",
+        ),
+        (
+            "maps.nuke",
+            gitconfig::ErrorKind::SectionlessKey("string key".to_owned()),
+            "#1",
+        ),
+        ("scalars.nuke", root.clone(), "the document"),
+        ("strings.nuke", root.clone(), "the document"),
+        (
+            "tuples.nuke",
+            gitconfig::ErrorKind::SectionlessKey("name".to_owned()),
+            "name",
+        ),
+        ("whitespace.nuke", root, "the document"),
+    ]
+}
+
+#[test]
+fn every_fixture_gitconfig_cannot_carry_is_refused_by_the_error_that_names_its_fault() {
+    for (name, kind, path) in gitconfig_refusals() {
+        let fixture = fixture(name);
+        let error = gitconfig::to_string(&value_of(&fixture))
+            .err()
+            .unwrap_or_else(|| panic!("{name} should have been refused"));
+        assert_eq!(error.kind(), &kind, "for {name}");
+        assert_eq!(error.path().to_string(), path, "for {name}");
+    }
+}
+
+#[test]
+fn gitconfig_stops_the_dot_file_at_a_field_name_and_ini_stops_it_later_at_a_value() {
+    let ini = stop_of(ini_refusals(), "dotfile.nuke");
+    let git = stop_of(gitconfig_refusals(), "dotfile.nuke");
+    assert_eq!(ini, "shell.aliases");
+    assert_eq!(git, "editor.tab_width");
+    assert!(
+        !git.contains('#'),
+        "a field name is what gitconfig cannot spell, and only a map's key carries a #"
+    );
+}
+
+#[test]
+fn gitconfig_stops_the_map_fixture_one_entry_before_json_and_ini_do() {
+    assert_eq!(stop_of(refusals(), "maps.nuke"), "#2");
+    assert_eq!(stop_of(ini_refusals(), "maps.nuke"), "#2");
+    assert_eq!(
+        stop_of(gitconfig_refusals(), "maps.nuke"),
+        "#1",
+        "a variable outside a section is a fault the first entry already has"
+    );
+}
+
+fn names<K>(refusals: Vec<(&'static str, K, &'static str)>) -> Vec<String> {
+    refusals
+        .into_iter()
+        .map(|(name, _, _)| name.to_owned())
+        .collect()
+}
+
+fn stop_of<K>(refusals: Vec<(&'static str, K, &'static str)>, fixture: &str) -> &'static str {
+    refusals
+        .into_iter()
+        .find(|(name, _, _)| *name == fixture)
+        .map(|(_, _, path)| path)
+        .unwrap_or_else(|| panic!("{fixture} is no longer refused"))
 }
