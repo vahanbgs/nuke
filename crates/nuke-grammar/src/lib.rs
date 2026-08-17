@@ -7,6 +7,8 @@ pub const TOKENS_ABNF: &str = include_str!("../../../grammar/tokens.abnf");
 
 pub const CANONICAL_ABNF: &str = include_str!("../../../grammar/canonical.abnf");
 
+pub const SURFACE_ABNF: &str = include_str!("../../../grammar/surface.abnf");
+
 pub const DOCUMENT: &str = "document";
 
 pub const NUMBER: &str = "number";
@@ -32,6 +34,12 @@ pub const CANONICAL: Layer = Layer {
     refined: &[(NUMBER, CANONICAL_NUMBER)],
 };
 
+pub const SURFACE: Layer = Layer {
+    fragments: &[TOKENS_ABNF, SURFACE_ABNF],
+    start: DOCUMENT,
+    refined: &[(NUMBER, CANONICAL_NUMBER)],
+};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Rejection {
     Syntax(String),
@@ -43,7 +51,7 @@ impl fmt::Display for Rejection {
         match self {
             Self::Syntax(message) => write!(f, "{message}"),
             Self::Number(token) => {
-                write!(f, "`{token}` is not how the canonical form spells a number")
+                write!(f, "`{token}` is not how this grammar spells a number")
             }
         }
     }
@@ -82,6 +90,10 @@ pub struct Grammar {
 impl Grammar {
     pub fn canonical() -> Result<Self, Error> {
         Self::new(CANONICAL)
+    }
+
+    pub fn surface() -> Result<Self, Error> {
+        Self::new(SURFACE)
     }
 
     pub fn new(layer: Layer) -> Result<Self, Error> {

@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use abnf::types::{Kind, Node, Rule};
-use nuke_grammar::{CANONICAL, CANONICAL_ABNF, Layer, TOKENS_ABNF};
+use nuke_grammar::{CANONICAL, CANONICAL_ABNF, Layer, SURFACE, SURFACE_ABNF, TOKENS_ABNF};
 
 fn rules(name: &str, abnf: &str) -> Vec<Rule> {
     abnf::rulelist(abnf).unwrap_or_else(|error| panic!("{name} is not valid ABNF: {error}"))
@@ -48,11 +48,17 @@ fn roots(layer: Layer) -> Vec<&'static str> {
 }
 
 fn syntax_layers() -> Vec<(&'static str, &'static str)> {
-    vec![("canonical.abnf", CANONICAL_ABNF)]
+    vec![
+        ("canonical.abnf", CANONICAL_ABNF),
+        ("surface.abnf", SURFACE_ABNF),
+    ]
 }
 
 fn assemblies() -> Vec<(&'static str, Layer)> {
-    vec![("the canonical form", CANONICAL)]
+    vec![
+        ("the canonical form", CANONICAL),
+        ("the surface language", SURFACE),
+    ]
 }
 
 #[test]
@@ -98,6 +104,31 @@ fn every_rule_an_assembly_defines_is_reachable_from_where_that_language_starts()
                 rule.name()
             );
         }
+    }
+}
+
+#[test]
+fn the_surface_language_refines_its_numbers_the_way_the_canonical_form_does() {
+    assert_eq!(
+        SURFACE.refined, CANONICAL.refined,
+        "the surface language adds number forms by widening the shared token, \
+         so a refinement of its own is a decision that has to be made out loud"
+    );
+}
+
+#[test]
+fn no_two_syntax_layers_are_ever_assembled_together() {
+    for (_, layer) in assemblies() {
+        let syntax: Vec<&str> = syntax_layers()
+            .into_iter()
+            .filter(|(_, abnf)| layer.fragments.contains(abnf))
+            .map(|(name, _)| name)
+            .collect();
+        assert_eq!(
+            syntax.len(),
+            1,
+            "an assembly takes one syntax layer, and this one takes {syntax:?}"
+        );
     }
 }
 

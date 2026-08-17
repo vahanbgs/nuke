@@ -1,0 +1,34 @@
+; Nuke — the surface language's syntax layer.
+;
+; This file is a fragment. The normative grammar of the surface language is
+; `grammar/tokens.abnf` followed by this file, in that order. The token layer is
+; shared with the canonical form, so it is defined there and not here.
+;
+; The two syntax layers are never read together, so both name their rules the
+; same way and neither may be assembled with the other. Three rules below —
+; `field`, `entry` and `list` — read word for word like the canonical form's,
+; and they are not the same rules, because the `value` under them is this one.
+;
+; A document is valid when it matches `document` and every `number` token it
+; contains also matches `canonical-number`. The surface language spells a number
+; exactly as the canonical form does; when it stops doing so, the refinement
+; named here is what changes.
+
+document   = ows *( binding ows ) value ows
+
+value      = tuple / map / list / reference / atom / string / number
+
+; A binding names a value and contributes nothing to the result. It stands at
+; the head of the document or of a brace block, before any pair. A list holds
+; values and a binding is not one, so a list holds none.
+
+binding    = ident ows ":=" ows value
+reference  = ident
+
+tuple      = "{" *( ows binding ) *( ows field ) ows "}"
+field      = ident ows "=" ows value
+
+map        = "{" *( ows binding ) *( ows entry ) ows "}"
+entry      = value ows "=>" ows value
+
+list       = "[" *( ows value ) ows "]"

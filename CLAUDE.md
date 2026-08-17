@@ -20,7 +20,7 @@ of the various tools used to work with the language.
 
 ## Layout
 
-- `grammar/` — `tokens.abnf` then `canonical.abnf`; a grammar is that assembly, and normative.
+- `grammar/` — `tokens.abnf` then `canonical.abnf` or `surface.abnf`; a grammar is that pair.
 - `docs/canonical-form.md` — the rules ABNF cannot express.
 - `docs/serde.md` — where Nuke and serde's data model disagree, and how the binding settles it.
 - `docs/json.md`, `docs/yaml.md`, `docs/toml.md`, `docs/xml.md`, `docs/kdl.md`, `docs/lua.md`,
