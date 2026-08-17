@@ -54,8 +54,10 @@ pub enum ErrorKind {
     EmptyDocument,
     IdentAsValue(String),
     SurfaceBinder,
+    SurfaceDot,
     ExpectedValue,
     ExpectedFieldName,
+    ExpectedAccessName,
     ExpectedEquals,
     ExpectedArrow,
     ExpectedBindingName,
@@ -127,11 +129,22 @@ impl fmt::Display for ErrorKind {
                 "`:=` binds a name in the surface language, and the canonical form carries \
                  data alone"
             ),
+            Self::SurfaceDot => write!(
+                f,
+                "`.` projects a field in the surface language, and the canonical form carries \
+                 data alone"
+            ),
             Self::ExpectedValue => write!(f, "expected a value"),
             Self::ExpectedFieldName => write!(
                 f,
                 "expected a field name; this block is a tuple, because its first pair uses `=`"
             ),
+            Self::ExpectedAccessName => {
+                write!(
+                    f,
+                    "`.` projects a field, and a field is named by an identifier"
+                )
+            }
             Self::ExpectedEquals => write!(f, "expected `=` after a field name"),
             Self::ExpectedArrow => write!(
                 f,
@@ -165,7 +178,7 @@ impl fmt::Display for ErrorKind {
             Self::TrailingInput => {
                 write!(f, "a document is one value, and this one runs past its end")
             }
-            Self::TooDeep => write!(f, "this value nests deeper than {MAX_DEPTH} levels"),
+            Self::TooDeep => write!(f, "this expression nests deeper than {MAX_DEPTH} levels"),
         }
     }
 }

@@ -194,6 +194,10 @@ impl Tuple {
         self.0.get(name)
     }
 
+    pub fn take(mut self, name: &str) -> Option<Value> {
+        self.0.shift_remove(name)
+    }
+
     pub fn len(&self) -> usize {
         self.0.len()
     }

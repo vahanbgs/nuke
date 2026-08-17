@@ -8,6 +8,8 @@ use crate::MAX_VALUES;
 pub enum ErrorKind {
     Syntax(nuke_syntax::Error),
     Unbound(String),
+    NotATuple,
+    NoSuchField(String),
     DuplicateKey,
     TooDeep,
     TooLarge,
@@ -22,6 +24,12 @@ impl fmt::Display for ErrorKind {
                 "`{name}` is not bound here; a name is visible below its own binding, and \
                  only inside the block that makes it"
             ),
+            Self::NotATuple => write!(
+                f,
+                "only a tuple has fields; a map has entries keyed by values and a list has \
+                 positions"
+            ),
+            Self::NoSuchField(name) => write!(f, "this tuple has no field `{name}`"),
             Self::DuplicateKey => write!(f, "this key is already in this map"),
             Self::TooDeep => write!(f, "this value nests deeper than {MAX_DEPTH} levels"),
             Self::TooLarge => write!(f, "this document expands past {MAX_VALUES} values"),

@@ -1,0 +1,11 @@
+# The dot needs no more room around it than `=` does, and it adds two positions a
+# comment may stand in. So a list element does not end at a newline: all three
+# entries below are one element each, and the last one spans three lines.
+p := {a = {b = 1}}
+[
+  p.a.b
+  p . a . b
+  p # after the operand
+  .a # after the dot
+  .b
+]

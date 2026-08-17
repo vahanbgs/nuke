@@ -1,0 +1,2 @@
+# What stands to the left of the dot is a value, not only a name.
+[{a = 1}.a {a = {b = 2}}.a]

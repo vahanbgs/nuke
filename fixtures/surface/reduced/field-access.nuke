@@ -1,0 +1,5 @@
+{
+  editor = {theme = "#FE8019" background = "#282828"}
+  terminal = {cursor = "#FE8019"}
+  status = {inactive = "#928374"}
+}

@@ -10,7 +10,7 @@ fn faults() -> Vec<(&'static str, ErrorKind)> {
         ("bare-carriage-return.nuke", ErrorKind::CarriageReturn),
         ("bare-ident.nuke", ErrorKind::IdentAsValue("x".to_owned())),
         ("byte-order-mark.nuke", ErrorKind::ByteOrderMark),
-        ("chained-dots.nuke", ErrorKind::UnexpectedCharacter('.')),
+        ("chained-dots.nuke", ErrorKind::SurfaceDot),
         (
             "colon-instead-of-equals.nuke",
             ErrorKind::UnexpectedCharacter(':'),

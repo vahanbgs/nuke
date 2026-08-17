@@ -51,6 +51,8 @@ fn standing() -> Vec<(&'static str, Standing)> {
 
 fn refusals() -> Vec<(&'static str, ErrorKind)> {
     vec![
+        ("access-after-a-number.nuke", ErrorKind::NotATuple),
+        ("access-on-a-map.nuke", ErrorKind::NotATuple),
         (
             "field-is-not-a-binding.nuke",
             ErrorKind::Unbound("a".to_owned()),
@@ -59,6 +61,7 @@ fn refusals() -> Vec<(&'static str, ErrorKind)> {
             "forward-reference.nuke",
             ErrorKind::Unbound("later".to_owned()),
         ),
+        ("no-such-field.nuke", ErrorKind::NoSuchField("b".to_owned())),
         ("out-of-scope-name.nuke", ErrorKind::Unbound("n".to_owned())),
         ("self-reference.nuke", ErrorKind::Unbound("n".to_owned())),
         (

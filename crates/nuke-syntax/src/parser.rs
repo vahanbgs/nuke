@@ -16,6 +16,9 @@ pub(crate) fn parse(source: &str) -> Result<Value, Error> {
     }
     let value = parser.value(0)?;
     match parser.cursor.peek(0)? {
+        Some(token) if token.kind == TokenKind::Dot => {
+            Err(Error::new(ErrorKind::SurfaceDot, token.span))
+        }
         Some(token) => Err(Error::new(ErrorKind::TrailingInput, token.span)),
         None => Ok(value),
     }
@@ -56,6 +59,7 @@ impl Parser<'_> {
                 token.span,
             )),
             TokenKind::Binder => Err(Error::new(ErrorKind::SurfaceBinder, token.span)),
+            TokenKind::Dot => Err(Error::new(ErrorKind::SurfaceDot, token.span)),
             _ => Err(Error::new(ErrorKind::ExpectedValue, token.span)),
         }
     }
@@ -135,6 +139,9 @@ impl Parser<'_> {
                 Some(bound) if bound.kind == TokenKind::Binder => {
                     return Err(Error::new(ErrorKind::SurfaceBinder, bound.span));
                 }
+                Some(bound) if bound.kind == TokenKind::Dot => {
+                    return Err(Error::new(ErrorKind::SurfaceDot, bound.span));
+                }
                 Some(bound) => return Err(Error::new(ErrorKind::ExpectedEquals, bound.span)),
                 None => return Err(Error::new(ErrorKind::UnterminatedBlock, open)),
             }
@@ -164,6 +171,9 @@ impl Parser<'_> {
                 Some(bound) if bound.kind == TokenKind::Arrow => {}
                 Some(bound) if bound.kind == TokenKind::Binder => {
                     return Err(Error::new(ErrorKind::SurfaceBinder, bound.span));
+                }
+                Some(bound) if bound.kind == TokenKind::Dot => {
+                    return Err(Error::new(ErrorKind::SurfaceDot, bound.span));
                 }
                 Some(bound) => return Err(Error::new(ErrorKind::ExpectedArrow, bound.span)),
                 None => return Err(Error::new(ErrorKind::UnterminatedBlock, open)),

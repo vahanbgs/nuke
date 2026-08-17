@@ -1,0 +1,3 @@
+# A field is named by an identifier, so there is no positional access.
+p := {a = 1}
+p.1

@@ -24,6 +24,10 @@ pub enum ExprKind {
         entries: Vec<Entry>,
     },
     List(Vec<Expr>),
+    Access {
+        operand: Box<Expr>,
+        field: Name,
+    },
     Reference(Ident),
     Atom(Atom),
     String(String),

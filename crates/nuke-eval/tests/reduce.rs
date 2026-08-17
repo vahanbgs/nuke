@@ -80,6 +80,66 @@ fn a_binding_used_where_it_would_nest_past_the_parsers_own_limit_is_refused() {
 }
 
 #[test]
+fn a_projection_is_the_field_it_names_and_nothing_is_built_to_make_it() {
+    assert_eq!(reduced("p := {a = 1} p.a"), reduced("1"));
+    assert_eq!(reduced("{a = 1}.a"), reduced("1"));
+    assert_eq!(
+        reduced("p := {a = {b = {c = 1}}} p.a.b"),
+        reduced("{c = 1}")
+    );
+    assert_eq!(reduced("p := {a = {b = 1}} p.a.b"), reduced("1"));
+    assert_eq!(reduced("p := {a = 1 b = 2} [p.b p.a]"), reduced("[2 1]"));
+}
+
+#[test]
+fn only_a_tuple_has_fields_and_only_the_ones_it_holds() {
+    for source in [
+        "m := {\"a\" => 1} m.a",
+        "[1 2].a",
+        "1 . a",
+        "\"text\" . a",
+        "True . a",
+    ] {
+        assert_eq!(
+            refused(source).kind(),
+            &ErrorKind::NotATuple,
+            "for {source}"
+        );
+    }
+    for (source, name) in [
+        ("p := {a = 1} p.b", "b"),
+        ("{}.a", "a"),
+        ("{n := 1}.a", "a"),
+    ] {
+        assert_eq!(
+            refused(source).kind(),
+            &ErrorKind::NoSuchField(name.to_owned()),
+            "for {source}"
+        );
+    }
+}
+
+#[test]
+fn a_projection_costs_what_reaching_its_operand_costs() {
+    let mut source = String::from("a0 := [1 1]\n");
+    for line in 1..30 {
+        source.push_str(&format!("a{line} := [a{} a{}]\n", line - 1, line - 1));
+    }
+    source.push_str("p := {big = a29}\n[p.big]");
+    assert_eq!(
+        refused(&source).kind(),
+        &ErrorKind::TooLarge,
+        "narrowing a value does not make reaching it cheaper"
+    );
+
+    let deep = format!("p := {{a = 1}} p{}", ".a".repeat(200));
+    assert!(
+        matches!(refused(&deep).kind(), ErrorKind::Syntax(_)),
+        "a chain long enough to overflow the evaluator is stopped by the parser first"
+    );
+}
+
+#[test]
 fn every_fault_carries_the_span_of_what_raised_it() {
     let source = "{\n  a = 1\n  b = missing\n}";
     let error = refused(source);
@@ -88,4 +148,20 @@ fn every_fault_carries_the_span_of_what_raised_it() {
     let error = refused("{x: 1}");
     assert!(matches!(error.kind(), ErrorKind::Syntax(_)));
     assert_eq!(error.span(), nuke_syntax::Span::new(2, 3));
+
+    let source = "p := {a = 1}\np.b";
+    let error = refused(source);
+    assert_eq!(
+        error.span(),
+        nuke_syntax::Span::new(15, 16),
+        "a missing field is named at the name, not at what was projected"
+    );
+
+    let source = "p := [1 2]\np.a";
+    let error = refused(source);
+    assert_eq!(
+        error.span(),
+        nuke_syntax::Span::new(11, 12),
+        "a value that has no fields is named at itself, not at the field asked for"
+    );
 }

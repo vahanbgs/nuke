@@ -69,6 +69,43 @@ impl Parser<'_> {
     }
 
     fn value(&mut self, depth: usize) -> Result<Expr, Error> {
+        let mut expr = self.operand(depth)?;
+        let mut reach = depth;
+        while self
+            .cursor
+            .peek(0)?
+            .is_some_and(|token| token.kind == TokenKind::Dot)
+        {
+            reach += 1;
+            if reach > MAX_DEPTH {
+                return Err(Error::new(ErrorKind::TooDeep, expr.span));
+            }
+            self.cursor.bump()?;
+            let field = match self.cursor.bump()? {
+                Some(token) if token.kind == TokenKind::Ident => Name {
+                    ident: Ident::new(token.text),
+                    span: token.span,
+                },
+                Some(token) => {
+                    return Err(Error::new(ErrorKind::ExpectedAccessName, token.span));
+                }
+                None => {
+                    return Err(Error::new(ErrorKind::ExpectedAccessName, self.cursor.end()));
+                }
+            };
+            let span = Span::new(expr.span.start, field.span.end);
+            expr = Expr {
+                kind: ExprKind::Access {
+                    operand: Box::new(expr),
+                    field,
+                },
+                span,
+            };
+        }
+        Ok(expr)
+    }
+
+    fn operand(&mut self, depth: usize) -> Result<Expr, Error> {
         let Some(token) = self.cursor.peek(0)? else {
             return Err(Error::new(ErrorKind::ExpectedValue, self.cursor.end()));
         };

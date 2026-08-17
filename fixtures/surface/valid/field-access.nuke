@@ -1,0 +1,8 @@
+# A name can be projected, and what a projection yields is a value like any other.
+palette := {accent = "#FE8019" background = "#282828" muted = "#928374"}
+
+{
+  editor = {theme = palette.accent background = palette.background}
+  terminal = {cursor = palette.accent}
+  status = {inactive = palette.muted}
+}

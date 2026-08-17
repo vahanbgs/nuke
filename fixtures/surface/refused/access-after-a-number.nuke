@@ -1,0 +1,3 @@
+# With room around it the dot is an operator rather than part of the number, and
+# a number has no fields. Written `1.b` this is a malformed number instead.
+1 . b

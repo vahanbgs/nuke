@@ -79,6 +79,17 @@ impl Reducer {
                 self.spend(1, expr.span)?;
                 Ok(Value::Map(map))
             }
+            ExprKind::Access { operand, field } => {
+                let Value::Tuple(tuple) = self.value(operand, depth)? else {
+                    return Err(Error::new(ErrorKind::NotATuple, operand.span));
+                };
+                tuple.take(field.ident.as_str()).ok_or_else(|| {
+                    Error::new(
+                        ErrorKind::NoSuchField(field.ident.as_str().to_owned()),
+                        field.span,
+                    )
+                })
+            }
             ExprKind::List(items) => {
                 let mut values = Vec::with_capacity(items.len());
                 for item in items {

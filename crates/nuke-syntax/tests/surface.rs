@@ -4,6 +4,14 @@ use nuke_syntax::{ErrorKind, ExprKind, parse, surface};
 fn faults() -> Vec<(&'static str, ErrorKind)> {
     vec![
         (
+            "access-into-a-number.nuke",
+            ErrorKind::NumberSpelling("1.".to_owned()),
+        ),
+        (
+            "access-without-a-field-name.nuke",
+            ErrorKind::ExpectedAccessName,
+        ),
+        (
             "binding-a-name-that-is-not-one.nuke",
             ErrorKind::ExpectedBindingName,
         ),
@@ -112,11 +120,13 @@ fn the_parser_and_the_grammar_agree_on_every_fixture() {
 #[test]
 fn the_parser_is_stricter_than_the_grammar_where_the_spec_says_so() {
     let grammar = Grammar::surface().unwrap();
+    let chain = format!("p := {{a = 1}} p{}", ".a".repeat(200));
     for source in [
         "{n := 1 n := 2 a = n}",
         "{a = 1 a = 2}",
         "[\"\\u{D800}\"]",
         "[1e400]",
+        &chain,
     ] {
         assert!(grammar.accepts(source), "the grammar should admit {source}");
         assert!(
@@ -124,6 +134,11 @@ fn the_parser_is_stricter_than_the_grammar_where_the_spec_says_so() {
             "the parser should reject {source}"
         );
     }
+    assert_eq!(
+        fault(&chain),
+        ErrorKind::TooDeep,
+        "a projection is a level of the expression, so a chain spends the same budget nesting does"
+    );
 }
 
 #[test]
@@ -177,5 +192,70 @@ fn a_colon_that_binds_nothing_is_still_no_token_at_all() {
     assert_eq!(
         parse("{x: 1}").unwrap_err().kind(),
         &ErrorKind::UnexpectedCharacter(':')
+    );
+}
+
+#[test]
+fn a_number_takes_the_point_with_it_so_only_a_spaced_dot_projects() {
+    for source in ["[1.b]", "1.b", "1."] {
+        assert_eq!(
+            fault(source),
+            ErrorKind::NumberSpelling("1.".to_owned()),
+            "for {source}"
+        );
+    }
+    document("1 . b");
+    document("[1 . b]");
+    assert_eq!(
+        fault("[.5]"),
+        ErrorKind::ExpectedValue,
+        "a digit-less fraction is no number, and a dot is no value"
+    );
+}
+
+#[test]
+fn a_projection_reads_left_to_right_and_takes_any_value_on_its_left() {
+    let ExprKind::Access { operand, field } = document("p := {a = {b = 1}} p.a.b").value.kind
+    else {
+        panic!("the document should be a projection");
+    };
+    assert_eq!(field.ident.as_str(), "b");
+    let ExprKind::Access { operand, field } = operand.kind else {
+        panic!("what a projection stands on may be a projection");
+    };
+    assert_eq!(field.ident.as_str(), "a");
+    assert!(matches!(operand.kind, ExprKind::Reference(_)));
+
+    document("{a = 1}.a");
+    document("[1 2].a");
+    document("{\"a\" => 1}.a");
+}
+
+#[test]
+fn a_field_is_named_rather_than_pathed() {
+    assert_eq!(fault("{a.b = 1}"), ErrorKind::ExpectedArrow);
+    assert_eq!(fault("{x = 1 a.b = 2}"), ErrorKind::ExpectedEquals);
+    document("p := {a = 1} {p.a => 1}");
+}
+
+#[test]
+fn the_canonical_form_refuses_the_dot_by_name_where_it_reaches_it() {
+    for source in [
+        "{a = 1}.a",
+        "[.5]",
+        "[1.2.3]",
+        "{a = 1 b.c = 2}",
+        "{\"a\".b => 1}",
+    ] {
+        let error = parse(source)
+            .err()
+            .unwrap_or_else(|| panic!("{source} should have been rejected"));
+        assert_eq!(error.kind(), &ErrorKind::SurfaceDot, "for {source}");
+    }
+    let error = parse("{a.b = 1}").expect_err("a path is not a field name");
+    assert_eq!(
+        error.kind(),
+        &ErrorKind::IdentAsValue("a".to_owned()),
+        "an identifier standing as a value is the earlier fault"
     );
 }
