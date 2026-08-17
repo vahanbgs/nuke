@@ -12,6 +12,18 @@ impl Span {
     pub const fn new(start: usize, end: usize) -> Self {
         Self { start, end }
     }
+
+    pub fn location(&self, source: &str) -> Location {
+        let upto = source.get(..self.start).unwrap_or(source);
+        Location {
+            line: upto.matches('\n').count() + 1,
+            column: upto
+                .rsplit('\n')
+                .next()
+                .map_or(0, |last| last.chars().count())
+                + 1,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -178,15 +190,7 @@ impl Error {
     }
 
     pub fn location(&self, source: &str) -> Location {
-        let upto = source.get(..self.span.start).unwrap_or(source);
-        Location {
-            line: upto.matches('\n').count() + 1,
-            column: upto
-                .rsplit('\n')
-                .next()
-                .map_or(0, |last| last.chars().count())
-                + 1,
-        }
+        self.span.location(source)
     }
 }
 

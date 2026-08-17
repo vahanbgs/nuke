@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/nuke-eval",
   "crates/nuke-fixtures",
   "crates/nuke-grammar",
   "crates/nuke-syntax",
@@ -16,6 +17,7 @@ rust-version = "1.85"
 nuke-fixtures = { path = "crates/nuke-fixtures" }
 nuke-grammar = { path = "crates/nuke-grammar" }
 nuke-syntax = { path = "crates/nuke-syntax" }
+nuke-transpile = { path = "crates/nuke-transpile" }
 gix-config = { version = "0.59", features = ["sha1"] }
 indexmap = "2"
 kdl = "6"

@@ -796,6 +796,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "nuke-eval"
+version = "0.0.0"
+dependencies = [
+ "nuke-fixtures",
+ "nuke-grammar",
+ "nuke-syntax",
+ "nuke-transpile",
+]
+
+[[package]]
 name = "nuke-fixtures"
 version = "0.0.0"
 
