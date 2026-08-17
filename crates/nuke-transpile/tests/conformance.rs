@@ -6,6 +6,7 @@ use nuke_transpile::ini as ini_backend;
 use nuke_transpile::json::{ErrorKind, to_string, to_string_compact};
 use nuke_transpile::kdl as kdl_backend;
 use nuke_transpile::lua;
+use nuke_transpile::nix;
 use nuke_transpile::toml as toml_backend;
 use nuke_transpile::xml;
 use nuke_transpile::yaml;
@@ -13,6 +14,7 @@ use quick_xml::Reader;
 use quick_xml::escape::resolve_predefined_entity;
 use quick_xml::events::Event;
 use quick_xml::name::QName;
+use rnix::ast::{Attr, Entry, Expr, HasEntry, InterpolPart, LiteralKind, Str, UnaryOpKind};
 use saphyr::{LoadableYamlNode, Yaml};
 
 fn refusals() -> Vec<(&'static str, ErrorKind, &'static str)> {
@@ -936,6 +938,7 @@ fn the_flat_targets_are_the_ones_no_fixture_crosses_into_at_all() {
         ("XML", xml_refusals().len()),
         ("KDL", kdl_refusals().len()),
         ("Lua", lua_refusals().len()),
+        ("Nix", nix_refusals().len()),
     ] {
         assert!(
             refusals < written.len(),
@@ -1020,6 +1023,227 @@ fn gitconfig_stops_the_map_fixture_one_entry_before_json_and_ini_do() {
         "#1",
         "a variable outside a section is a fault the first entry already has"
     );
+}
+
+fn nix_refusals() -> Vec<(&'static str, nix::ErrorKind, &'static str)> {
+    vec![
+        (
+            "collections.nuke",
+            nix::ErrorKind::UnrepresentableKey("list"),
+            "[6]#1",
+        ),
+        (
+            "maps.nuke",
+            nix::ErrorKind::UnrepresentableKey("integer"),
+            "#2",
+        ),
+        (
+            "strings.nuke",
+            nix::ErrorKind::UnrepresentableCharacter('\u{0}'),
+            "[5]",
+        ),
+    ]
+}
+
+#[test]
+fn every_fixture_nix_cannot_carry_is_refused_by_the_error_that_names_its_fault() {
+    for (name, kind, path) in nix_refusals() {
+        let fixture = fixture(name);
+        let error = nix::to_string(&value_of(&fixture))
+            .err()
+            .unwrap_or_else(|| panic!("{name} should have been refused"));
+        assert_eq!(error.kind(), &kind, "for {name}");
+        assert_eq!(error.path().to_string(), path, "for {name}");
+    }
+}
+
+#[test]
+fn the_fixtures_nix_refuses_are_the_ones_json_and_xml_refuse_together() {
+    let mut both = names(refusals());
+    both.extend(names(xml_refusals()));
+    both.sort();
+    assert_eq!(names(nix_refusals()), both);
+    for fixture in ["collections.nuke", "maps.nuke"] {
+        assert_eq!(
+            stop_of(nix_refusals(), fixture),
+            stop_of(refusals(), fixture),
+            "the key rule Nix inherits from JSON stops it elsewhere in {fixture}"
+        );
+    }
+    assert_eq!(
+        stop_of(nix_refusals(), "strings.nuke"),
+        stop_of(xml_refusals(), "strings.nuke"),
+        "the character neither target can carry is not the same one"
+    );
+}
+
+#[test]
+fn what_the_backend_writes_is_the_document_a_real_nix_parser_reads_back() {
+    let refused = nix_refusals();
+    for fixture in nuke_fixtures::valid() {
+        if refused.iter().any(|(name, _, _)| *name == fixture.name()) {
+            continue;
+        }
+        let value = value_of(&fixture);
+        let written = nix::to_string(&value).expect("it should transpile");
+        let parsed = rnix::Root::parse(&written);
+        assert!(
+            parsed.errors().is_empty(),
+            "the Nix of {} does not parse: {:?}\n{written}",
+            fixture.name(),
+            parsed.errors()
+        );
+        let expression = parsed.tree().expr().expect("a document is one expression");
+        survives(&value, &expression, fixture.name());
+    }
+}
+
+fn survives(value: &Value, expression: &Expr, at: &str) {
+    match value {
+        Value::Tuple(tuple) => {
+            let written = attributes(expression, at);
+            assert_eq!(written.len(), tuple.len(), "{at} lost a field");
+            for ((field, item), (name, held)) in tuple.iter().zip(&written) {
+                assert_eq!(name, field.as_str(), "{at} renamed a field");
+                survives(item, held, &format!("{at}.{field}"));
+            }
+        }
+        Value::Map(map) => {
+            let written = attributes(expression, at);
+            assert_eq!(written.len(), map.len(), "{at} lost an entry");
+            for (position, ((key, item), (name, held))) in map.iter().zip(&written).enumerate() {
+                let at = format!("{at}#{}", position + 1);
+                let spelling = match key {
+                    Value::String(text) => text.as_str(),
+                    Value::Atom(atom) => atom.as_str(),
+                    other => panic!("{at} has a key Nix cannot name: {other:?}"),
+                };
+                assert_eq!(name, spelling, "{at} renamed a key");
+                survives(item, held, &at);
+            }
+        }
+        Value::List(items) => {
+            let written = elements(expression, at);
+            assert_eq!(written.len(), items.len(), "{at} lost an element");
+            for (index, (item, held)) in items.iter().zip(&written).enumerate() {
+                survives(item, held, &format!("{at}[{index}]"));
+            }
+        }
+        Value::Atom(atom) => match atom.as_str() {
+            "True" => assert_eq!(word(expression, at), "true", "at {at}"),
+            "False" => assert_eq!(word(expression, at), "false", "at {at}"),
+            "Null" => assert_eq!(word(expression, at), "null", "at {at}"),
+            spelling => assert_eq!(quoted(expression, at), spelling, "at {at}"),
+        },
+        Value::String(text) => assert_eq!(quoted(expression, at), text.as_str(), "at {at}"),
+        Value::Integer(integer) => assert_eq!(whole(expression, at), integer.to_i64(), "at {at}"),
+        Value::Float(number) => assert_eq!(
+            fraction(expression, at).to_bits(),
+            number.get().to_bits(),
+            "at {at}"
+        ),
+    }
+}
+
+fn attributes(expression: &Expr, at: &str) -> Vec<(String, Expr)> {
+    let Expr::AttrSet(set) = bare(expression) else {
+        panic!("{at} is not an attribute set: {expression}");
+    };
+    set.entries()
+        .map(|entry| {
+            let Entry::AttrpathValue(pair) = entry else {
+                panic!("{at} inherits a name rather than binding one");
+            };
+            let path = pair.attrpath().expect("a binding carries a path");
+            let attrs: Vec<Attr> = path.attrs().collect();
+            let [attr] = attrs.as_slice() else {
+                panic!("{at} writes a nested attribute path");
+            };
+            let name = match attr {
+                Attr::Ident(ident) => ident.to_string(),
+                Attr::Str(text) => spelling(text, at),
+                Attr::Dynamic(_) => panic!("{at} names an attribute with an expression"),
+            };
+            (name, pair.value().expect("a binding carries a value"))
+        })
+        .collect()
+}
+
+fn elements(expression: &Expr, at: &str) -> Vec<Expr> {
+    let Expr::List(list) = bare(expression) else {
+        panic!("{at} is not a list: {expression}");
+    };
+    list.items().collect()
+}
+
+fn word(expression: &Expr, at: &str) -> String {
+    let Expr::Ident(ident) = bare(expression) else {
+        panic!("{at} is not a word Nix knows: {expression}");
+    };
+    ident.to_string()
+}
+
+fn quoted(expression: &Expr, at: &str) -> String {
+    let Expr::Str(text) = bare(expression) else {
+        panic!("{at} is not a string: {expression}");
+    };
+    spelling(&text, at)
+}
+
+fn spelling(text: &Str, at: &str) -> String {
+    match text.normalized_parts().as_slice() {
+        [] => String::new(),
+        [InterpolPart::Literal(literal)] => literal.clone(),
+        _ => panic!("{at} writes a string an antiquotation opens into"),
+    }
+}
+
+fn whole(expression: &Expr, at: &str) -> Option<i64> {
+    match negated(expression) {
+        (true, Expr::Literal(literal)) => match literal.kind() {
+            LiteralKind::Integer(token) => token.value().ok().map(|value| -value),
+            _ => panic!("{at} negates something that is not an integer"),
+        },
+        (false, Expr::Literal(literal)) => match literal.kind() {
+            LiteralKind::Integer(token) => token.value().ok(),
+            _ => panic!("{at} is not an integer"),
+        },
+        _ => panic!("{at} is not an integer: {expression}"),
+    }
+}
+
+fn fraction(expression: &Expr, at: &str) -> f64 {
+    let (negative, literal) = match negated(expression) {
+        (negative, Expr::Literal(literal)) => (negative, literal),
+        _ => panic!("{at} is not a float: {expression}"),
+    };
+    let LiteralKind::Float(token) = literal.kind() else {
+        panic!("{at} is not a float: {expression}");
+    };
+    let read = token.value().expect("a float token reads back as a double");
+    if negative { -read } else { read }
+}
+
+fn negated(expression: &Expr) -> (bool, Expr) {
+    match bare(expression) {
+        Expr::UnaryOp(operation) => {
+            assert_eq!(
+                operation.operator(),
+                Some(UnaryOpKind::Negate),
+                "only a negation stands before a number"
+            );
+            let (negative, inner) = negated(&operation.expr().expect("a negation holds a value"));
+            (!negative, inner)
+        }
+        other => (false, other),
+    }
+}
+
+fn bare(expression: &Expr) -> Expr {
+    match expression {
+        Expr::Paren(paren) => bare(&paren.expr().expect("a parenthesis holds an expression")),
+        other => other.clone(),
+    }
 }
 
 fn names<K>(refusals: Vec<(&'static str, K, &'static str)>) -> Vec<String> {
