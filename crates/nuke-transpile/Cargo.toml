@@ -15,6 +15,7 @@ kdl.workspace = true
 mlua.workspace = true
 nuke-fixtures.workspace = true
 quick-xml.workspace = true
+rust-ini.workspace = true
 saphyr.workspace = true
 serde_json.workspace = true
 toml.workspace = true

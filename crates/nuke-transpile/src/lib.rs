@@ -1,4 +1,5 @@
 pub mod error;
+pub mod ini;
 pub mod json;
 pub mod kdl;
 pub mod lua;
