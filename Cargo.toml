@@ -17,6 +17,7 @@ nuke-fixtures = { path = "crates/nuke-fixtures" }
 nuke-grammar = { path = "crates/nuke-grammar" }
 nuke-syntax = { path = "crates/nuke-syntax" }
 indexmap = "2"
+kdl = "6"
 quick-xml = "0.41"
 ryu = "1"
 saphyr = "0.0.11"

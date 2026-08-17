@@ -11,6 +11,7 @@ nuke-syntax.workspace = true
 ryu.workspace = true
 
 [dev-dependencies]
+kdl.workspace = true
 nuke-fixtures.workspace = true
 quick-xml.workspace = true
 saphyr.workspace = true
