@@ -165,5 +165,64 @@ fn a_name_is_a_value_wherever_a_value_stands() {
 #[test]
 fn a_misspelled_number_is_one_bad_token_in_the_surface_language_too() {
     let grammar = Grammar::surface().unwrap();
-    refused(&grammar, &["[1E5]", "[01]", "n := 1e05 [n]", "[1.]"]);
+    refused(
+        &grammar,
+        &["[1E5]", "[01]", "n := 1e05 [n]", "[1.]", "[1.b]"],
+    );
+}
+
+#[test]
+fn a_field_is_projected_out_of_whatever_stands_to_the_left_of_the_dot() {
+    let grammar = Grammar::surface().unwrap();
+    admitted(
+        &grammar,
+        &[
+            "p := {a = 1} p.a",
+            "p := {a = {b = 1}} p.a.b",
+            "{a = 1}.a",
+            "[1 2].a",
+            "{\"a\" => 1}.a",
+            "p := {a = 1} {b = p.a}",
+            "p := {a = 1} {p.a => 1}",
+        ],
+    );
+    refused(
+        &grammar,
+        &["p := {a = 1} p.", "p := {a = 1} p.1", ".a", "p.A"],
+    );
+}
+
+#[test]
+fn the_dot_takes_whitespace_the_way_every_other_operator_does() {
+    let grammar = Grammar::surface().unwrap();
+    admitted(
+        &grammar,
+        &[
+            "p := {a = {b = 1}} [p . a . b]",
+            "p := {a = 1} [p. a]",
+            "p := {a = 1} [p .a]",
+            "p := {a = 1} [p # here\n.a]",
+            "[1 . b]",
+        ],
+    );
+}
+
+#[test]
+fn a_projection_is_a_shape_of_its_own_until_it_is_reduced() {
+    let grammar = Grammar::surface().unwrap();
+    let cases = [
+        ("p := {a = 1} p.a", scalar("access")),
+        ("p := {a = 1} p", scalar("reference")),
+        (
+            "p := {a = 1} {b = p.a}",
+            Shape::Tuple(vec![("b".to_owned(), scalar("access"))]),
+        ),
+        ("[{a = 1}.a]", Shape::List(vec![scalar("access")])),
+    ];
+    for (source, expected) in cases {
+        let parse = grammar
+            .parse(source)
+            .unwrap_or_else(|error| panic!("{source} should parse, but: {error}"));
+        assert_eq!(parse.shape(), expected, "for {source}");
+    }
 }

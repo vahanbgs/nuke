@@ -16,7 +16,20 @@
 
 document   = ows *( binding ows ) value ows
 
-value      = tuple / map / list / reference / atom / string / number
+; Field access projects a field out of a tuple. It is postfix rather than
+; recursive on its left because a PEG admits no left recursion, and it takes
+; `ows` on both sides because every other operator does — so `[a .b]` holds one
+; element, not two.
+;
+; It is also where the token layer's greediness finally shows: a number token
+; takes the point with it, so `1.b` is the malformed number `1.` beside a name
+; and only `1 . b` is a projection. Nothing new is at work — `[12]` and `[1 2]`
+; differ for the same reason — but `.` is the first thing that is not a value
+; and can still run together with one.
+
+value      = operand *( ows access )
+access     = "." ows ident
+operand    = tuple / map / list / reference / atom / string / number
 
 ; A binding names a value and contributes nothing to the result. It stands at
 ; the head of the document or of a brace block, before any pair. A list holds

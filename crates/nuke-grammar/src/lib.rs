@@ -209,8 +209,19 @@ fn children<'a>(
 }
 
 fn shape_of(value: pest::iterators::Pair<'_, &str>) -> Shape {
+    if !children(&value, "access").is_empty() {
+        return Shape::Scalar("access".to_owned());
+    }
     let Some(inner) = value.into_inner().next() else {
         return Shape::Empty;
+    };
+    let inner = if inner.as_rule() == "operand" {
+        let Some(taken) = inner.into_inner().next() else {
+            return Shape::Empty;
+        };
+        taken
+    } else {
+        inner
     };
     match inner.as_rule() {
         "list" => Shape::List(
