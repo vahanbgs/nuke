@@ -3,7 +3,7 @@
 A simple total configuration language.
 
 Nuke files are expressions. Evaluating one reduces it to a canonical form, which transpiles
-to JSON, YAML, TOML, XML, KDL, Lua, INI and gitconfig — so a dot file can be written
+to JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig and Nix — so a dot file can be written
 once, in one language, and shared between the programs that need it.
 
 ```nuke
@@ -65,17 +65,18 @@ languages share — followed by a syntax layer, and the assembly is normative.
 [`docs/canonical-form.md`](docs/canonical-form.md) covers what the grammar cannot state.
 `crates/nuke-syntax` parses both forms, and its `serde` feature reads a canonical document
 straight into a Rust type; [`docs/serde.md`](docs/serde.md) records what that carries and
-what it cannot. `crates/nuke-transpile` writes JSON, YAML, TOML, XML, KDL, Lua, INI and gitconfig:
-[`docs/json.md`](docs/json.md) settles how atoms, keys and numbers degrade for the targets
-that follow, [`docs/yaml.md`](docs/yaml.md) records what a target wider than the canonical
-form does with the room, [`docs/toml.md`](docs/toml.md) records what a target of a different
-shape refuses, [`docs/xml.md`](docs/xml.md) records what a target with no data model at all
-can still carry, [`docs/kdl.md`](docs/kdl.md) records what a backend declines when a target
-spells one value several ways, [`docs/lua.md`](docs/lua.md) records which Lua a backend writes
-for when the target is a family rather than one language, [`docs/ini.md`](docs/ini.md) records
-what is left to write when a target has no specification and no quoted form for a name, and
+what it cannot. `crates/nuke-transpile` writes JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig
+and Nix: [`docs/json.md`](docs/json.md) settles how atoms, keys and numbers degrade for the
+targets that follow, [`docs/yaml.md`](docs/yaml.md) records what a target wider than the
+canonical form does with the room, [`docs/toml.md`](docs/toml.md) records what a target of a
+different shape refuses, [`docs/xml.md`](docs/xml.md) records what a target with no data model
+at all can still carry, [`docs/kdl.md`](docs/kdl.md) records what a backend declines when a
+target spells one value several ways, [`docs/lua.md`](docs/lua.md) records which Lua a backend
+writes for when the target is a family rather than one language, [`docs/ini.md`](docs/ini.md)
+records what is left to write when a target has no specification and no quoted form for a name,
 [`docs/gitconfig.md`](docs/gitconfig.md) records what a backend does when the target cannot
-spell a name the language guarantees.
+spell a name the language guarantees, and [`docs/nix.md`](docs/nix.md) records what a value
+costs when the target is a programming language and its spelling depends on where it stands.
 
 The surface language has begun. [`grammar/surface.abnf`](grammar/surface.abnf) adds bindings,
 field access and calls, `crates/nuke-eval` reduces a document to the canonical form, and

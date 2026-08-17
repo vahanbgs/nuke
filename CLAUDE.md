@@ -9,7 +9,7 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
 - Nuke configuration files are Nuke expressions which are evaluated and reduced down to a
   core canonical form, which is to Nuke what JSON is to Javascript.
 - Nuke will transpile to all other mainstream configuration languages (JSON, YAML, TOML,
-  XML, KDL, Lua, INI, gitconfig).
+  XML, KDL, Lua, INI, gitconfig, Nix).
 - Nuke will first be used in a dot file manager which will allow users to write all of
   their dot files using a single language, sharing values between them with imports.
 - Nuke files use the `.nuke` extension.
@@ -20,7 +20,7 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
 - `docs/canonical-form.md`, `docs/surface.md` — the rules ABNF cannot express, one per language,
   plus `docs/imports.md` for the ones about files rather than text.
 - `docs/serde.md` — where Nuke and serde's data model disagree, and how the binding settles it.
-- `docs/json.md` and its seven siblings — each mapping, and what it degrades or refuses.
+- `docs/json.md` and its eight siblings — each mapping, and what it degrades or refuses.
 - `fixtures/valid`, `fixtures/invalid` — conformance fixtures. Under `fixtures/surface`, `valid`
   pairs with `reduced` by name, `invalid` is what the parser refuses, `refused` what cannot, and
   `modules` holds the files those fixtures import, which are inputs rather than fixtures.
@@ -33,7 +33,7 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
 - `crates/nuke-eval` — reduces a `Document` to a `Value`, and owns the filesystem: resolution, the
   import cache and the cross-file cycle check. `eval_at` takes the file the source came from.
 - `crates/nuke-transpile` — the backends, each owning its own `ErrorKind` and its own answer to what
-  the target can spell: JSON, YAML, TOML, XML, KDL, Lua, INI and gitconfig. `docs/` argues each.
+  the target can spell: JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig, Nix. `docs/` argues each.
 
 Work inside the devshell: `nix develop -c cargo test --workspace --all-features`. Serde
 support sits behind an off-by-default `serde` feature, so `--all-features` is what covers it.
@@ -48,8 +48,7 @@ support sits behind an off-by-default `serde` feature, so `--all-features` is wh
 - All documents that only contain prose should stay under 100 lines long (including
   CLAUDE.md). Do not hesitate to remove old information that is obvious, useless,
   unimportant or outdated to replace it with new relevant, useful or important information.
-- Use best practices for code maintainability, correctness, performance and compilation
-  speed.
+- Use best practices for code maintainability, correctness, performance and compilation speed.
 - Always write tests.
 - Make compilation fail if clippy emits warnings.
 - Never use directives to silence warnings.
@@ -83,8 +82,9 @@ We are taking baby steps.
   the grammar and against the grammar itself.
 - [x] Serde support: `Value` as a self-describing data model, and `from_str` from text to a user's
   type. It routes through `Value` rather than streaming.
-- [x] The transpiler: eight backends, each owning its own `ErrorKind` and its own answer to what
-      the target can spell, argued in `docs/`. cfg is declined — an extension is not a grammar.
+- [x] The transpiler: nine backends, each owning its own `ErrorKind` and its own answer to what
+      the target can spell, argued in `docs/`. A target earns one when its lesson can be named
+      before it is written; cfg is declined because an extension is not a grammar.
 - [ ] The surface language: the expressions that reduce to the canonical form.
   - [x] Names. `:=` binds and contributes nothing; scope is sequential, so a cycle cannot be
         written; a field is not a binding. The invariant holding the surface language to the
