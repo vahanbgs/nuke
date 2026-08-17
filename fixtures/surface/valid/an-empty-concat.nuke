@@ -1,0 +1,4 @@
+# No parts concatenate to the empty string. That is fixed by the builtin rather
+# than derived from the list, because `[]` and `""` are different values and only
+# `@concat` says which one it answers with.
+@concat []

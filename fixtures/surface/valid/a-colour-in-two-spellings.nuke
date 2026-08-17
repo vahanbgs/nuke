@@ -1,0 +1,9 @@
+# The colour is written once and without a `#`, because the `#` belongs to the
+# program reading it rather than to the palette. Without a way to build a string
+# the palette would have to carry one field per consumer.
+accent := "FE8019"
+
+{
+  alacritty = {cursor = @concat ["#" accent]}
+  fish = {fish_color_command = accent}
+}

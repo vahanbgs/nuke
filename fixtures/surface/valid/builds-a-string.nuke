@@ -1,0 +1,10 @@
+# `@concat` is the first builtin about values rather than files, which is what
+# makes `@` a namespace. A call takes one operand, so the parts arrive as a list
+# however many of them there are.
+prefix := "#"
+
+[
+  @concat [prefix "1D2021"]
+  @concat ["a" "b" "c"]
+  @concat ["only"]
+]

@@ -1,0 +1,4 @@
+# A call takes one operand, so a builtin wanting more takes a collection. The
+# parts are a list even when there is one of them, and a string is not a list of
+# one.
+@concat "a"

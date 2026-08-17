@@ -1,0 +1,4 @@
+{
+  alacritty = {cursor = "#FE8019"}
+  fish = {fish_color_command = "FE8019"}
+}

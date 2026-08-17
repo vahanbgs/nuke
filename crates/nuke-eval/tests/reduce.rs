@@ -166,6 +166,75 @@ fn every_fault_carries_the_span_of_what_raised_it() {
     );
 }
 
+#[test]
+fn a_string_is_built_from_its_parts_in_the_order_they_stand() {
+    assert_eq!(
+        reduced("@concat [\"#\" \"1D2021\"]"),
+        reduced("\"#1D2021\"")
+    );
+    assert_eq!(reduced("@concat [\"a\" \"b\" \"c\"]"), reduced("\"abc\""));
+    assert_eq!(reduced("@concat [\"only\"]"), reduced("\"only\""));
+    assert_eq!(reduced("@concat []"), reduced("\"\""));
+    assert_eq!(
+        reduced("c := \"FE8019\" [@concat [\"#\" c] c]"),
+        reduced("[\"#FE8019\" \"FE8019\"]"),
+        "a colour is spelled once and reaches two readers that disagree about the hash"
+    );
+    assert_eq!(
+        reduced("concat := \"c\" {concat = @concat [concat concat]}"),
+        reduced("{concat = \"cc\"}"),
+        "a builtin's name is a name only after `@`, so no word is spent on this one either"
+    );
+}
+
+#[test]
+fn only_a_list_of_strings_concatenates() {
+    for source in ["@concat \"a\"", "@concat {a = \"b\"}", "@concat 1"] {
+        assert_eq!(refused(source).kind(), &ErrorKind::NotAList, "for {source}");
+    }
+    for source in [
+        "@concat [1]",
+        "@concat [\"a\" 1.5]",
+        "@concat [Dark]",
+        "@concat [[\"a\"]]",
+        "@concat [{a = \"b\"}]",
+        "@concat [{\"a\" => \"b\"}]",
+    ] {
+        assert_eq!(
+            refused(source).kind(),
+            &ErrorKind::NotAString,
+            "for {source}"
+        );
+    }
+}
+
+fn doubling(lines: usize) -> String {
+    let mut source = String::from("s0 := \"0123456789\"\n");
+    for level in 1..lines {
+        source.push_str(&format!(
+            "s{level} := @concat [s{} s{}]\n",
+            level - 1,
+            level - 1
+        ));
+    }
+    source.push_str(&format!("s{}", lines - 1));
+    source
+}
+
+#[test]
+fn a_document_that_doubles_a_string_each_line_stops_where_the_value_budget_cannot() {
+    assert_eq!(
+        reduced(&doubling(10)),
+        reduced(&format!("\"{}\"", "0123456789".repeat(512))),
+        "a string is one value however long it is, so nothing here spends the value budget"
+    );
+    assert_eq!(
+        refused(&doubling(20)).kind(),
+        &ErrorKind::TooLong,
+        "which is why a string needs a budget of its own; termination is not feasibility"
+    );
+}
+
 fn tree(files: &[(&str, &str)]) -> tempfile::TempDir {
     let root = tempfile::tempdir().expect("a temporary directory");
     for (name, source) in files {

@@ -130,6 +130,18 @@ fn refusals() -> Vec<(&'static str, Fault)> {
             "an-import-path-that-is-not-a-literal.nuke",
             Fault::Kind(ErrorKind::ExpectedImportPath),
         ),
+        (
+            "a-concat-of-one-string.nuke",
+            Fault::Kind(ErrorKind::NotAList),
+        ),
+        (
+            "a-concat-of-a-number.nuke",
+            Fault::Kind(ErrorKind::NotAString),
+        ),
+        (
+            "a-concat-of-an-atom.nuke",
+            Fault::Kind(ErrorKind::NotAString),
+        ),
     ]
 }
 
