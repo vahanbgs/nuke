@@ -1,6 +1,7 @@
 pub mod error;
 pub mod json;
 pub mod kdl;
+pub mod lua;
 pub mod toml;
 pub mod xml;
 pub mod yaml;

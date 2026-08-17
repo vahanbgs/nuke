@@ -12,6 +12,7 @@ ryu.workspace = true
 
 [dev-dependencies]
 kdl.workspace = true
+mlua.workspace = true
 nuke-fixtures.workspace = true
 quick-xml.workspace = true
 saphyr.workspace = true
