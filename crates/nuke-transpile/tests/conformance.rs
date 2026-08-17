@@ -1,6 +1,7 @@
 use kdl::{KdlDocument, KdlNode, KdlValue};
 use nuke_fixtures::Fixture;
 use nuke_syntax::{Value, parse};
+use nuke_transpile::ini as ini_backend;
 use nuke_transpile::json::{ErrorKind, to_string, to_string_compact};
 use nuke_transpile::kdl as kdl_backend;
 use nuke_transpile::lua;
@@ -872,4 +873,88 @@ fn count(table: &mlua::Table) -> usize {
         pairs += 1;
     }
     pairs
+}
+
+fn ini_refusals() -> Vec<(&'static str, ini_backend::ErrorKind, &'static str)> {
+    let root = ini_backend::ErrorKind::UnrepresentableRoot("list");
+    vec![
+        ("collections.nuke", root.clone(), "the document"),
+        ("comments.nuke", root.clone(), "the document"),
+        (
+            "dotfile.nuke",
+            ini_backend::ErrorKind::UnrepresentableValue("map"),
+            "shell.aliases",
+        ),
+        (
+            "maps.nuke",
+            ini_backend::ErrorKind::UnrepresentableKey("integer"),
+            "#2",
+        ),
+        ("scalars.nuke", root.clone(), "the document"),
+        ("strings.nuke", root.clone(), "the document"),
+        (
+            "tuples.nuke",
+            ini_backend::ErrorKind::UnrepresentableValue("list"),
+            "nested.a",
+        ),
+        ("whitespace.nuke", root, "the document"),
+    ]
+}
+
+#[test]
+fn every_fixture_ini_cannot_carry_is_refused_by_the_error_that_names_its_fault() {
+    for (name, kind, path) in ini_refusals() {
+        let fixture = fixture(name);
+        let error = ini_backend::to_string(&value_of(&fixture))
+            .err()
+            .unwrap_or_else(|| panic!("{name} should have been refused"));
+        assert_eq!(error.kind(), &kind, "for {name}");
+        assert_eq!(error.path().to_string(), path, "for {name}");
+    }
+}
+
+#[test]
+fn ini_is_the_one_target_no_fixture_crosses_into_at_all() {
+    let written: Vec<String> = nuke_fixtures::valid()
+        .iter()
+        .map(|fixture| fixture.name().to_owned())
+        .collect();
+    let refused: Vec<String> = ini_refusals()
+        .into_iter()
+        .map(|(name, _, _)| name.to_owned())
+        .collect();
+    assert_eq!(
+        refused, written,
+        "no document written in this language is an INI file"
+    );
+
+    for (target, refusals) in [
+        ("JSON", refusals().len()),
+        ("TOML", toml_refusals().len()),
+        ("XML", xml_refusals().len()),
+        ("KDL", kdl_refusals().len()),
+        ("Lua", lua_refusals().len()),
+    ] {
+        assert!(
+            refusals < written.len(),
+            "{target} refuses every fixture too, so INI is no longer the one that does"
+        );
+    }
+}
+
+#[test]
+fn the_key_rule_ini_inherits_stops_it_where_json_stops() {
+    let json = refusals()
+        .into_iter()
+        .find(|(name, _, _)| *name == "maps.nuke")
+        .map(|(_, _, path)| path);
+    let ini = ini_refusals()
+        .into_iter()
+        .find(|(name, _, _)| *name == "maps.nuke")
+        .map(|(_, _, path)| path);
+    assert_eq!(json, Some("#2"));
+    assert_eq!(
+        ini, json,
+        "a name is a string or an atom here for the reason it is there"
+    );
 }
