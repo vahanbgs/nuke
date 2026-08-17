@@ -4,6 +4,7 @@ pub mod ini;
 pub mod json;
 pub mod kdl;
 pub mod lua;
+pub mod nix;
 pub mod toml;
 pub mod xml;
 pub mod yaml;
