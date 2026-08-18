@@ -2,6 +2,7 @@ mod visit;
 
 use std::fmt;
 
+use nuke_resolve::Resolution;
 use nuke_syntax::expr::Document;
 use nuke_syntax::{Error, Location, Span};
 
@@ -98,5 +99,12 @@ pub fn lint(source: &str) -> Result<Vec<Diagnostic>, Error> {
 }
 
 pub fn lint_document(document: &Document) -> Vec<Diagnostic> {
-    visit::Pass::default().document(document)
+    let mut found = visit::Pass::default().document(document);
+    found.extend(Resolution::of(document).unread().map(|bound| Diagnostic {
+        rule: Rule::UnusedBinding,
+        spelling: bound.ident.as_str().into(),
+        span: bound.span,
+    }));
+    found.sort_by_key(|diagnostic| diagnostic.span.start);
+    found
 }

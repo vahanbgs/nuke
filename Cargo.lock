@@ -955,6 +955,7 @@ name = "nuke-lint"
 version = "0.0.0"
 dependencies = [
  "nuke-fixtures",
+ "nuke-resolve",
  "nuke-syntax",
 ]
 
