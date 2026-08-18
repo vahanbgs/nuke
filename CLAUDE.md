@@ -16,9 +16,9 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
 - `grammar/` — `tokens.abnf` then `canonical.abnf` or `surface.abnf`; a grammar is that pair.
 - `docs/canonical-form.md`, `docs/surface.md` — the rules ABNF cannot express, one per language,
   plus `docs/imports.md` for files, `docs/interpolation.md` for text, `docs/dyadic.md` for bases.
-- `docs/serde.md` — where Nuke and serde's data model disagree, and how the binding settles it;
-  `docs/embedding.md` — where the language stops and a host program begins;
-  `docs/formatting.md` — what the formatter decides, and the far larger part it leaves alone.
+- `docs/serde.md` — where Nuke and serde's data model disagree; `docs/embedding.md` — where the
+  language stops and a host begins; `docs/formatting.md` — what the formatter decides and leaves
+  alone; `docs/highlighting.md` — what a grammar for unfinished text may disagree about.
 - `docs/json.md` and its eight siblings — each mapping, and what it degrades or refuses.
 - `fixtures/valid`, `fixtures/invalid` — conformance fixtures. Under `fixtures/surface`, `valid`
   pairs with `reduced` by name, `invalid` is what the parser refuses, `refused` what cannot, and
@@ -38,8 +38,11 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
   `Target` names one and `Refusal` wraps the nine errors without flattening them.
 - `crates/nuke-cli` — the binary `nuke`: `render` writes a document out, `deps` lists what it read,
   `fmt` formats one from a path or `-`. None of the three writes a file.
+- `tree-sitter-nuke/` — the surface language for editors, outside the workspace because a Rust
+  binding would be unsafe. `test/verdicts` names every fixture it does not simply accept.
 
-Work in the devshell: `nix develop -c cargo test --workspace --all-features` covers serde too.
+Work in the devshell: `nix develop -c cargo test --workspace --all-features` covers serde too,
+and `-c ./tree-sitter-nuke/conformance.sh` the grammar an editor loads, which is no Cargo crate.
 
 ## Rules
 
@@ -79,10 +82,8 @@ convention says nothing about bodies, so the two compose.
 
 We are taking baby steps.
 
-- [x] Design the grammar of Nuke's canonical form in ABNF.
-- [x] A hand-written lexer and parser for the canonical form, checked against the grammar itself
-  and against the same fixtures.
-- [x] Serde support: `Value` as a self-describing data model, and `from_str` into a user's type.
+- [x] The canonical form: its ABNF, a hand-written lexer and parser checked against that grammar
+      and against the fixtures, and serde's `Value` with `from_str` into a user's type.
 - [x] The transpiler: nine backends, each owning its `ErrorKind` and its answer to what the target
       can spell. A target earns one when its lesson can be named before it is written.
 - [x] The surface language: sequential scope and `:=`, `@import` and `@concat`, `$"…"` with Rust's
@@ -91,9 +92,8 @@ We are taking baby steps.
 - [x] The embedding surface: `Target`, `bind::from_path`, the files a reduction read, and
       `crates/nuke-cli`. Nuke ends at text and the host begins at files, which strikes the
       manifest — a name says where a file goes. `docs/embedding.md` argues the line.
-- [ ] The editor tooling, which `dot` now waits on, because using Nuke there means writing it by
-      hand. The formatter is done — `nuke fmt`, argued in `docs/formatting.md`. What remains is a
-      `tree-sitter` grammar, which is where Helix gets highlighting and an LSP cannot supply it,
-      then the linter and the LSP server.
+- [ ] The editor tooling, which `dot` waits on. `nuke fmt` is done and so is the `tree-sitter`
+      grammar Helix highlights from; the linter `docs/canonical-form.md` owes a style is not, nor
+      is the LSP server.
 - [ ] `ghostty` and `plist`, the two targets the roster misses, and then `dot` linking this
       workspace. The shells stay declined: a template engine writes what has no grammar.

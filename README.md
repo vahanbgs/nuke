@@ -86,14 +86,22 @@ Nuke is meant to be embedded. `eval_at` turns a file into a value, `bind::from_p
 into a Rust type, `Target` names a backend so a host chooses one while it runs, and a reduction
 reports the files it read. The binary `nuke` is the worked example — `render` writes a document
 out, `deps` lists what built it — and it writes no file of its own, because where a dot file goes
-belongs to a manager; [`docs/embedding.md`](docs/embedding.md) draws the line. Operators,
-conditionals and the two targets the roster misses are ahead.
+belongs to a manager; [`docs/embedding.md`](docs/embedding.md) draws the line.
+
+Editing it is what is being built now. `nuke fmt` formats a document without reflowing it, and
+[`tree-sitter-nuke/`](tree-sitter-nuke) is the grammar Helix takes its highlighting from — a
+third grammar, this one for text that is not finished yet, held to the same fixtures with every
+place it disagrees with the other two written down;
+[`docs/highlighting.md`](docs/highlighting.md) argues them. The linter and the LSP server come
+next, and operators, conditionals and the two targets the roster misses after those.
 
 ## Development
 
 ```sh
 nix develop -c cargo test --workspace --all-features
+nix develop -c ./tree-sitter-nuke/conformance.sh
 ```
 
 `crates/nuke-grammar` assembles each grammar's ABNF, translates it to pest at test time and runs
-every fixture through it, so the specification is executable and cannot drift from the code.
+every fixture through it, so the specification is executable and cannot drift from the code. The
+second command does the same for the tree-sitter grammar, which is not a Cargo crate.
