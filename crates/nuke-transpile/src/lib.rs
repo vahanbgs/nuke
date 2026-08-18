@@ -10,6 +10,7 @@ pub(crate) mod table;
 pub mod target;
 pub mod toml;
 pub mod xml;
+pub(crate) mod xml_text;
 pub mod yaml;
 
 pub use error::{Error, Path, Segment};

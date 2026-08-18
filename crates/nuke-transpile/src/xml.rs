@@ -3,6 +3,7 @@ use std::fmt;
 use nuke_syntax::{Float, MAX_DEPTH, Map, Tuple, Value};
 
 use crate::error::{Path, Segment, too_deep};
+use crate::xml_text;
 
 pub type Error = crate::error::Error<ErrorKind>;
 
@@ -141,19 +142,8 @@ impl Writer {
     }
 
     fn escape(&mut self, text: &str) -> Result<(), Error> {
-        for character in text.chars() {
-            match character {
-                '&' => self.out.push_str("&amp;"),
-                '<' => self.out.push_str("&lt;"),
-                '>' => self.out.push_str("&gt;"),
-                '\r' => self.out.push_str("&#xD;"),
-                forbidden if is_forbidden(forbidden) => {
-                    return Err(self.error(ErrorKind::UnrepresentableCharacter(forbidden)));
-                }
-                other => self.out.push(other),
-            }
-        }
-        Ok(())
+        xml_text::escape(&mut self.out, text)
+            .map_err(|forbidden| self.error(ErrorKind::UnrepresentableCharacter(forbidden)))
     }
 
     fn float(&mut self, number: Float) {
@@ -223,11 +213,4 @@ fn is_name_char(character: char) -> bool {
             character,
             '-' | '.' | '\u{B7}' | '\u{300}'..='\u{36F}' | '\u{203F}'..='\u{2040}'
         )
-}
-
-fn is_forbidden(character: char) -> bool {
-    matches!(
-        character,
-        '\u{0}'..='\u{8}' | '\u{B}' | '\u{C}' | '\u{E}'..='\u{1F}' | '\u{FFFE}' | '\u{FFFF}'
-    )
 }
