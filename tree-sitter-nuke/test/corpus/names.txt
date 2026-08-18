@@ -1,0 +1,111 @@
+================================================================================
+A binding stands at the head of a document and of a block
+================================================================================
+
+accent := "#FE8019"
+
+{
+	tab := 2
+	editor = {theme = accent tab_width = tab}
+}
+
+--------------------------------------------------------------------------------
+
+(document
+  (binding
+    (ident)
+    (string))
+  (tuple
+    (binding
+      (ident)
+      (number))
+    (field
+      (ident)
+      (tuple
+        (field
+          (ident)
+          (reference
+            (ident)))
+        (field
+          (ident)
+          (reference
+            (ident)))))))
+
+================================================================================
+Projection is postfix and chains to the left
+================================================================================
+
+palette.editor.theme
+
+--------------------------------------------------------------------------------
+
+(document
+  (access
+    (access
+      (reference
+        (ident))
+      (ident))
+    (ident)))
+
+================================================================================
+A dot takes room on both sides, so `[a .b]` holds one element
+================================================================================
+
+[a .b]
+
+--------------------------------------------------------------------------------
+
+(document
+  (list
+    (access
+      (reference
+        (ident))
+      (ident))))
+
+================================================================================
+A parenthesised key is evaluated, and a bare name never is
+================================================================================
+
+[m.("accent") m.(k) m.(0) m.accent]
+
+--------------------------------------------------------------------------------
+
+(document
+  (list
+    (access
+      (reference
+        (ident))
+      (computed
+        (string)))
+    (access
+      (reference
+        (ident))
+      (computed
+        (reference
+          (ident))))
+    (access
+      (reference
+        (ident))
+      (computed
+        (number)))
+    (access
+      (reference
+        (ident))
+      (ident))))
+
+================================================================================
+Greedy tokens keep `1 . b` a projection and `1.b` a bad number beside a name
+================================================================================
+
+[1 . b 1.b]
+
+--------------------------------------------------------------------------------
+
+(document
+  (list
+    (access
+      (number)
+      (ident))
+    (malformed_number)
+    (reference
+      (ident))))

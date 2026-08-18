@@ -1,0 +1,58 @@
+# Every fixture this grammar does not simply accept, and the list is exhaustive: a
+# fixture missing from here must parse clean, and a name here that is no longer a
+# fixture is a stale line. Six fixtures are absent on purpose, because the fault in
+# them is one no grammar of this language can see; docs/highlighting.md names all six.
+
+# Refused — the tree holds an ERROR or a MISSING node, which is what an editor paints
+# red and what an incremental parser recovers from. The fault is in the shape.
+invalid/bare-carriage-return.nuke refused
+invalid/chained-dots.nuke refused
+invalid/colon-instead-of-equals.nuke refused
+invalid/comma-separator.nuke refused
+invalid/comment-only.nuke refused
+invalid/control-character-in-string.nuke refused
+invalid/dropped-escape.nuke refused
+invalid/empty.nuke refused
+invalid/leading-plus.nuke refused
+invalid/lowercase-escape-hex.nuke refused
+invalid/mixed-pair-operators.nuke refused
+invalid/solidus-escape.nuke refused
+invalid/two-values.nuke refused
+invalid/unterminated-list.nuke refused
+invalid/unterminated-string.nuke refused
+invalid/uppercase-escape.nuke refused
+invalid/uppercase-field-name.nuke refused
+surface/invalid/a-call-without-a-builtin-name.nuke refused
+surface/invalid/a-call-without-an-operand.nuke refused
+surface/invalid/access-without-a-field-name.nuke refused
+surface/invalid/a-hole-that-holds-two-values.nuke refused
+surface/invalid/a-hole-with-no-value.nuke refused
+surface/invalid/a-key-that-holds-two-values.nuke refused
+surface/invalid/a-key-that-is-never-closed.nuke refused
+surface/invalid/a-lone-brace-in-an-interpolation.nuke refused
+surface/invalid/an-interpolation-that-is-never-closed.nuke refused
+surface/invalid/a-projection-with-no-key.nuke refused
+surface/invalid/binding-after-a-field.nuke refused
+surface/invalid/binding-after-an-entry.nuke refused
+surface/invalid/binding-a-name-that-is-not-one.nuke refused
+surface/invalid/binding-as-a-value.nuke refused
+surface/invalid/binding-in-a-list.nuke refused
+surface/invalid/binding-without-a-document.nuke refused
+surface/modules/is-not-a-document.nuke refused
+
+# Named — the refinement `grammar/tokens.abnf` splits in two and `nuke-grammar` checks
+# in a second pass over the tree. Longest match makes it one token here too, so a
+# misspelling stays one bad number that names itself rather than two good ones: the
+# document parses, and `malformed_number` is what an editor paints.
+invalid/exponent-leading-zero.nuke named
+invalid/exponent-plus.nuke named
+invalid/list-double-zero.nuke named
+invalid/list-leading-zero.nuke named
+invalid/list-uppercase-exponent.nuke named
+invalid/trailing-dot.nuke named
+invalid/uppercase-exponent.nuke named
+surface/invalid/access-into-a-number.nuke named
+surface/invalid/a-digit-a-base-has-not-got.nuke named
+surface/invalid/a-dyadic-literal-with-a-point.nuke named
+surface/invalid/a-hex-digit-in-lower-case.nuke named
+surface/invalid/a-marker-with-no-digits.nuke named
