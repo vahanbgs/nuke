@@ -33,8 +33,35 @@
             "rustfmt"
           ];
         };
+
+        manifest = builtins.fromTOML (builtins.readFile ./crates/nuke-cli/Cargo.toml);
+
+        rustPlatform = pkgs.makeRustPlatform {
+          cargo = toolchain;
+          rustc = toolchain;
+        };
       in
       {
+        packages.default = rustPlatform.buildRustPackage {
+          pname = "nuke";
+          version = manifest.package.version;
+          src = ./.;
+
+          cargoLock.lockFile = ./Cargo.lock;
+          cargoBuildFlags = [
+            "--package"
+            "nuke-cli"
+          ];
+
+          doCheck = false;
+
+          meta = {
+            description = "Render, inspect and format Nuke documents";
+            mainProgram = "nuke";
+            platforms = pkgs.lib.platforms.unix;
+          };
+        };
+
         devShells.default = pkgs.mkShell {
           packages = [
             toolchain
