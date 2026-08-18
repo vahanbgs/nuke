@@ -1,7 +1,9 @@
 use std::str::FromStr;
 
 use nuke_syntax::{Value, parse};
-use nuke_transpile::{Target, ghostty, gitconfig, ini, json, kdl, lua, nix, toml, xml, yaml};
+use nuke_transpile::{
+    Target, ghostty, gitconfig, ini, json, kdl, lua, nix, plist, toml, xml, yaml,
+};
 
 fn value_of(source: &str) -> Value {
     parse(source).expect("the source should parse")
@@ -19,6 +21,7 @@ fn by_module(target: Target, value: &Value) -> Result<String, String> {
         Target::Gitconfig => gitconfig::to_string(value).map_err(|error| error.to_string()),
         Target::Nix => nix::to_string(value).map_err(|error| error.to_string()),
         Target::Ghostty => ghostty::to_string(value).map_err(|error| error.to_string()),
+        Target::Plist => plist::to_string(value).map_err(|error| error.to_string()),
     }
 }
 
@@ -41,7 +44,7 @@ fn every_target_is_named_once() {
 
 #[test]
 fn a_name_no_target_answers_to_is_refused() {
-    for name in ["", "JSON", "cfg", "fish", "plist", "yml"] {
+    for name in ["", "JSON", "cfg", "fish", "plutil", "yml"] {
         let refused = Target::from_str(name).expect_err("no target should answer");
         assert_eq!(refused.name(), name);
     }
@@ -54,6 +57,7 @@ fn an_extension_names_the_target_that_writes_it() {
     assert_eq!(Target::from_extension("yaml"), Some(Target::Yaml));
     assert_eq!(Target::from_extension("yml"), Some(Target::Yaml));
     assert_eq!(Target::from_extension("nix"), Some(Target::Nix));
+    assert_eq!(Target::from_extension("plist"), Some(Target::Plist));
 }
 
 #[test]
@@ -65,6 +69,8 @@ fn an_extension_no_target_claims_is_nobodys() {
         "config",
         "gitconfig",
         "ghostty",
+        "plst",
+        "stringsdict",
         "JSON",
         "tielpmet",
     ] {

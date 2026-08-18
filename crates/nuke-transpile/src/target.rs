@@ -4,7 +4,7 @@ use std::str::FromStr;
 use nuke_syntax::Value;
 
 use crate::error::Path;
-use crate::{ghostty, gitconfig, ini, json, kdl, lua, nix, toml, xml, yaml};
+use crate::{ghostty, gitconfig, ini, json, kdl, lua, nix, plist, toml, xml, yaml};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Target {
@@ -18,10 +18,11 @@ pub enum Target {
     Gitconfig,
     Nix,
     Ghostty,
+    Plist,
 }
 
 impl Target {
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::Json,
         Self::Yaml,
         Self::Toml,
@@ -32,6 +33,7 @@ impl Target {
         Self::Gitconfig,
         Self::Nix,
         Self::Ghostty,
+        Self::Plist,
     ];
 
     pub const fn name(self) -> &'static str {
@@ -46,6 +48,7 @@ impl Target {
             Self::Gitconfig => "gitconfig",
             Self::Nix => "nix",
             Self::Ghostty => "ghostty",
+            Self::Plist => "plist",
         }
     }
 
@@ -61,6 +64,7 @@ impl Target {
             Self::Gitconfig => &[],
             Self::Nix => &["nix"],
             Self::Ghostty => &[],
+            Self::Plist => &["plist"],
         }
     }
 
@@ -82,6 +86,7 @@ impl Target {
             Self::Gitconfig => gitconfig::to_string(value).map_err(Refusal::Gitconfig),
             Self::Nix => nix::to_string(value).map_err(Refusal::Nix),
             Self::Ghostty => ghostty::to_string(value).map_err(Refusal::Ghostty),
+            Self::Plist => plist::to_string(value).map_err(Refusal::Plist),
         }
     }
 }
@@ -132,6 +137,7 @@ pub enum Refusal {
     Gitconfig(gitconfig::Error),
     Nix(nix::Error),
     Ghostty(ghostty::Error),
+    Plist(plist::Error),
 }
 
 impl Refusal {
@@ -147,6 +153,7 @@ impl Refusal {
             Self::Gitconfig(_) => Target::Gitconfig,
             Self::Nix(_) => Target::Nix,
             Self::Ghostty(_) => Target::Ghostty,
+            Self::Plist(_) => Target::Plist,
         }
     }
 
@@ -162,6 +169,7 @@ impl Refusal {
             Self::Gitconfig(error) => error.path(),
             Self::Nix(error) => error.path(),
             Self::Ghostty(error) => error.path(),
+            Self::Plist(error) => error.path(),
         }
     }
 }
@@ -179,6 +187,7 @@ impl fmt::Display for Refusal {
             Self::Gitconfig(error) => write!(f, "{error}"),
             Self::Nix(error) => write!(f, "{error}"),
             Self::Ghostty(error) => write!(f, "{error}"),
+            Self::Plist(error) => write!(f, "{error}"),
         }
     }
 }
