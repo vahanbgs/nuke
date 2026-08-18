@@ -5,6 +5,7 @@ pub mod json;
 pub mod kdl;
 pub mod lua;
 pub mod nix;
+pub(crate) mod table;
 pub mod target;
 pub mod toml;
 pub mod xml;

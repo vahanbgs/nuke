@@ -1,9 +1,10 @@
 use std::collections::HashSet;
 use std::fmt;
 
-use nuke_syntax::{Float, Map, Tuple, Value};
+use nuke_syntax::{Float, Value};
 
 use crate::error::{Path, Segment, article, form};
+use crate::table::Table;
 
 pub type Error = crate::error::Error<ErrorKind>;
 
@@ -71,22 +72,6 @@ pub fn to_string(value: &Value) -> Result<String, Error> {
     let mut writer = Writer::default();
     writer.document(table)?;
     Ok(writer.out)
-}
-
-#[derive(Clone, Copy)]
-enum Table<'a> {
-    Tuple(&'a Tuple),
-    Map(&'a Map),
-}
-
-impl<'a> Table<'a> {
-    fn of(value: &'a Value) -> Option<Self> {
-        match value {
-            Value::Tuple(tuple) => Some(Self::Tuple(tuple)),
-            Value::Map(map) => Some(Self::Map(map)),
-            _ => None,
-        }
-    }
 }
 
 #[derive(Clone, Copy)]
