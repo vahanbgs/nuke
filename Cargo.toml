@@ -5,6 +5,7 @@ members = [
   "crates/nuke-eval",
   "crates/nuke-fixtures",
   "crates/nuke-grammar",
+  "crates/nuke-lint",
   "crates/nuke-syntax",
   "crates/nuke-transpile",
 ]
@@ -18,6 +19,7 @@ rust-version = "1.85"
 nuke-eval = { path = "crates/nuke-eval" }
 nuke-fixtures = { path = "crates/nuke-fixtures" }
 nuke-grammar = { path = "crates/nuke-grammar" }
+nuke-lint = { path = "crates/nuke-lint" }
 nuke-syntax = { path = "crates/nuke-syntax" }
 nuke-transpile = { path = "crates/nuke-transpile" }
 clap = { version = "4", features = ["derive"] }

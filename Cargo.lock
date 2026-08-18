@@ -915,6 +915,7 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "nuke-eval",
+ "nuke-lint",
  "nuke-syntax",
  "nuke-transpile",
  "tempfile",
@@ -947,6 +948,14 @@ dependencies = [
  "pest",
  "pest_meta",
  "pest_vm",
+]
+
+[[package]]
+name = "nuke-lint"
+version = "0.0.0"
+dependencies = [
+ "nuke-fixtures",
+ "nuke-syntax",
 ]
 
 [[package]]
