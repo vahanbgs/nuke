@@ -72,10 +72,6 @@ protocol defaults to, or UTF-8 where the client offers it in `positionEncodings`
 first thing anyone writes in a dot file and an emoji is the second, so counting characters
 instead of units would be wrong on the lines that matter most.
 
-The outline is the one response this crate spells itself: `lsp-types` cannot build a
-`DocumentSymbol` without initialising a field it deprecates, and this workspace denies warnings
-and forbids silencing them, so a local `Serialize` struct carries the protocol's field names.
-
 ## Helix
 
 ```toml
@@ -90,10 +86,14 @@ file-types = ["nuke"]
 comment-token = "#"
 indent = { tab-width = 8, unit = "\t" }
 language-servers = ["nuke"]
-
-[[grammar]]
-name = "nuke"
-source = { path = "/path/to/nuke/tree-sitter-nuke" }
+auto-format = true
 ```
 
 `formatter` is not needed — the server formats — and `nuke fmt -` stays for what is not an editor.
+
+That block is half of it. Helix finds a grammar and its queries by **language name** under a
+runtime directory and never from the grammar's own repository, so what makes it do anything is
+`runtime/grammars/nuke.so`, compiled from the committed `src/parser.c`, beside a
+`runtime/queries/nuke/` holding the four `.scm` files. `packages.tree-sitter-nuke` builds both,
+which is why no `[[grammar]]` stands above: that block only says where `hx --grammar build` should
+fetch a grammar this flake has already built.

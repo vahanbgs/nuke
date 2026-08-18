@@ -62,6 +62,17 @@
           };
         };
 
+        packages.tree-sitter-nuke = pkgs.tree-sitter.buildGrammar {
+          language = "nuke";
+          version = manifest.workspace.package.version;
+          src = ./tree-sitter-nuke;
+
+          meta = {
+            description = "Nuke grammar for tree-sitter";
+            platforms = pkgs.lib.platforms.unix;
+          };
+        };
+
         devShells.default = pkgs.mkShell {
           packages = [
             toolchain
