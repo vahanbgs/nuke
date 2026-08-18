@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/nuke-cli",
   "crates/nuke-eval",
   "crates/nuke-fixtures",
   "crates/nuke-grammar",
@@ -14,10 +15,12 @@ license = "MIT OR Apache-2.0"
 rust-version = "1.85"
 
 [workspace.dependencies]
+nuke-eval = { path = "crates/nuke-eval" }
 nuke-fixtures = { path = "crates/nuke-fixtures" }
 nuke-grammar = { path = "crates/nuke-grammar" }
 nuke-syntax = { path = "crates/nuke-syntax" }
 nuke-transpile = { path = "crates/nuke-transpile" }
+clap = { version = "4", features = ["derive"] }
 gix-config = { version = "0.59", features = ["sha1"] }
 indexmap = "2"
 kdl = "6"

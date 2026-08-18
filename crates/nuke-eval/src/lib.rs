@@ -9,11 +9,12 @@ use std::path::{Path, PathBuf};
 
 use indexmap::IndexMap;
 use nuke_syntax::expr::{Binding, Document, Expr, ExprKind, Name, Piece};
-use nuke_syntax::{Ident, MAX_DEPTH, Map, Span, Tuple, Value, surface};
+use nuke_syntax::{Ident, MAX_DEPTH, Map, Span, Tuple, surface};
 
 #[cfg(feature = "serde")]
 pub use bind::{from_path, from_source};
 pub use error::{Error, ErrorKind};
+pub use nuke_syntax::{Location, Value};
 
 pub const MAX_VALUES: usize = 1 << 20;
 
