@@ -151,3 +151,54 @@ fn a_document_that_cannot_be_parsed_is_reported_by_position() {
     let message = err(&output);
     assert!(message.starts_with("<stdin>:1:6:"), "{message}");
 }
+
+#[test]
+fn a_document_in_the_style_it_asks_for_is_silent() {
+    let file = fixtures().join("surface/valid/dotfile.nuke");
+    let output = nuke(&["lint", file.to_str().unwrap()]);
+    assert!(output.status.success(), "{}", err(&output));
+    assert_eq!(out(&output), "");
+}
+
+#[test]
+fn a_document_out_of_style_names_the_rule_by_position() {
+    let output = piped(&["lint", "-"], "{a__b = HTTPServer c = @import \"./p\"}");
+    assert!(!output.status.success());
+    let stdout = out(&output);
+    let reported: Vec<&str> = stdout.lines().collect();
+    assert_eq!(reported.len(), 3, "{reported:?}");
+    assert!(
+        reported[0].starts_with("<stdin>:1:2: ident-case:"),
+        "{reported:?}"
+    );
+    assert!(
+        reported[1].starts_with("<stdin>:1:9: atom-case:"),
+        "{reported:?}"
+    );
+    assert!(
+        reported[2].starts_with("<stdin>:1:32: import-extension:"),
+        "{reported:?}"
+    );
+}
+
+#[test]
+fn a_document_that_does_not_parse_is_a_fault_and_not_a_finding() {
+    let output = piped(&["lint", "-"], "{a = }");
+    assert!(!output.status.success());
+    assert_eq!(out(&output), "");
+    assert!(err(&output).starts_with("<stdin>:1:6:"), "{}", err(&output));
+}
+
+#[test]
+fn linting_a_file_leaves_it_alone() {
+    let directory = TempDir::new().expect("a temporary directory");
+    let file = directory.path().join("out-of-style.nuke");
+    let before = "{a__b = 1}\n";
+    std::fs::write(&file, before).expect("the document should be written");
+    let output = nuke(&["lint", file.to_str().unwrap()]);
+    assert!(!output.status.success());
+    assert_eq!(
+        std::fs::read_to_string(&file).expect("the document should still be readable"),
+        before
+    );
+}

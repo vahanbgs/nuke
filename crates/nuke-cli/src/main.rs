@@ -15,7 +15,7 @@ const STDIN: &str = "-";
 #[command(
     name = "nuke",
     version,
-    about = "Render a Nuke document, list what it reads, and format it"
+    about = "Render a Nuke document, list what it reads, format it and check its style"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -36,6 +36,10 @@ enum Command {
         #[arg(value_name = "FILE")]
         file: PathBuf,
     },
+    Lint {
+        #[arg(value_name = "FILE")]
+        file: PathBuf,
+    },
 }
 
 fn main() -> ExitCode {
@@ -43,6 +47,7 @@ fn main() -> ExitCode {
         Command::Render { format, file } => render(format, &file),
         Command::Deps { file } => deps(&file),
         Command::Fmt { file } => fmt(&file),
+        Command::Lint { file } => lint(&file),
     }
     .unwrap_or_else(|report| {
         eprintln!("{report}");
@@ -80,6 +85,25 @@ fn fmt(file: &Path) -> Result<ExitCode, String> {
         .map_err(|error| format!("{}:{}: {error}", name(file), error.location(&source)))?;
     print!("{formatted}");
     Ok(ExitCode::SUCCESS)
+}
+
+fn lint(file: &Path) -> Result<ExitCode, String> {
+    let source = source(file)?;
+    let found = nuke_lint::lint(&source)
+        .map_err(|error| format!("{}:{}: {error}", name(file), error.location(&source)))?;
+    for diagnostic in &found {
+        println!(
+            "{}:{}: {}: {diagnostic}",
+            name(file),
+            diagnostic.location(&source),
+            diagnostic.rule()
+        );
+    }
+    Ok(if found.is_empty() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
 }
 
 fn source(file: &Path) -> Result<String, String> {

@@ -13,6 +13,7 @@ path = "src/main.rs"
 [dependencies]
 clap.workspace = true
 nuke-eval.workspace = true
+nuke-lint.workspace = true
 nuke-syntax.workspace = true
 nuke-transpile.workspace = true
 
