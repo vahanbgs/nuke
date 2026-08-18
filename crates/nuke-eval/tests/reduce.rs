@@ -810,3 +810,37 @@ fn a_fault_below_a_file_reads_as_one_line_naming_every_file_it_passed_through() 
         )
     );
 }
+
+#[test]
+fn a_dyadic_literal_reduces_to_the_decimal_integer_it_spells() {
+    assert_eq!(reduced("0xFE8019"), reduced("16678937"));
+    assert_eq!(reduced("[0b1010 0q3201 0o755]"), reduced("[10 225 493]"));
+    assert_eq!(reduced("[0b101110100xC 0xF35b1]"), reduced("[5964 7787]"));
+    assert_eq!(reduced("-0xFF"), reduced("-255"));
+}
+
+#[test]
+fn a_key_is_one_key_however_many_bases_spell_it() {
+    assert_eq!(
+        refused("{0xFF => 1 255 => 2}").kind(),
+        &ErrorKind::DuplicateKey,
+        "a value is compared as the decimal text it settled as, the base being gone by then"
+    );
+    assert_eq!(reduced("m := {0xFF => 1} m.(255)"), reduced("1"));
+}
+
+#[test]
+fn a_literal_and_a_radix_are_each_other_s_mirror() {
+    for (source, expected) in [
+        (r#"n := 0xFE8019 $"{n:06X}""#, "FE8019"),
+        (r#"n := 0xFF $"{n:#X}""#, "0xFF"),
+        (r#"n := 0b11111111 $"{n:#b}""#, "0b11111111"),
+        (r#"n := 0o377 $"{n:o}""#, "377"),
+    ] {
+        assert_eq!(
+            reduced(source),
+            reduced(&format!("\"{expected}\"")),
+            "for {source}"
+        );
+    }
+}

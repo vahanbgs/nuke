@@ -177,6 +177,39 @@ fn a_misspelled_number_is_one_bad_token_in_the_surface_language_too() {
 }
 
 #[test]
+fn a_dyadic_literal_is_a_number_wherever_a_number_stands() {
+    let grammar = Grammar::surface().unwrap();
+    admitted(
+        &grammar,
+        &[
+            "[0b1010]",
+            "[0q3201]",
+            "[0o755]",
+            "[0xFE8019]",
+            "[0b101110100xC]",
+            "[0xF35b1]",
+            "[0xDEADxBEEF]",
+            "[-0xFF]",
+            "n := 0xFF {a = n}",
+            "{0xFF => 1}",
+        ],
+    );
+    assert_eq!(
+        grammar.parse("0xFF").unwrap().shape(),
+        scalar("number"),
+        "a base is a spelling of a number and not a form of its own"
+    );
+    refused(
+        &grammar,
+        &[
+            "[0xff]", "[0b2]", "[0q4]", "[0o8]", "[0xG]", "[0x]", "[0x1.8]",
+        ],
+    );
+    let canonical = Grammar::canonical().unwrap();
+    refused(&canonical, &["[0xFF]", "[0b1010]"]);
+}
+
+#[test]
 fn a_field_is_projected_out_of_whatever_stands_to_the_left_of_the_dot() {
     let grammar = Grammar::surface().unwrap();
     admitted(

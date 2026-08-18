@@ -79,6 +79,13 @@ fn document(source: &str) -> nuke_syntax::Document {
     surface::parse(source).unwrap_or_else(|error| panic!("{source} should parse, but: {error}"))
 }
 
+fn integer(source: &str) -> String {
+    let ExprKind::Integer(integer) = document(source).value.kind else {
+        panic!("{source} should be an integer");
+    };
+    integer.as_str().to_owned()
+}
+
 #[test]
 fn every_surface_fixture_parses() {
     for reduction in nuke_fixtures::reductions() {
@@ -621,4 +628,136 @@ fn a_specifier_is_refused_where_it_is_not_one() {
         "a width is a `uint`, so a leading zero is refused for the reason `[01]` is"
     );
     document(r#"$"{a :6}""#);
+}
+
+#[test]
+fn a_marker_says_how_many_bits_each_digit_after_it_carries() {
+    for (source, value) in [
+        ("0b1010", "10"),
+        ("0q3201", "225"),
+        ("0o755", "493"),
+        ("0xFE8019", "16678937"),
+    ] {
+        assert_eq!(integer(source), value, "for {source}");
+    }
+}
+
+#[test]
+fn a_marker_stands_anywhere_so_one_literal_carries_more_than_one_base() {
+    assert_eq!(
+        integer("0b101110100xC"),
+        "5964",
+        "nine bits of binary and then four of hex"
+    );
+    assert_eq!(
+        integer("0xF35b1"),
+        "7787",
+        "a hex digit is uppercase, so `b` marks a base rather than being one"
+    );
+    assert_eq!(
+        integer("0xDEADxBEEF"),
+        integer("0xDEADBEEF"),
+        "a marker repeated is the digit separator there is no other spelling for"
+    );
+}
+
+#[test]
+fn a_dyadic_literal_is_a_spelling_and_what_it_spells_is_a_decimal_integer() {
+    assert_eq!(
+        integer("0x00FF"),
+        "255",
+        "a leading zero carries bits and no value"
+    );
+    assert_eq!(
+        integer("-0xFF"),
+        "-255",
+        "the sign belongs to the number and not to the pattern"
+    );
+    assert_eq!(
+        integer("-0b0"),
+        "0",
+        "and `-0` settles as `0` however it is spelled"
+    );
+}
+
+#[test]
+fn a_marker_is_what_makes_a_literal_dyadic_so_a_decimal_number_is_untouched() {
+    assert_eq!(integer("0"), "0", "`0` alone is the decimal number");
+    assert_eq!(integer("42"), "42");
+    assert!(
+        matches!(document("0e5").value.kind, ExprKind::Float(_)),
+        "`e` is no marker, so `0e5` is the float it always was"
+    );
+    assert_eq!(
+        fault("[01]"),
+        ErrorKind::NumberSpelling("01".to_owned()),
+        "and a leading zero is still refused where no marker follows it"
+    );
+}
+
+#[test]
+fn a_hex_digit_is_uppercase_and_every_other_digit_fits_the_base_that_marks_it() {
+    for source in ["0xff", "0b2", "0q4", "0o8", "0xG", "0x"] {
+        assert_eq!(
+            fault(source),
+            ErrorKind::NumberSpelling(source.to_owned()),
+            "for {source}"
+        );
+    }
+}
+
+#[test]
+fn a_dyadic_literal_takes_the_point_with_it_the_way_a_decimal_one_does() {
+    assert_eq!(
+        fault("[0x1.8]"),
+        ErrorKind::NumberSpelling("0x1.8".to_owned()),
+        "there is no hex float, and the token takes the point anyway"
+    );
+    assert_eq!(
+        fault("[0xFF.b]"),
+        ErrorKind::NumberSpelling("0xFF.".to_owned()),
+        "so only a spaced dot projects, as with `1.b`"
+    );
+    document("[0xFF . b]");
+}
+
+#[test]
+fn a_literal_past_128_bits_is_refused_because_every_base_but_ten_is_arithmetic() {
+    let widest = format!("0x{}", "F".repeat(32));
+    assert_eq!(
+        integer(&widest),
+        u128::MAX.to_string(),
+        "128 bits is what the arithmetic holds"
+    );
+    assert_eq!(
+        fault(&format!("0x{}", "F".repeat(33))),
+        ErrorKind::DyadicTooWide,
+        "and one bit more is past it"
+    );
+    assert_eq!(
+        integer(&format!("0x{}FF", "0".repeat(64))),
+        "255",
+        "a leading zero is no width, the ceiling being on the value"
+    );
+    assert_eq!(
+        integer(&"9".repeat(40)),
+        "9".repeat(40),
+        "while a decimal integer stays arbitrary width, being text and not arithmetic"
+    );
+}
+
+#[test]
+fn the_canonical_form_refuses_a_dyadic_literal_by_name_where_it_reaches_it() {
+    for source in ["0xFF", "[0b1010]", "{a = 0o755}", "-0q321"] {
+        let error = parse(source)
+            .err()
+            .unwrap_or_else(|| panic!("{source} should have been rejected"));
+        assert_eq!(error.kind(), &ErrorKind::SurfaceDyadic, "for {source}");
+    }
+    let error = parse("[0xff]").expect_err("a misspelling is no language's");
+    assert_eq!(
+        error.kind(),
+        &ErrorKind::NumberSpelling("0xff".to_owned()),
+        "a bad spelling is a bad spelling before it is anyone's syntax"
+    );
 }
