@@ -8,6 +8,7 @@ use nuke_transpile::json::{ErrorKind, to_string, to_string_compact};
 use nuke_transpile::kdl as kdl_backend;
 use nuke_transpile::lua;
 use nuke_transpile::nix;
+use nuke_transpile::plist as plist_backend;
 use nuke_transpile::toml as toml_backend;
 use nuke_transpile::xml;
 use nuke_transpile::yaml;
@@ -941,6 +942,7 @@ fn the_flat_targets_are_the_ones_no_fixture_crosses_into_at_all() {
         ("KDL", kdl_refusals().len()),
         ("Lua", lua_refusals().len()),
         ("Nix", nix_refusals().len()),
+        ("a property list", plist_refusals().len()),
     ] {
         assert!(
             refusals < written.len(),
@@ -1341,4 +1343,195 @@ fn the_map_fixture_stops_where_gitconfig_stops_it_but_on_the_name_and_not_the_se
         matches!(error.kind(), ghostty::ErrorKind::UnspellableName(name) if name == "string key"),
         "a space is what stops it here, where gitconfig stopped on the key standing outside a section"
     );
+}
+
+fn plist_refusals() -> Vec<(&'static str, plist_backend::ErrorKind, &'static str)> {
+    vec![
+        (
+            "collections.nuke",
+            plist_backend::ErrorKind::UnrepresentableKey("list"),
+            "[6]#1",
+        ),
+        (
+            "maps.nuke",
+            plist_backend::ErrorKind::UnrepresentableKey("integer"),
+            "#2",
+        ),
+        (
+            "strings.nuke",
+            plist_backend::ErrorKind::UnrepresentableCharacter('\u{0}'),
+            "[5]",
+        ),
+    ]
+}
+
+#[test]
+fn every_fixture_a_property_list_cannot_carry_is_refused_by_the_error_that_names_its_fault() {
+    for (name, kind, path) in plist_refusals() {
+        let fixture = fixture(name);
+        let error = plist_backend::to_string(&value_of(&fixture))
+            .err()
+            .unwrap_or_else(|| panic!("{name} should have been refused"));
+        assert_eq!(error.kind(), &kind, "for {name}");
+        assert_eq!(error.path().to_string(), path, "for {name}");
+    }
+}
+
+#[test]
+fn a_property_list_refuses_what_nix_refuses_and_never_for_the_reason_nix_has() {
+    assert_eq!(names(plist_refusals()), names(nix_refusals()));
+    for fixture in ["collections.nuke", "maps.nuke", "strings.nuke"] {
+        assert_eq!(
+            stop_of(plist_refusals(), fixture),
+            stop_of(nix_refusals(), fixture),
+            "the two targets stop at different places in {fixture}"
+        );
+    }
+    let stop = plist_refusals()
+        .into_iter()
+        .find(|(name, _, _)| *name == "strings.nuke")
+        .map(|(_, kind, _)| kind)
+        .expect("strings.nuke is refused");
+    assert_eq!(
+        stop,
+        plist_backend::ErrorKind::UnrepresentableCharacter('\u{0}'),
+        "a property list refuses U+0000 because XML has no character for it, \
+         where Nix refuses it because a Nix string has no escape for it"
+    );
+}
+
+fn plist_of(fixture: &Fixture) -> plist::Value {
+    let written = plist_backend::to_string(&value_of(fixture))
+        .unwrap_or_else(|error| panic!("{} should transpile: {error}", fixture.display()));
+    plist::Value::from_reader_xml(written.as_bytes()).unwrap_or_else(|error| {
+        panic!(
+            "{} wrote a plist that does not parse: {error}\n{written}",
+            fixture.display()
+        )
+    })
+}
+
+fn crossing() -> Vec<Fixture> {
+    let refused = names(plist_refusals());
+    nuke_fixtures::valid()
+        .into_iter()
+        .filter(|fixture| !refused.iter().any(|name| name == fixture.name()))
+        .collect()
+}
+
+#[test]
+fn what_the_backend_writes_is_the_document_a_real_plist_parser_reads_back() {
+    for fixture in crossing() {
+        let value = value_of(&fixture);
+        typed(&value, &plist_of(&fixture), fixture.name());
+    }
+}
+
+fn typed(value: &Value, node: &plist::Value, at: &str) {
+    match value {
+        Value::Tuple(tuple) => {
+            let dictionary = dictionary(node, at);
+            assert_eq!(dictionary.len(), tuple.len(), "{at} lost a field");
+            for ((name, item), (key, item_node)) in tuple.iter().zip(dictionary.iter()) {
+                assert_eq!(
+                    key.as_str(),
+                    name.as_str(),
+                    "{at} renamed or reordered a field"
+                );
+                typed(item, item_node, &format!("{at}.{name}"));
+            }
+        }
+        Value::Map(map) => {
+            let dictionary = dictionary(node, at);
+            assert_eq!(dictionary.len(), map.len(), "{at} lost an entry");
+            for (position, ((key, item), (name, item_node))) in
+                map.iter().zip(dictionary.iter()).enumerate()
+            {
+                let at = format!("{at}#{}", position + 1);
+                let spelled = match key {
+                    Value::String(text) => text.as_str(),
+                    Value::Atom(atom) => atom.as_str(),
+                    other => panic!("{at} keyed a dict with {other:?}"),
+                };
+                assert_eq!(name.as_str(), spelled, "{at} renamed a key");
+                typed(item, item_node, &at);
+            }
+        }
+        Value::List(items) => {
+            let array = node
+                .as_array()
+                .unwrap_or_else(|| panic!("{at} should be an array, not {node:?}"));
+            assert_eq!(array.len(), items.len(), "{at} lost an element");
+            for (index, (item, item_node)) in items.iter().zip(array).enumerate() {
+                typed(item, item_node, &format!("{at}[{index}]"));
+            }
+        }
+        Value::Atom(atom) => match atom.as_str() {
+            "True" => assert_eq!(node.as_boolean(), Some(true), "at {at}"),
+            "False" => assert_eq!(node.as_boolean(), Some(false), "at {at}"),
+            spelling => assert_eq!(node.as_string(), Some(spelling), "at {at}"),
+        },
+        Value::String(text) => assert_eq!(node.as_string(), Some(text.as_str()), "at {at}"),
+        Value::Integer(integer) => {
+            assert_eq!(node.as_signed_integer(), integer.to_i64(), "at {at}")
+        }
+        Value::Float(number) => assert_eq!(node.as_real(), Some(number.get()), "at {at}"),
+    }
+}
+
+fn dictionary<'a>(node: &'a plist::Value, at: &str) -> &'a plist::Dictionary {
+    node.as_dictionary()
+        .unwrap_or_else(|| panic!("{at} should be a dict, not {node:?}"))
+}
+
+#[test]
+fn no_document_this_writes_holds_a_plist_type_the_language_cannot_spell() {
+    for fixture in crossing() {
+        untyped(&plist_of(&fixture), fixture.name());
+    }
+}
+
+fn untyped(node: &plist::Value, at: &str) {
+    match node {
+        plist::Value::Array(items) => items.iter().for_each(|item| untyped(item, at)),
+        plist::Value::Dictionary(dictionary) => {
+            dictionary.values().for_each(|item| untyped(item, at));
+        }
+        plist::Value::Data(_) | plist::Value::Date(_) | plist::Value::Uid(_) => panic!(
+            "{at} wrote {node:?}, which is room the canonical form has no value for, \
+             so nothing this backend writes should ever reach it"
+        ),
+        plist::Value::Boolean(_)
+        | plist::Value::Real(_)
+        | plist::Value::Integer(_)
+        | plist::Value::String(_) => {}
+        other => panic!("{at} wrote {other:?}, a plist type this backend does not know about"),
+    }
+}
+
+#[test]
+fn a_scalar_reads_back_as_the_type_it_was_written_as_where_xml_read_them_all_as_text() {
+    let fixture = fixture("scalars.nuke");
+    let node = plist_of(&fixture);
+    let array = node.as_array().expect("the fixture is a root list");
+    let kinds: Vec<&str> = array.iter().map(kind_of).collect();
+    assert_eq!(
+        kinds,
+        [
+            "boolean", "boolean", "string", "string", "string", "string", "string", "integer",
+            "integer", "integer", "integer", "real", "real", "real", "real", "real", "real",
+            "real",
+        ],
+        "the four atoms, three strings, four integers and seven floats should keep their types"
+    );
+}
+
+fn kind_of(node: &plist::Value) -> &'static str {
+    match node {
+        plist::Value::Boolean(_) => "boolean",
+        plist::Value::String(_) => "string",
+        plist::Value::Integer(_) => "integer",
+        plist::Value::Real(_) => "real",
+        other => panic!("{other:?} is a type this fixture should not reach"),
+    }
 }
