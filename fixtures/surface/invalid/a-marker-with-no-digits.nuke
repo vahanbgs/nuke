@@ -1,0 +1,3 @@
+# A marker says how wide the digits after it are, so a segment without any is
+# no segment. `0` alone is the decimal number.
+[0x]

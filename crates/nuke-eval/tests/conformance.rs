@@ -2,12 +2,12 @@ use std::ffi::OsStr;
 
 use nuke_eval::{Error, ErrorKind, eval, eval_at};
 use nuke_fixtures::Fixture;
-use nuke_syntax::{Value, surface};
+use nuke_syntax::{Value, parse, surface};
 
 enum Standing {
     Refused,
     Reduced(ErrorKind),
-    Reserved(&'static str),
+    Reduces(&'static str),
 }
 
 fn unbound(name: &str) -> Standing {
@@ -28,12 +28,7 @@ fn standing() -> Vec<(&'static str, Standing)> {
         ("empty.nuke", Standing::Refused),
         ("exponent-leading-zero.nuke", Standing::Refused),
         ("exponent-plus.nuke", Standing::Refused),
-        (
-            "hex-literal.nuke",
-            Standing::Reserved(
-                "hex, octal and binary are surface syntax that reduces to a decimal integer",
-            ),
-        ),
+        ("hex-literal.nuke", Standing::Reduces("255")),
         ("ident-as-map-key.nuke", unbound("a")),
         ("interpolated-string.nuke", unbound("x")),
         ("leading-plus.nuke", Standing::Refused),
@@ -342,12 +337,16 @@ fn every_canonically_invalid_fixture_declares_where_it_stands_in_the_surface_lan
                 "{} is a surface document now, so its standing has changed",
                 fixture.display()
             ),
-            Standing::Reserved(note) => assert!(
-                surface::parse(&fixture.source).is_err(),
-                "{} is a surface document now, because {note}; \
-                 say so here rather than leaving this row to lie",
-                fixture.display()
-            ),
+            Standing::Reduces(canonical) => {
+                let value = eval(&fixture.source)
+                    .unwrap_or_else(|error| panic!("{} should reduce: {error}", fixture.display()));
+                assert_eq!(
+                    value,
+                    parse(canonical).unwrap(),
+                    "{} is the one canonically invalid fixture the surface language reduces",
+                    fixture.display()
+                );
+            }
             Standing::Reduced(kind) => {
                 surface::parse(&fixture.source).unwrap_or_else(|error| {
                     panic!(

@@ -1,0 +1,3 @@
+# One feature rather than four: a marker says how many bits each digit after it
+# carries, and `b`, `q`, `o` and `x` say one, two, three and four.
+[0b1010 0q3201 0o755 0xFE8019]

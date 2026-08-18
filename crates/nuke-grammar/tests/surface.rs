@@ -37,11 +37,12 @@ fn every_canonical_document_is_a_surface_document() {
 }
 
 #[test]
-fn the_surface_language_admits_three_documents_the_canonical_form_refuses_and_no_others() {
+fn the_surface_language_admits_four_documents_the_canonical_form_refuses_and_no_others() {
     let canonical = Grammar::canonical().unwrap();
     let surface = Grammar::surface().unwrap();
     let admits = [
         "bare-ident.nuke",
+        "hex-literal.nuke",
         "ident-as-map-key.nuke",
         "interpolated-string.nuke",
     ];

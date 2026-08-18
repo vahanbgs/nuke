@@ -53,12 +53,14 @@ pub enum ErrorKind {
     UnmatchedBrace,
     NumberSpelling(String),
     FloatOutOfRange,
+    DyadicTooWide,
     EmptyDocument,
     IdentAsValue(String),
     SurfaceBinder,
     SurfaceDot,
     SurfaceCall,
     SurfaceInterpolation,
+    SurfaceDyadic,
     ExpectedValue,
     ExpectedHoleClose,
     MalformedSpec,
@@ -127,11 +129,17 @@ impl fmt::Display for ErrorKind {
                  as `{{` is written `{{{{`"
             ),
             Self::NumberSpelling(token) => {
-                write!(f, "`{token}` is not how the canonical form spells a number")
+                write!(f, "`{token}` is not how a number is spelled")
             }
             Self::FloatOutOfRange => write!(
                 f,
                 "this float is past what a double holds, and there is no infinity"
+            ),
+            Self::DyadicTooWide => write!(
+                f,
+                "this literal is past the 128 bits a base other than ten can be computed \
+                 in; a decimal number is the text it was written as, and any other is \
+                 arithmetic"
             ),
             Self::EmptyDocument => write!(f, "a document is one value, and this one is empty"),
             Self::IdentAsValue(name) => write!(
@@ -158,6 +166,11 @@ impl fmt::Display for ErrorKind {
                 f,
                 "`$\"…\"` interpolates in the surface language, and the canonical form carries \
                  data alone"
+            ),
+            Self::SurfaceDyadic => write!(
+                f,
+                "a base other than ten is spelled in the surface language, and the canonical \
+                 form spells a number in decimal"
             ),
             Self::ExpectedValue => write!(f, "expected a value"),
             Self::MalformedSpec => write!(

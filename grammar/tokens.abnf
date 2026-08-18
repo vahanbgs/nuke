@@ -32,12 +32,21 @@ unicode    = %s"u{" 1*6hexdig %x7D
 
 ; A number token takes the whole run that could belong to a number, so that a
 ; misspelling is one bad token rather than two good ones: `1E5` is a single
-; number and not the number 1 beside the atom E5. A token is well formed only
-; if it also matches the rule refining it, which is where the one-spelling rules
-; live — no leading zeros, lowercase `e`, no `+`, a digit either side of the
-; point. Every syntax layer names its own refinement; both name the one below.
+; number and not the number 1 beside the atom E5, and `0xZZ` is one too rather
+; than the number 0 beside a name. A token is well formed only if it also
+; matches the rule refining it, which is where the one-spelling rules live — no
+; leading zeros, lowercase `e`, no `+`, a digit either side of the point. Every
+; syntax layer names its own refinement, and they no longer name the same one:
+; only the surface language spells a number in a base other than ten.
+;
+; `dyadic-run` stands ahead of `decimal-run` because an alternation is ordered
+; once translated and `0e5` has to reach the second. Both take the point, so a
+; number with no fraction to its name still swallows one and says so.
 
-number           = [ "-" ] 1*DIGIT [ frac ] [ exp ]
+number           = [ "-" ] ( dyadic-run / decimal-run )
+decimal-run      = 1*DIGIT [ frac ] [ exp ]
+dyadic-run       = "0" marker *( ALPHA / DIGIT ) [ frac ]
+marker           = %s"b" / %s"q" / %s"o" / %s"x"
 frac             = "." *DIGIT
 exp              = ( %s"e" / %s"E" ) [ "-" / "+" ] *DIGIT
 

@@ -1,0 +1,3 @@
+# Hex digits are uppercase, which is what leaves `b`, `q`, `o` and `x` free to
+# mark a base after one. So this is a misspelling and not 255.
+[0xff]

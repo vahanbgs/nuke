@@ -1,0 +1,4 @@
+# Which is what makes it one feature: nine bits of binary and then four of hex,
+# then twelve of hex and one of binary. A marker is free to stand anywhere,
+# `0xF35b1` included, because a hex digit is uppercase and `b` is not one.
+[0b101110100xC 0xF35b1]

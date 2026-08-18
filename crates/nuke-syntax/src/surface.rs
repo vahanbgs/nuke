@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::MAX_DEPTH;
-use crate::cursor::{Cursor, Number, number};
+use crate::cursor::{Cursor, Number, surface_number};
 use crate::error::{Error, ErrorKind, Span};
 use crate::expr::{Binding, Document, Entry, Expr, ExprKind, Field, Name, Piece};
 use crate::lexer::{TokenKind, cook, unescape};
@@ -152,7 +152,7 @@ impl Parser<'_> {
             }
             TokenKind::Number => {
                 self.cursor.bump()?;
-                match number(token)? {
+                match surface_number(token)? {
                     Number::Integer(integer) => ExprKind::Integer(integer),
                     Number::Float(float) => ExprKind::Float(float),
                 }

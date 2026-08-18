@@ -48,6 +48,22 @@ fn faults() -> Vec<(&'static str, ErrorKind)> {
             ErrorKind::UnterminatedString,
         ),
         ("a-specifier-that-is-not-one.nuke", ErrorKind::MalformedSpec),
+        (
+            "a-hex-digit-in-lower-case.nuke",
+            ErrorKind::NumberSpelling("0xff".to_owned()),
+        ),
+        (
+            "a-digit-a-base-has-not-got.nuke",
+            ErrorKind::NumberSpelling("0b2".to_owned()),
+        ),
+        (
+            "a-marker-with-no-digits.nuke",
+            ErrorKind::NumberSpelling("0x".to_owned()),
+        ),
+        (
+            "a-dyadic-literal-with-a-point.nuke",
+            ErrorKind::NumberSpelling("0x1.8".to_owned()),
+        ),
     ]
 }
 
@@ -155,6 +171,7 @@ fn the_parser_is_stricter_than_the_grammar_where_the_spec_says_so() {
         "{a = 1 a = 2}",
         "[\"\\u{D800}\"]",
         "[1e400]",
+        "[0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF]",
         r#"$"{a:}""#,
         &chain,
     ] {

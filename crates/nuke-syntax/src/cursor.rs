@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::error::{Error, ErrorKind, Span};
-use crate::lexer::{Lexer, NumberKind, Token, canonical_number};
+use crate::lexer::{Dyadic, Lexer, NumberKind, Token, canonical_number, dyadic};
 use crate::value::{Float, Integer};
 
 pub(crate) enum Number {
@@ -10,6 +10,28 @@ pub(crate) enum Number {
 }
 
 pub(crate) fn number(token: Token<'_>) -> Result<Number, Error> {
+    if dyadic(token.text).is_some() {
+        return Err(Error::new(ErrorKind::SurfaceDyadic, token.span));
+    }
+    decimal(token)
+}
+
+pub(crate) fn surface_number(token: Token<'_>) -> Result<Number, Error> {
+    match dyadic(token.text) {
+        Some(Dyadic::Value(value)) => {
+            let signed = if token.text.starts_with('-') {
+                format!("-{value}")
+            } else {
+                value.to_string()
+            };
+            Ok(Number::Integer(Integer::new(&signed)))
+        }
+        Some(Dyadic::TooWide) => Err(Error::new(ErrorKind::DyadicTooWide, token.span)),
+        None => decimal(token),
+    }
+}
+
+fn decimal(token: Token<'_>) -> Result<Number, Error> {
     match canonical_number(token.text) {
         Some(NumberKind::Integer) => Ok(Number::Integer(Integer::new(token.text))),
         Some(NumberKind::Float) => Float::parse(token.text, token.span).map(Number::Float),

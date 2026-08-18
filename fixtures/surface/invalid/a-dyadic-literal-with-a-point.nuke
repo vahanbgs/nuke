@@ -1,0 +1,4 @@
+# There is no hex float. The point belongs to no base but ten, and a number
+# token takes it and what follows anyway, so this is one bad number rather than
+# a projection out of a good one.
+[0x1.8]

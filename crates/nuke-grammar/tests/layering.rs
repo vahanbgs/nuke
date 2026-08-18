@@ -1,7 +1,10 @@
 use std::collections::HashSet;
 
 use abnf::types::{Kind, Node, Rule};
-use nuke_grammar::{CANONICAL, CANONICAL_ABNF, Layer, SURFACE, SURFACE_ABNF, TOKENS_ABNF};
+use nuke_grammar::{
+    CANONICAL, CANONICAL_ABNF, CANONICAL_NUMBER, Grammar, Layer, NUMBER, SURFACE, SURFACE_ABNF,
+    SURFACE_NUMBER, TOKENS_ABNF,
+};
 
 fn rules(name: &str, abnf: &str) -> Vec<Rule> {
     abnf::rulelist(abnf).unwrap_or_else(|error| panic!("{name} is not valid ABNF: {error}"))
@@ -108,12 +111,37 @@ fn every_rule_an_assembly_defines_is_reachable_from_where_that_language_starts()
 }
 
 #[test]
-fn the_surface_language_refines_its_numbers_the_way_the_canonical_form_does() {
+fn the_surface_language_refines_its_numbers_with_a_rule_of_its_own() {
     assert_eq!(
-        SURFACE.refined, CANONICAL.refined,
-        "the surface language adds number forms by widening the shared token, \
-         so a refinement of its own is a decision that has to be made out loud"
+        CANONICAL.refined,
+        [(NUMBER, CANONICAL_NUMBER)],
+        "the canonical form spells a number one way, and that rule is where it says so"
     );
+    assert_eq!(
+        SURFACE.refined,
+        [(NUMBER, SURFACE_NUMBER)],
+        "the surface language spells a number in four more bases, which is the decision \
+         that had to be made out loud before this rule could exist"
+    );
+}
+
+#[test]
+fn the_surface_refinement_admits_every_spelling_the_canonical_one_does() {
+    let canonical = Grammar::canonical().unwrap();
+    let surface = Grammar::surface().unwrap();
+    for number in [
+        "0", "-0", "42", "-7", "0.0", "1.5", "-1.5", "1e5", "1e-5", "-2.5e-3", "0.5e10",
+    ] {
+        assert!(
+            canonical.matches(CANONICAL_NUMBER, number),
+            "`{number}` should be a canonical spelling"
+        );
+        assert!(
+            surface.matches(SURFACE_NUMBER, number),
+            "`{number}` is spelled the same in both languages, and a wider refinement \
+             may only add spellings"
+        );
+    }
 }
 
 #[test]

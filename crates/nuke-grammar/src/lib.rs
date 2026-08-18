@@ -15,6 +15,8 @@ pub const NUMBER: &str = "number";
 
 pub const CANONICAL_NUMBER: &str = "canonical-number";
 
+pub const SURFACE_NUMBER: &str = "surface-number";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Layer {
     pub fragments: &'static [&'static str],
@@ -37,7 +39,7 @@ pub const CANONICAL: Layer = Layer {
 pub const SURFACE: Layer = Layer {
     fragments: &[TOKENS_ABNF, SURFACE_ABNF],
     start: DOCUMENT,
-    refined: &[(NUMBER, CANONICAL_NUMBER)],
+    refined: &[(NUMBER, SURFACE_NUMBER)],
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

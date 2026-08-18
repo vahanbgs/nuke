@@ -308,15 +308,24 @@ impl<'a> Lexer<'a> {
         if bytes.get(end) == Some(&b'-') {
             end += 1;
         }
-        let digits = end;
-        while bytes.get(end).is_some_and(u8::is_ascii_digit) {
-            end += 1;
-        }
-        if end == digits {
-            return Err(Error::new(
-                ErrorKind::UnexpectedCharacter('-'),
-                Span::new(start, end),
-            ));
+        let dyadic_run =
+            bytes.get(end) == Some(&b'0') && bytes.get(end + 1).copied().and_then(marker).is_some();
+        if dyadic_run {
+            end += 2;
+            while bytes.get(end).is_some_and(u8::is_ascii_alphanumeric) {
+                end += 1;
+            }
+        } else {
+            let digits = end;
+            while bytes.get(end).is_some_and(u8::is_ascii_digit) {
+                end += 1;
+            }
+            if end == digits {
+                return Err(Error::new(
+                    ErrorKind::UnexpectedCharacter('-'),
+                    Span::new(start, end),
+                ));
+            }
         }
         if bytes.get(end) == Some(&b'.') {
             end += 1;
@@ -324,7 +333,7 @@ impl<'a> Lexer<'a> {
                 end += 1;
             }
         }
-        if matches!(bytes.get(end), Some(b'e' | b'E')) {
+        if !dyadic_run && matches!(bytes.get(end), Some(b'e' | b'E')) {
             end += 1;
             if matches!(bytes.get(end), Some(b'-' | b'+')) {
                 end += 1;
@@ -334,7 +343,7 @@ impl<'a> Lexer<'a> {
             }
         }
         let token = self.token(TokenKind::Number, end);
-        if canonical_number(token.text).is_none() {
+        if canonical_number(token.text).is_none() && dyadic(token.text).is_none() {
             return Err(Error::new(
                 ErrorKind::NumberSpelling(token.text.to_owned()),
                 token.span,
@@ -482,6 +491,67 @@ pub(crate) fn canonical_number(text: &str) -> Option<NumberKind> {
         kind = NumberKind::Float;
     }
     (at == bytes.len()).then_some(kind)
+}
+
+pub(crate) enum Dyadic {
+    Value(u128),
+    TooWide,
+}
+
+pub(crate) const fn marker(byte: u8) -> Option<u32> {
+    match byte {
+        b'b' => Some(1),
+        b'q' => Some(2),
+        b'o' => Some(3),
+        b'x' => Some(4),
+        _ => None,
+    }
+}
+
+pub(crate) fn dyadic(text: &str) -> Option<Dyadic> {
+    let bytes = text.as_bytes();
+    let mut at = usize::from(bytes.first() == Some(&b'-'));
+    if bytes.get(at) != Some(&b'0') || at + 1 == bytes.len() {
+        return None;
+    }
+    at += 1;
+    let mut value: u128 = 0;
+    let mut wide = false;
+    while at < bytes.len() {
+        let bits = marker(bytes[at])?;
+        at += 1;
+        let digits = at;
+        while let Some(digit) = bytes.get(at).copied().and_then(|byte| weigh(byte, bits)) {
+            value = match value
+                .checked_mul(1 << bits)
+                .and_then(|shifted| shifted.checked_add(digit))
+            {
+                Some(next) => next,
+                None => {
+                    wide = true;
+                    0
+                }
+            };
+            at += 1;
+        }
+        if at == digits {
+            return None;
+        }
+    }
+    Some(if wide {
+        Dyadic::TooWide
+    } else {
+        Dyadic::Value(value)
+    })
+}
+
+const fn weigh(byte: u8, bits: u32) -> Option<u128> {
+    let digit = match byte {
+        b'0'..=b'9' => (byte - b'0') as u128,
+        b'A'..=b'F' => (byte - b'A' + 10) as u128,
+        _ => return None,
+    };
+    if digit < 1 << bits { Some(digit) } else { None }
 }
 
 fn uint(bytes: &[u8], at: usize) -> Option<usize> {

@@ -1,7 +1,7 @@
 # A dot file colour is text, `#` opening a comment, so a colour written as a
-# number reaches its readers through a radix. `{n:06X}` is the mirror of the hex
-# literals the plan still owes, and the two should read alike when it pays them.
-accent := 16678937
+# number reaches its readers through a radix — and is written in one now that
+# `{n:06X}` and `0xFE8019` are each other's mirror.
+accent := 0xFE8019
 
 {
   alacritty = {cursor = $"#{accent:06X}"}

@@ -10,9 +10,8 @@
 ; and they are not the same rules, because the `value` under them is this one.
 ;
 ; A document is valid when it matches `document` and every `number` token it
-; contains also matches `canonical-number`. The surface language spells a number
-; exactly as the canonical form does; when it stops doing so, the refinement
-; named here is what changes.
+; contains also matches `surface-number`, which is where this language stops
+; spelling a number the way the canonical form does.
 
 document   = ows *( binding ows ) value ows
 
@@ -144,3 +143,28 @@ map        = "{" *( ows binding ) *( ows entry ) ows "}"
 entry      = value ows "=>" ows value
 
 list       = "[" *( ows value ) ows "]"
+
+; A dyadic literal spells an integer as a bit string. A marker says how many
+; bits each digit after it carries — `b` one, `q` two, `o` three, `x` four — so
+; a segment is a marker and its digits, and the literal is the segments run
+; together: `0b101110100xC` is nine bits of binary and then four of hex. Ten is
+; no power of two, so there is no decimal marker and that is what dyadic means.
+;
+; `hexdig` is the token layer's and is uppercase, which is what lets `b`, `q`,
+; `o` and `x` be markers everywhere, `0xF35b1` included. It is also why there is
+; no digit separator: a marker repeated is one, `0xDEADxBEEF` being `0xDEADBEEF`.
+;
+; The leading `0` carries no bits. It is there so that a number still starts
+; with a digit, which is what tells a lexer to look for one.
+;
+; `dyadic` stands first for the reason `dyadic-run` does: an alternation is
+; ordered once translated, and `canonical-number` would match the `0` of `0xFF`
+; and stop there.
+
+surface-number = dyadic / canonical-number
+dyadic         = [ "-" ] "0" 1*segment
+segment        = ( %s"b" 1*bindig ) / ( %s"q" 1*quatdig )
+               / ( %s"o" 1*octdig ) / ( %s"x" 1*hexdig )
+bindig         = %x30-31
+quatdig        = %x30-33
+octdig         = %x30-37
