@@ -92,8 +92,10 @@ Editing it is what is being built now. `nuke fmt` formats a document without ref
 [`tree-sitter-nuke/`](tree-sitter-nuke) is the grammar Helix takes its highlighting from — a
 third grammar, this one for text that is not finished yet, held to the same fixtures with every
 place it disagrees with the other two written down;
-[`docs/highlighting.md`](docs/highlighting.md) argues them. The linter and the LSP server come
-next, and operators, conditionals and the two targets the roster misses after those.
+[`docs/highlighting.md`](docs/highlighting.md) argues them. `nuke lint` reports the style the
+grammar admits and the convention does not, which is what the formatter may not fix for you:
+[`docs/linting.md`](docs/linting.md) draws that line. The LSP server comes next, and operators,
+conditionals and the two targets the roster misses after it.
 
 ## Development
 

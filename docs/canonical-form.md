@@ -43,8 +43,7 @@ is one bad token that names itself, not two good ones.
 
 Files are UTF-8 with no byte order mark. The only whitespace characters are space, tab and
 line feed; a carriage return is a syntax error wherever it appears, so canonical files are
-LF-only. Parsers may accept CRLF input and formatters normalise it, but what they write is
-canonical.
+LF-only. Parsers may accept CRLF input and formatters normalise it; what they write is canonical.
 
 ## Strings
 
@@ -70,7 +69,8 @@ There is one way to write a given number, enforced by `canonical-number`: no lea
 no leading zeros, in the exponent or before the point; no uppercase `E`; no digit-less
 fraction such as `1.` or `.5`; and no base but ten, the dyadic literals of `docs/dyadic.md`,
 which reduce to a decimal integer. That governs spelling, not the choice among equal floats —
-`1e5` and `100000.0` are both canonical, and deciding between them is the formatter's job.
+`1e5` and `100000.0` are both canonical, and deciding between them is the author's: the
+formatter copies every leaf from its own span, so it changes neither.
 There is no infinity and no NaN; a backend that needs them takes them from atoms.
 
 `-0` is admitted; as an integer it is `0`. `-0.0` and `0.0` are floats, and IEEE-754 keeps

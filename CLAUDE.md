@@ -16,9 +16,9 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
 - `grammar/` — `tokens.abnf` then `canonical.abnf` or `surface.abnf`; a grammar is that pair.
 - `docs/canonical-form.md`, `docs/surface.md` — the rules ABNF cannot express, one per language,
   plus `docs/imports.md` for files, `docs/interpolation.md` for text, `docs/dyadic.md` for bases.
-- `docs/serde.md` — where Nuke and serde's data model disagree; `docs/embedding.md` — where the
-  language stops and a host begins; `docs/formatting.md` — what the formatter decides and leaves
-  alone; `docs/highlighting.md` — what a grammar for unfinished text may disagree about.
+- `docs/serde.md` — where Nuke and serde disagree; `docs/embedding.md` — where the language stops
+  and a host begins; `docs/formatting.md` — what the formatter decides, `docs/linting.md` what it
+  may not fix, and `docs/highlighting.md` what a third grammar may disagree with the other two on.
 - `docs/json.md` and its eight siblings — each mapping, and what it degrades or refuses.
 - `fixtures/valid`, `fixtures/invalid` — conformance fixtures. Under `fixtures/surface`, `valid`
   pairs with `reduced` by name, `invalid` is what the parser refuses, `refused` what cannot, and
@@ -36,8 +36,10 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
 - `crates/nuke-transpile` — the backends, each owning its own `ErrorKind` and its own answer to what
   the target can spell: JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig, Nix. `docs/` argues each.
   `Target` names one and `Refusal` wraps the nine errors without flattening them.
+- `crates/nuke-lint` — the style `docs/canonical-form.md` owes: what the formatter may not fix. It
+  takes `nuke-syntax` and never the filesystem, so it follows no import and needs no saved file.
 - `crates/nuke-cli` — the binary `nuke`: `render` writes a document out, `deps` lists what it read,
-  `fmt` formats one from a path or `-`. None of the three writes a file.
+  `fmt` formats one from a path or `-` and `lint` reports its style from either. None writes a file.
 - `tree-sitter-nuke/` — the surface language for editors, outside the workspace because a Rust
   binding would be unsafe. `test/verdicts` names every fixture it does not simply accept.
 
@@ -82,18 +84,16 @@ convention says nothing about bodies, so the two compose.
 
 We are taking baby steps.
 
-- [x] The canonical form: its ABNF, a hand-written lexer and parser checked against that grammar
-      and against the fixtures, and serde's `Value` with `from_str` into a user's type.
-- [x] The transpiler: nine backends, each owning its `ErrorKind` and its answer to what the target
-      can spell. A target earns one when its lesson can be named before it is written.
+- [x] The canonical form, and the nine transpiler backends over it — a target earns one when its
+      lesson can be named before it is written.
 - [x] The surface language: sequential scope and `:=`, `@import` and `@concat`, `$"…"` with Rust's
       specifier, projection by name and by computed key, and dyadic literals, argued by
       `docs/surface.md` and its three companions. Evaluating a canonical document is the identity.
 - [x] The embedding surface: `Target`, `bind::from_path`, the files a reduction read, and
       `crates/nuke-cli`. Nuke ends at text and the host begins at files, which strikes the
       manifest — a name says where a file goes. `docs/embedding.md` argues the line.
-- [ ] The editor tooling, which `dot` waits on. `nuke fmt` is done and so is the `tree-sitter`
-      grammar Helix highlights from; the linter `docs/canonical-form.md` owes a style is not, nor
-      is the LSP server.
+- [ ] The editor tooling, which `dot` waits on. `nuke fmt`, the `tree-sitter` grammar Helix
+      highlights from and `nuke lint` are done; the LSP server is not, nor is the unused binding
+      the linter still owes — the first rule needing a scope pass rather than a walk.
 - [ ] `ghostty` and `plist`, the two targets the roster misses, and then `dot` linking this
       workspace. The shells stay declined: a template engine writes what has no grammar.
