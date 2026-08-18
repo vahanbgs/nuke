@@ -99,8 +99,9 @@ grammar admits and the convention does not, which is what the formatter may not 
 publishing the parser's, the linter's and the reducer's faults without confusing the three and
 following a name to the binding it reads — `crates/nuke-resolve` is the scope pass the linter and
 the server share, so neither can disagree with the other about what a word means;
-[`docs/lsp.md`](docs/lsp.md) says what it refuses. Operators and conditionals come next, and
-then `dot`, the manager this workspace was always for.
+[`docs/lsp.md`](docs/lsp.md) says what it refuses. `dot`, the manager this workspace was always
+for, links it at `0.1.0`: a `.nuke` file in its tree renders on deploy, and one palette written
+once reaches Alacritty and Ghostty alike. Moving the rest of that tree over comes next.
 
 ## Development
 

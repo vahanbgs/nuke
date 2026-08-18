@@ -89,11 +89,11 @@ convention says nothing about bodies, so the two compose.
 We are taking baby steps.
 
 - [x] The canonical form and the eleven backends over it, a target earning one when its lesson can
-      be named first; then the surface language, where evaluating a canonical document is the
-      identity; then the embedding surface, where Nuke ends at text and the host begins at files.
-- [x] The editor tooling, which `dot` waits on: `nuke fmt`, the `tree-sitter` grammar Helix
-      highlights from, `nuke lint`'s four rules, and `nuke lsp` over the scope pass that moved out
-      of the linter into `crates/nuke-resolve`, so the linter and the server read one scope.
-- [ ] `dot` linking this workspace: the roster is closed, `plist` having been the last target and
-      the only one wider than the language. The shells stay declined, a template engine writing
-      what has no grammar.
+      be named first; then the surface language, then the embedding surface where Nuke ends at
+      text; then the editor tooling `dot` waited on, `fmt`, `tree-sitter`, `lint` and `lsp`.
+- [x] `dot` linking this workspace, at `0.1.0`. A `.nuke` file in its tree renders on deploy, the
+      name giving destination and target both; a name giving no target is a module, imported and
+      never deployed; `[targets]` in its config names what `.gitconfig` and `config` cannot.
+- [ ] The real tree moved over, every dot file with a grammar becoming a document. Only using it
+      can say whether `@merge`, functions and iteration have met their triggers — and `dot`
+      reading its own config through `bind::from_path` is the half of the contract nothing runs.

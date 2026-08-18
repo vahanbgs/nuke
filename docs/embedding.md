@@ -55,6 +55,11 @@ answers to two extensions, and `gitconfig` and `ghostty` to none, because `~/.gi
 Ghostty's `config` are named rather than extended. Where a file's name says nothing, what fills the
 gap is the host's table and not a guess of ours — for the same reason the extension was the host's.
 
+`dot` filled it, and its answers are worth recording because none was ours to give: a table keyed
+by the deployed path and read *before* the extension, so it overrides a name as well as supplying
+one, and a **module** for what neither names — an input others import, never an output — because
+`render` demands a `--format` there and a deployment has nobody to ask. So does the final newline.
+
 ## A file becomes a Rust type in one call
 
 `nuke_syntax::from_str` reads the **canonical** form, so a document carrying a binding or an
