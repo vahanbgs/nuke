@@ -6,6 +6,7 @@ members = [
   "crates/nuke-fixtures",
   "crates/nuke-grammar",
   "crates/nuke-lint",
+  "crates/nuke-resolve",
   "crates/nuke-syntax",
   "crates/nuke-transpile",
 ]
@@ -20,6 +21,7 @@ nuke-eval = { path = "crates/nuke-eval" }
 nuke-fixtures = { path = "crates/nuke-fixtures" }
 nuke-grammar = { path = "crates/nuke-grammar" }
 nuke-lint = { path = "crates/nuke-lint" }
+nuke-resolve = { path = "crates/nuke-resolve" }
 nuke-syntax = { path = "crates/nuke-syntax" }
 nuke-transpile = { path = "crates/nuke-transpile" }
 clap = { version = "4", features = ["derive"] }

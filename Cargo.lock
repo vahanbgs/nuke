@@ -959,6 +959,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "nuke-resolve"
+version = "0.0.0"
+dependencies = [
+ "nuke-fixtures",
+ "nuke-syntax",
+]
+
+[[package]]
 name = "nuke-syntax"
 version = "0.0.0"
 dependencies = [
