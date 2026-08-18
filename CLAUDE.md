@@ -82,8 +82,6 @@ We are taking baby steps.
   - [x] Names. `:=` binds and contributes nothing; scope is sequential, so a cycle cannot be
         written; a field is not a binding. The invariant holding the surface language to the
         canonical form is that evaluating a canonical document is the identity.
-  - [x] Field access `.`. Postfix, whitespace insensitive, a tuple's operation alone, and its
-        operand is any value. The token layer did not move, so `1.b` is a malformed number.
   - [x] Imports. `@` calls a builtin and `import` is the first; its path is a literal, so what a
         file imports is a property of its text. A file is its canonical path, its bindings are
         private, and a cycle needs a detector because a directory has no top.
@@ -92,8 +90,10 @@ We are taking baby steps.
   - [x] Interpolation. `$"a{expr:spec}b"` with Rust's specifier, and a hole is the one place a
         value becomes text — so no `@text` was spent, lambdas being owed most builtins and no
         syntax. A float needs a precision, `#` needs a radix, and a plain string never pays.
-  - [ ] `expr.[key]`, settled in `5a7fa5a` and never built, so a map can be written and never read.
-        Hex, octal and binary go last, and `{n:06X}` is already their mirror.
+  - [x] Projection `.`. Postfix, whitespace insensitive, its operand any value, so `1.b` stays a
+        malformed number. Two right operands: a name reads a tuple's field, `(expr)` the key a map
+        or a list is read at — `5a7fa5a`'s `[ ]` overturned, its case against `m["a"]` kept.
+  - [ ] Hex, octal and binary, the last of the surface language. `{n:06X}` is already their mirror.
 - [ ] The dot file manager — a CLI, a manifest, and the targets the roster misses. This, and not
       the language, is what the dot files are waiting on.
 - [ ] The formatter, the linter, the LSP server.

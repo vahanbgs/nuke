@@ -3,9 +3,9 @@
 A Nuke file is an expression, and evaluating it reduces it to the canonical form —
 `nuke_eval::eval_at` does both halves. `grammar/tokens.abnf` then `grammar/surface.abnf` are the
 normative grammar; this records what they cannot. The surface language adds four things: **a name
-stands for a value**, **a field projects out of a tuple**, **`@` calls a builtin**, and **`$"…"`
-interpolates** — the one place a value becomes text, which is syntax and not a fourth builtin
-because lambdas will make most builtins user-writeable and never supply syntax.
+stands for a value**, **a projection reads out of a collection**, **`@` calls a builtin**, and
+**`$"…"` interpolates** — the one place a value becomes text, and syntax rather than a fourth
+builtin because lambdas will make most builtins user-writeable and never supply syntax.
 `docs/interpolation.md` argues that one, as `docs/imports.md` argues the rules about files.
 
 ## Bindings
@@ -36,20 +36,20 @@ be read as a set for scoping and a sequence for output — two readings of one c
 what the `=`/`=>` split refuses. So `{port := 8080 port = port}` is legal, and a bound name can
 never *become* a field name.
 
-## Field access
+## Projection
 
 `expr.name` projects a field out of a tuple. It is postfix, reads left to right, and what it yields
-is projectable again. What stands to its left is a **value** and not only a name, which is what
-lets `@import "./palette.nuke".accent` be written without a binding.
+is projectable again. What stands to its left is a **value** and not only a name, which lets
+`@import "./palette.nuke".accent` be written without a binding. `ows` surrounds the dot as it
+surrounds every other operator, so `[a .b]` is one element, and `1.b` is the malformed number `1.`.
 
-A tuple has fields; a map has entries keyed by values and a list has positions, so `{"a" => 1}.a`
-and `[1 2].a` are refused at reduction rather than at parse time: no grammar can say "an expression
-denoting a tuple", so a narrower operand removes no fault, only the spellings where the mistake
-shows. And `{a.b = 1}` is no nested field — a field *name* is an identifier, never an expression.
-
-`ows` surrounds the dot as it surrounds every other operator, so `[a .b]` is one element and a list
-element does not end at a newline. It is also where greedy tokens bite: `1.b` is the malformed
-number `1.` beside a name, and only `1 . b` is a projection reduction turns down.
+One operator, two right operands. A name is literal and reads a tuple's field; a parenthesised
+expression reduces to the key an entry is read at, so `m.("accent")` and `m.(k)` read a map and
+`l.(0)` a list, whose keys are its positions. Each collection answers one reader, which keeps `.a`
+from being a second spelling of `.("a")`. Which one a value answers is known at reduction, no
+grammar being able to say "an expression denoting a tuple". The parenthesis costs nothing, grouping
+being owed `( )` anyway, where `[ ]` would read as a list and postfix `m["a"]` cannot be spelled at
+all. And `{a.b = 1}` is no nested field: a field *name* is an identifier, never an expression.
 
 ## Calls
 
@@ -61,14 +61,13 @@ Which builtins exist is no question a grammar can answer, so the grammar names n
 one is a fault the evaluator raises. A call takes exactly **one** operand, a collection carrying no
 separators, so a builtin wanting more takes a list. It takes an `operand` rather than a `value`, so
 `@import "p.nuke".accent` projects out of the imported document rather than the path, at the price
-that `@f p.a` is `(@f p).a` until grouping arrives.
+that `@f p.a` is `(@f p).a` until grouping stands where a value does.
 
 `@concat ["#" accent]` puts strings end to end. It is the second builtin and the first about
 **values** rather than files, which is what makes `@` a namespace rather than an import sigil, and
 the first to spend that last rule: `@concat []` is `""`, and `@concat "a"` is refused because a
-string is no list of one. It does not stringify, which a hole does instead, so it is for the parts
-that arrive as a list rather than in a fixed shape. `join` stays unspent: it means "with a
-separator" everywhere else, and a separator wants a built list.
+string is no list of one. It does not stringify, which a hole does instead. `join` stays unspent: it
+means "with a separator" everywhere else, and a separator wants a built list.
 
 ## What is checked when
 
@@ -91,9 +90,10 @@ positions and `Value` deliberately does not — a position inside `Value` would 
 map keys different. With several texts rather than one, a fault below a file boundary is wrapped in
 one naming that file and where in it it stands.
 
-There are twenty-one. Seven belong to a document — a syntax error, wrapped rather than flattened; a
+There are twenty-three. Nine belong to a document — a syntax error, wrapped rather than flattened; a
 name nothing binds; a projection out of what is not a tuple, and one of a field a tuple has not got;
-a repeated key; a value past `MAX_DEPTH`; a document past `MAX_VALUES`. Ten belong to a call, seven
-of them about files and argued in `docs/imports.md`, the rest an operand that is not a list, a part
-that is not a string and a string past `MAX_BYTES`. Four belong to a hole: a form with no text, a
-float with no precision, a specifier the form has no use for, an integer too wide to respell.
+a key read out of what is keyed by neither values nor positions, and one nothing is at; a repeated
+key; a value past `MAX_DEPTH`; a document past `MAX_VALUES`. Ten belong to a call, seven of them
+about files and argued in `docs/imports.md`, the rest an operand that is not a list, a part that is
+not a string and a string past `MAX_BYTES`. Four belong to a hole: a form with no text, a float with
+no precision, a specifier the form has no use for, an integer too wide to respell.
