@@ -19,7 +19,7 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
   and a host begins; then the editor's four: `docs/formatting.md` what the formatter decides,
   `docs/linting.md` what it may not fix, `docs/highlighting.md` what a third grammar may disagree
   with the other two on, `docs/lsp.md` what an editor is told.
-- `docs/json.md` and its nine siblings — each mapping, and what it degrades or refuses.
+- `docs/json.md` and its ten siblings — each mapping, and what it degrades or refuses.
 - `fixtures/valid`, `fixtures/invalid` — conformance fixtures. Under `fixtures/surface`, `valid`
   pairs with `reduced` by name, `invalid` is what the parser refuses, `refused` what cannot, and
   `modules` holds what those import, which are inputs rather than fixtures.
@@ -34,8 +34,8 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
   import cache, the cycle check) and `text.rs`, where a value becomes text under a specifier.
   `bind` reads a Rust type out of one, and a reduction reports the files it read.
 - `crates/nuke-transpile` — the backends, each owning its `ErrorKind` and its answer to what the
-  target spells: JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig, Nix and Ghostty, argued one per
-  `docs/` file. `Target` names one and `Refusal` wraps the ten errors without flattening them.
+  target spells: JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig, Nix, Ghostty and plist, argued
+  one per `docs/` file. `Target` names one and `Refusal` wraps the eleven without flattening them.
 - `crates/nuke-resolve` — sequential scope kept rather than spent: which binding each name reads,
   and which names nothing read. No filesystem, and the linter and the server share it.
 - `crates/nuke-lint` — the style `docs/canonical-form.md` owes: what the formatter may not fix.
@@ -88,12 +88,12 @@ convention says nothing about bodies, so the two compose.
 
 We are taking baby steps.
 
-- [x] The canonical form and the ten backends over it, a target earning one when its lesson can
+- [x] The canonical form and the eleven backends over it, a target earning one when its lesson can
       be named first; then the surface language, where evaluating a canonical document is the
       identity; then the embedding surface, where Nuke ends at text and the host begins at files.
 - [x] The editor tooling, which `dot` waits on: `nuke fmt`, the `tree-sitter` grammar Helix
       highlights from, `nuke lint`'s four rules, and `nuke lsp` over the scope pass that moved out
       of the linter into `crates/nuke-resolve`, so the linter and the server read one scope.
-- [ ] `plist`, the one target the roster still misses — the first wider than the language, typing
-      what `docs/xml.md` erased — and then `dot` linking this workspace. The shells stay declined:
-      a template engine writes what has no grammar.
+- [ ] `dot` linking this workspace: the roster is closed, `plist` having been the last target and
+      the only one wider than the language. The shells stay declined, a template engine writing
+      what has no grammar.

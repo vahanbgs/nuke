@@ -3,7 +3,7 @@
 A simple total configuration language.
 
 Nuke files are expressions. Evaluating one reduces it to a canonical form, which transpiles
-to JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig, Nix and Ghostty — so a dot file can be
+to JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig, Nix, Ghostty and plist — so a dot file can
 written once, in one language, and shared between the programs that need it.
 
 ```nuke
@@ -68,12 +68,13 @@ Early. A grammar is [`grammar/tokens.abnf`](grammar/tokens.abnf) — the token l
 share — followed by a syntax layer, and the assembly is normative.
 [`docs/canonical-form.md`](docs/canonical-form.md) covers what the grammar cannot state,
 `crates/nuke-syntax` parses both forms, and [`docs/serde.md`](docs/serde.md) records what the
-`serde` feature carries. `crates/nuke-transpile` writes the ten targets above, each with a
+`serde` feature carries. `crates/nuke-transpile` writes the eleven targets above, each with a
 document arguing what it degrades or refuses: [`docs/json.md`](docs/json.md) settles how atoms,
-keys and numbers degrade for the nine that follow it, and each of those names the lesson only
+keys and numbers degrade for the ten that follow it, and each of those names the lesson only
 that target teaches — one wider than the canonical form, one of a different shape, one with no
 data model, one spelling a value several ways, one that is a family, one with no specification,
-one that cannot spell a name Nuke guarantees, one positional, one whose reader cannot be linked.
+one that cannot spell a name Nuke guarantees, one positional, one whose reader cannot be linked,
+and one wider than the language itself, typing what the target with no data model erased.
 
 The surface language is finished. [`grammar/surface.abnf`](grammar/surface.abnf) adds bindings,
 field access, calls, interpolation and dyadic literals, `crates/nuke-eval` reduces a document to
@@ -98,8 +99,8 @@ grammar admits and the convention does not, which is what the formatter may not 
 publishing the parser's, the linter's and the reducer's faults without confusing the three and
 following a name to the binding it reads — `crates/nuke-resolve` is the scope pass the linter and
 the server share, so neither can disagree with the other about what a word means;
-[`docs/lsp.md`](docs/lsp.md) says what it refuses. Operators, conditionals and `plist`, the one
-target the roster still misses, come next.
+[`docs/lsp.md`](docs/lsp.md) says what it refuses. Operators and conditionals come next, and
+then `dot`, the manager this workspace was always for.
 
 ## Development
 

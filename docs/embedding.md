@@ -33,18 +33,18 @@ writes what only a program can.**
 
 ## A target has a name
 
-`Target` is an enum over the ten backends, with `FromStr`, `Display`, `ALL`, `extensions` and
+`Target` is an enum over the eleven backends, with `FromStr`, `Display`, `ALL`, `extensions` and
 `from_extension`, and `render` calls the one you named. It lives in `nuke-transpile` and not in a
 command line of ours, because the caller is not ours: a choice duplicated in every host is a
 choice the library never made.
 
-Dispatch needs one error type, and `Refusal` is an enum of the ten rather than a flattening of
-them. Each variant carries that backend's own `Error<K>` whole, so the vocabularies the ten
+Dispatch needs one error type, and `Refusal` is an enum of the eleven rather than a flattening of
+them. Each variant carries that backend's own `Error<K>` whole, so the vocabularies the eleven
 documents spent their length arguing survive contact with a host that does not care which target
 it is holding; `target()` and `path()` answer the two questions such a host does ask.
 
 `Target` names targets and not options. `json::to_string_compact` and `xml::to_string_rooted` stay
-functions, because a struct carrying two knobs that eight targets ignore is the room that is not a
+functions, because a struct carrying two knobs that nine targets ignore is the room that is not a
 distinction `docs/kdl.md` refuses — and a host writing into someone else's schema, which is what
 the XML root is for, is calling a specific backend on purpose by then.
 
