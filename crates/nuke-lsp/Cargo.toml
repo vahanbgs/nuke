@@ -1,0 +1,24 @@
+[package]
+name = "nuke-lsp"
+version = "0.0.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+line-index.workspace = true
+lsp-server.workspace = true
+lsp-types.workspace = true
+nuke-eval.workspace = true
+nuke-lint.workspace = true
+nuke-resolve.workspace = true
+nuke-syntax.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

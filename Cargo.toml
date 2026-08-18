@@ -6,6 +6,7 @@ members = [
   "crates/nuke-fixtures",
   "crates/nuke-grammar",
   "crates/nuke-lint",
+  "crates/nuke-lsp",
   "crates/nuke-resolve",
   "crates/nuke-syntax",
   "crates/nuke-transpile",
@@ -21,6 +22,7 @@ nuke-eval = { path = "crates/nuke-eval" }
 nuke-fixtures = { path = "crates/nuke-fixtures" }
 nuke-grammar = { path = "crates/nuke-grammar" }
 nuke-lint = { path = "crates/nuke-lint" }
+nuke-lsp = { path = "crates/nuke-lsp" }
 nuke-resolve = { path = "crates/nuke-resolve" }
 nuke-syntax = { path = "crates/nuke-syntax" }
 nuke-transpile = { path = "crates/nuke-transpile" }
@@ -28,6 +30,9 @@ clap = { version = "4", features = ["derive"] }
 gix-config = { version = "0.59", features = ["sha1"] }
 indexmap = "2"
 kdl = "6"
+line-index = "0.1"
+lsp-server = "0.7"
+lsp-types = "0.95"
 mlua = { version = "0.11", features = ["lua54", "vendored"] }
 quick-xml = "0.41"
 rnix = "0.14"
