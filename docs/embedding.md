@@ -33,27 +33,27 @@ writes what only a program can.**
 
 ## A target has a name
 
-`Target` is an enum over the nine backends, with `FromStr`, `Display`, `ALL`, `extensions` and
+`Target` is an enum over the ten backends, with `FromStr`, `Display`, `ALL`, `extensions` and
 `from_extension`, and `render` calls the one you named. It lives in `nuke-transpile` and not in a
 command line of ours, because the caller is not ours: a choice duplicated in every host is a
 choice the library never made.
 
-Dispatch needs one error type, and `Refusal` is an enum of the nine rather than a flattening of
-them. Each variant carries that backend's own `Error<K>` whole, so the vocabularies the nine
+Dispatch needs one error type, and `Refusal` is an enum of the ten rather than a flattening of
+them. Each variant carries that backend's own `Error<K>` whole, so the vocabularies the ten
 documents spent their length arguing survive contact with a host that does not care which target
 it is holding; `target()` and `path()` answer the two questions such a host does ask.
 
 `Target` names targets and not options. `json::to_string_compact` and `xml::to_string_rooted` stay
-functions, because a struct carrying two knobs that seven targets ignore is the room that is not a
+functions, because a struct carrying two knobs that eight targets ignore is the room that is not a
 distinction `docs/kdl.md` refuses — and a host writing into someone else's schema, which is what
 the XML root is for, is calling a specific backend on purpose by then.
 
 ## An extension is a hint and never a promise
 
 `from_extension` answers an `Option`, and the shape is the honest one rather than a defect: `yaml`
-answers to two extensions, and `gitconfig` to none, because `~/.gitconfig` and Ghostty's `config`
-are named rather than extended. Where a file's name says nothing, what fills the gap is the host's
-table and not a guess of ours — for the same reason the extension itself was the host's.
+answers to two extensions, and `gitconfig` and `ghostty` to none, because `~/.gitconfig` and
+Ghostty's `config` are named rather than extended. Where a file's name says nothing, what fills the
+gap is the host's table and not a guess of ours — for the same reason the extension was the host's.
 
 ## A file becomes a Rust type in one call
 

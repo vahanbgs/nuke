@@ -35,7 +35,7 @@ file that can be read.
 ## What an import denotes
 
 Exactly the imported document's reduced value. No module, no namespace object, no seventh form of
-value: `Value` **is** the canonical form, nine backends consume it, and anything else would have
+value: `Value` **is** the canonical form, ten backends consume it, and anything else would have
 no spelling in `grammar/canonical.abnf` and no way to survive the law that evaluating a canonical
 document is the identity. So an imported file's **bindings are private and its fields are its
 surface**, which is what `docs/surface.md` meant by a block of bindings being empty data. Nothing

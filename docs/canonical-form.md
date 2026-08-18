@@ -82,8 +82,8 @@ A brace block is a tuple when its pairs use `=` and a map when they use `=>`. Th
 mix in one block. `{}` satisfies both readings and denotes the same empty collection either
 way, so nothing turns on which one a parser records.
 
-**Tuple fields are ordered.** Declaration order survives into YAML, TOML, gitconfig and
-every other ordered target, and into diffs, so a tuple is a sequence of fields rather than a
+**Tuple fields are ordered.** Declaration order survives into YAML, TOML, gitconfig, Ghostty
+and every other ordered target, and into diffs, so a tuple is a sequence of fields rather than a
 map from names to values. Repeating a field name is an error.
 
 **Map keys are compared structurally.** Two keys collide when they are the same value, not

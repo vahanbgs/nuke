@@ -10,7 +10,7 @@ document *means*, formatting decides only how it *reads*, and the two must not m
 leaf the printer emits is copied from its own span for that reason, so the formatter cannot
 respell anything at all.
 
-A name is not whitespace. A field name survives into JSON, TOML and the seven others; an atom
+A name is not whitespace. A field name survives into JSON, TOML and the eight others; an atom
 **is** a value. Respelling one is reduction's side of that line, and the formatter is
 forbidden to cross it — which leaves the fault standing with nothing able to fix it. That
 gap is what a linter is for, and it is the whole definition: **a lint is exactly what the
