@@ -15,7 +15,7 @@ const STDIN: &str = "-";
 #[command(
     name = "nuke",
     version,
-    about = "Render a Nuke document, list what it reads, format it and check its style"
+    about = "Render a Nuke document, list what it reads, format it, check its style and serve an editor"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -40,6 +40,7 @@ enum Command {
         #[arg(value_name = "FILE")]
         file: PathBuf,
     },
+    Lsp,
 }
 
 fn main() -> ExitCode {
@@ -48,6 +49,7 @@ fn main() -> ExitCode {
         Command::Deps { file } => deps(&file),
         Command::Fmt { file } => fmt(&file),
         Command::Lint { file } => lint(&file),
+        Command::Lsp => lsp(),
     }
     .unwrap_or_else(|report| {
         eprintln!("{report}");
@@ -104,6 +106,12 @@ fn lint(file: &Path) -> Result<ExitCode, String> {
     } else {
         ExitCode::FAILURE
     })
+}
+
+fn lsp() -> Result<ExitCode, String> {
+    nuke_lsp::serve()
+        .map(|()| ExitCode::SUCCESS)
+        .map_err(|error| format!("lsp: {error}"))
 }
 
 fn source(file: &Path) -> Result<String, String> {

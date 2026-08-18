@@ -14,10 +14,13 @@ path = "src/main.rs"
 clap.workspace = true
 nuke-eval.workspace = true
 nuke-lint.workspace = true
+nuke-lsp.workspace = true
 nuke-syntax.workspace = true
 nuke-transpile.workspace = true
 
 [dev-dependencies]
+lsp-server.workspace = true
+serde_json.workspace = true
 tempfile.workspace = true
 
 [lints]

@@ -1,6 +1,8 @@
-use std::io::Write;
+use std::io::{BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
+
+use lsp_server::{Message, Notification, Request, RequestId};
 
 use nuke_transpile::{Target, toml};
 use tempfile::TempDir;
@@ -201,4 +203,67 @@ fn linting_a_file_leaves_it_alone() {
         std::fs::read_to_string(&file).expect("the document should still be readable"),
         before
     );
+}
+
+#[test]
+fn the_server_speaks_the_protocol_over_a_pipe() {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_nuke"))
+        .arg("lsp")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("the binary should run");
+    let mut stdin = child.stdin.take().expect("stdin should be a pipe");
+    let mut stdout = BufReader::new(child.stdout.take().expect("stdout should be a pipe"));
+
+    said(
+        &mut stdin,
+        Message::Request(Request::new(
+            RequestId::from(0),
+            "initialize".to_owned(),
+            serde_json::json!({ "capabilities": {} }),
+        )),
+    );
+    let Some(Message::Response(response)) = Message::read(&mut stdout).expect("a reply") else {
+        panic!("the server answered initialize with something else");
+    };
+    let result = response.result.expect("a result");
+    assert!(
+        result["capabilities"]["definitionProvider"] == serde_json::json!(true),
+        "{result}"
+    );
+    said(
+        &mut stdin,
+        Message::Notification(Notification::new(
+            "initialized".to_owned(),
+            serde_json::json!({}),
+        )),
+    );
+    said(
+        &mut stdin,
+        Message::Request(Request::new(
+            RequestId::from(1),
+            "shutdown".to_owned(),
+            serde_json::Value::Null,
+        )),
+    );
+    let Some(Message::Response(response)) = Message::read(&mut stdout).expect("a reply") else {
+        panic!("the server answered shutdown with something else");
+    };
+    assert_eq!(response.id, RequestId::from(1));
+    said(
+        &mut stdin,
+        Message::Notification(Notification::new(
+            "exit".to_owned(),
+            serde_json::Value::Null,
+        )),
+    );
+    drop(stdin);
+
+    let status = child.wait().expect("the server should exit");
+    assert!(status.success(), "{status}");
+}
+
+fn said(pipe: &mut impl Write, message: Message) {
+    message.write(pipe).expect("the message should be written");
 }

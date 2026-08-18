@@ -53,6 +53,7 @@ impl From<io::Error> for Error {
 pub fn serve() -> Result<(), Error> {
     let (connection, threads) = Connection::stdio();
     let served = serve_on(&connection);
+    drop(connection);
     threads.join()?;
     served
 }
