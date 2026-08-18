@@ -100,8 +100,10 @@ publishing the parser's, the linter's and the reducer's faults without confusing
 following a name to the binding it reads — `crates/nuke-resolve` is the scope pass the linter and
 the server share, so neither can disagree with the other about what a word means;
 [`docs/lsp.md`](docs/lsp.md) says what it refuses. `dot`, the manager this workspace was always
-for, links it at `0.1.0`: a `.nuke` file in its tree renders on deploy, and one palette written
-once reaches Alacritty and Ghostty alike. Moving the rest of that tree over comes next.
+for, links it: a `.nuke` file in its tree renders on deploy, and one palette written once reaches
+Alacritty and Ghostty alike. It reads its own manifest through `bind::from_path` too, so a target
+it cannot write is refused as it loads rather than as it deploys, and both halves of the embedding
+contract have a customer. Moving the rest of that tree over comes next.
 
 ## Development
 

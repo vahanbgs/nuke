@@ -93,7 +93,7 @@ We are taking baby steps.
       text; then the editor tooling `dot` waited on, `fmt`, `tree-sitter`, `lint` and `lsp`.
 - [x] `dot` linking this workspace, at `0.1.0`. A `.nuke` file in its tree renders on deploy, the
       name giving destination and target both; a name giving no target is a module, imported and
-      never deployed; `[targets]` in its config names what `.gitconfig` and `config` cannot.
+      never deployed; `targets` in its manifest names what `.gitconfig` and `config` cannot.
 - [ ] The real tree moved over, every dot file with a grammar becoming a document. Only using it
-      can say whether `@merge`, functions and iteration have met their triggers — and `dot`
-      reading its own config through `bind::from_path` is the half of the contract nothing runs.
+      can say whether `@merge`, functions and iteration have met their triggers. `dot` reads its
+      own manifest through `bind::from_path` now, so what is left is the tree it describes.
