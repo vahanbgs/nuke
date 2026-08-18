@@ -3,7 +3,7 @@ use crate::expr::{Binding, Document, Entry, Expr, ExprKind, Field};
 use crate::lexer::{Lexer, TokenKind};
 use crate::surface;
 
-pub const INDENT: usize = 2;
+pub const TABSTOP: usize = 8;
 
 pub const WIDTH: usize = 100;
 
@@ -12,6 +12,10 @@ pub fn format(source: &str) -> Result<String, Error> {
     let mut printer = Printer::new(source, comments(source)?);
     printer.document(&document);
     Ok(printer.finish())
+}
+
+fn numeric(expr: &Expr) -> bool {
+    matches!(expr.kind, ExprKind::Integer(_) | ExprKind::Float(_))
 }
 
 fn comments(source: &str) -> Result<Vec<Span>, Error> {
@@ -79,7 +83,11 @@ impl<'a> Printer<'a> {
     }
 
     fn column(&self) -> usize {
-        self.out.len() - self.out.rfind('\n').map_or(0, |at| at + 1)
+        let start = self.out.rfind('\n').map_or(0, |at| at + 1);
+        self.out[start..]
+            .chars()
+            .map(|character| if character == '\t' { TABSTOP } else { 1 })
+            .sum()
     }
 
     fn push(&mut self, text: &str) {
@@ -87,12 +95,12 @@ impl<'a> Printer<'a> {
     }
 
     fn line(&mut self, indent: usize) {
-        while self.out.ends_with(' ') {
+        while self.out.ends_with([' ', '\t']) {
             self.out.pop();
         }
         self.out.push('\n');
         for _ in 0..indent {
-            self.out.push(' ');
+            self.out.push('\t');
         }
         self.broken = false;
     }
@@ -250,7 +258,7 @@ impl<'a> Printer<'a> {
             ExprKind::Access { operand, field } => {
                 self.expr(operand, indent);
                 self.last = operand.span.end;
-                self.dot(field.span.start, indent);
+                self.dot(operand, field.span.start, indent);
                 let text = self.text(field.span);
                 self.push(text);
                 self.last = field.span.end;
@@ -258,7 +266,7 @@ impl<'a> Printer<'a> {
             ExprKind::Index { operand, key } => {
                 self.expr(operand, indent);
                 self.last = operand.span.end;
-                self.dot(key.span.start, indent);
+                self.dot(operand, key.span.start, indent);
                 self.push("(");
                 self.expr(key, indent);
                 self.last = key.span.end;
@@ -279,10 +287,12 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn dot(&mut self, before: usize, indent: usize) {
+    fn dot(&mut self, operand: &Expr, before: usize, indent: usize) {
         self.flush(before, indent);
         if self.broken {
             self.line(indent);
+        } else if numeric(operand) {
+            self.push(" ");
         }
         self.push(".");
     }
@@ -299,7 +309,7 @@ impl<'a> Printer<'a> {
                 self.emit(item, indent);
             }
         } else {
-            let inner = indent + INDENT;
+            let inner = indent + 1;
             for (at, item) in items.iter().enumerate() {
                 self.lead(item.start(), inner, at == 0 || layout == Layout::Reflow);
                 self.emit(item, inner);
@@ -340,7 +350,7 @@ impl<'a> Printer<'a> {
             }
             scratch.emit(item, indent);
         }
-        scratch.out.len()
+        scratch.out.chars().count()
     }
 
     fn finish(mut self) -> String {

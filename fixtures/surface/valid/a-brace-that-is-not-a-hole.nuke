@@ -4,8 +4,8 @@
 size := 12
 
 [
-  $"body {{ font-size: {size}px; }}"
-  $"{{}}"
-  $"{{{size}}}"
-  "body { font-size: 12px; }"
+	$"body {{ font-size: {size}px; }}"
+	$"{{}}"
+	$"{{{size}}}"
+	"body { font-size: 12px; }"
 ]

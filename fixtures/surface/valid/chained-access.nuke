@@ -3,6 +3,6 @@
 theme := {editor = {colors = {accent = "#FE8019"}}}
 
 {
-  colors = theme.editor.colors
-  accent = theme.editor.colors.accent
+	colors = theme.editor.colors
+	accent = theme.editor.colors.accent
 }

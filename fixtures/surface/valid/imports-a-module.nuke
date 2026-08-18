@@ -3,6 +3,6 @@
 palette := @import "../modules/palette.nuke"
 
 {
-  editor = {theme = palette.accent}
-  status = {fg = palette.muted}
+	editor = {theme = palette.accent}
+	status = {fg = palette.muted}
 }

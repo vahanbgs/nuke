@@ -1,9 +1,9 @@
 # A comment stands wherever whitespace does, and a binding adds two positions.
 {
-  # above the binding
-  n # after the name
-  := # after the binder
-  1 # after the value
+	# above the binding
+	n # after the name
+	:= # after the binder
+	1 # after the value
 
-  a = n
+	a = n
 }

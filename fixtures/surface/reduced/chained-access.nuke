@@ -1,4 +1,4 @@
 {
-  colors = {accent = "#FE8019"}
-  accent = "#FE8019"
+	colors = {accent = "#FE8019"}
+	accent = "#FE8019"
 }

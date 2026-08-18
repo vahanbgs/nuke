@@ -3,9 +3,9 @@
 # entries below are one element each, and the last one spans three lines.
 p := {a = {b = 1}}
 [
-  p.a.b
-  p . a . b
-  p # after the operand
-  .a # after the dot
-  .b
+	p.a.b
+	p . a . b
+	p # after the operand
+	.a # after the dot
+	.b
 ]

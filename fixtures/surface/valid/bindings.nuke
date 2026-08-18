@@ -1,8 +1,8 @@
 # A name stands for a value, and the binding itself is not in the result.
 {
-  accent := "#FE8019"
-  tab := 2
+	accent := "#FE8019"
+	tab := 2
 
-  editor = {theme = accent tab_width = tab}
-  terminal = {cursor = accent}
+	editor = {theme = accent tab_width = tab}
+	terminal = {cursor = accent}
 }

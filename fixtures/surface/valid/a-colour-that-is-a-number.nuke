@@ -4,7 +4,7 @@
 accent := 0xFE8019
 
 {
-  alacritty = {cursor = $"#{accent:06X}"}
-  ghostty = {palette = $"0=#{accent:06X}"}
-  fish = {fish_color_command = $"{accent:06x}"}
+	alacritty = {cursor = $"#{accent:06X}"}
+	ghostty = {palette = $"0=#{accent:06X}"}
+	fish = {fish_color_command = $"{accent:06x}"}
 }

@@ -4,6 +4,6 @@
 size := 12
 
 {
-  alacritty = {font_size = size}
-  waybar = {font = $"JetBrainsMono Nerd Font {size}" padding = $"{size}px"}
+	alacritty = {font_size = size}
+	waybar = {font = $"JetBrainsMono Nerd Font {size}" padding = $"{size}px"}
 }

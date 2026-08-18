@@ -2,7 +2,7 @@
 palette := {accent = "#FE8019" background = "#282828" muted = "#928374"}
 
 {
-  editor = {theme = palette.accent background = palette.background}
-  terminal = {cursor = palette.accent}
-  status = {inactive = palette.muted}
+	editor = {theme = palette.accent background = palette.background}
+	terminal = {cursor = palette.accent}
+	status = {inactive = palette.muted}
 }

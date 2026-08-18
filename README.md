@@ -11,20 +11,20 @@ once, in one language, and shared between the programs that need it.
 palette := {accent = "#fe8019" muted = "#928374"}
 
 {
-  editor = {
-    theme = "gruvbox-dark"
-    cursor = palette.accent
-    line_numbers = Relative
-  }
+	editor = {
+		theme = "gruvbox-dark"
+		cursor = palette.accent
+		line_numbers = Relative
+	}
 
-  shell = {
-    prompt_color = palette.accent
-    comment_color = palette.muted
-    aliases = {
-      "ll" => "eza -l"
-      "gs" => "git status"
-    }
-  }
+	shell = {
+		prompt_color = palette.accent
+		comment_color = palette.muted
+		aliases = {
+			"ll" => "eza -l"
+			"gs" => "git status"
+		}
+	}
 }
 ```
 

@@ -1,6 +1,6 @@
 {
-  outer = 1
-  shadowed = {here = 2}
-  from_above = {here = 1}
-  again = 1
+	outer = 1
+	shadowed = {here = 2}
+	from_above = {here = 1}
+	again = 1
 }

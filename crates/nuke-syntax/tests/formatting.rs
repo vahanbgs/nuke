@@ -3,12 +3,13 @@ use nuke_syntax::printer::format;
 use nuke_syntax::surface;
 
 fn sources() -> Vec<nuke_fixtures::Fixture> {
-    let mut all = nuke_fixtures::reductions()
+    let mut all: Vec<nuke_fixtures::Fixture> = nuke_fixtures::reductions()
         .into_iter()
-        .map(|reduction| reduction.source)
-        .collect::<Vec<_>>();
+        .flat_map(|reduction| [reduction.source, reduction.reduced])
+        .collect();
     all.extend(nuke_fixtures::valid());
     all.extend(nuke_fixtures::surface_modules());
+    all.extend(nuke_fixtures::surface_refused());
     all.retain(|fixture| surface::parse(&fixture.source).is_ok());
     all
 }
@@ -57,13 +58,22 @@ fn every_comment_survives() {
     }
 }
 
-const SPARSE: [&str; 2] = ["access-whitespace.nuke", "whitespace.nuke"];
+const SPARSE: [&str; 3] = [
+    "surface/valid/access-whitespace.nuke",
+    "surface/valid/whitespace.nuke",
+    "valid/whitespace.nuke",
+];
+
+fn sparse(fixture: &nuke_fixtures::Fixture) -> bool {
+    let path = fixture.path.to_string_lossy().into_owned();
+    SPARSE.iter().any(|tail| path.ends_with(tail))
+}
 
 #[test]
 fn the_corpus_is_already_formatted() {
     let mut drifted = Vec::new();
     for fixture in sources() {
-        if SPARSE.contains(&fixture.name()) {
+        if sparse(&fixture) {
             continue;
         }
         let formatted = format(&fixture.source).expect("formats");
@@ -79,7 +89,7 @@ fn the_corpus_is_already_formatted() {
 
 #[test]
 fn whitespace_a_document_omits_is_put_back() {
-    for fixture in sources().iter().filter(|f| SPARSE.contains(&f.name())) {
+    for fixture in sources().iter().filter(|fixture| sparse(fixture)) {
         let formatted = format(&fixture.source).expect("formats");
         assert_ne!(
             formatted,
@@ -112,12 +122,34 @@ fn a_block_written_on_one_line_stays_on_one_line() {
 }
 
 #[test]
-fn a_block_the_author_broke_stays_broken_and_indents_by_two() {
-    assert_eq!(formatted("{a = 1\nb = 2}"), "{\n  a = 1\n  b = 2\n}\n");
+fn a_block_the_author_broke_stays_broken_and_indents_with_one_tab_per_level() {
+    assert_eq!(formatted("{a = 1\nb = 2}"), "{\n\ta = 1\n\tb = 2\n}\n");
     assert_eq!(
         formatted("{a = {b = 1\nc = 2}}"),
-        "{\n  a = {\n    b = 1\n    c = 2\n  }\n}\n"
+        "{\n\ta = {\n\t\tb = 1\n\t\tc = 2\n\t}\n}\n"
     );
+}
+
+#[test]
+fn indentation_is_never_a_space_and_alignment_is_never_a_tab() {
+    for fixture in sources() {
+        let formatted = formatted(&fixture.source);
+        for (at, line) in formatted.lines().enumerate() {
+            let lead: String = line.chars().take_while(|c| c.is_whitespace()).collect();
+            assert!(
+                !lead.contains(' '),
+                "{}:{}: indented with a space",
+                fixture.display(),
+                at + 1
+            );
+            assert!(
+                !line.trim_start().contains('\t'),
+                "{}:{}: a tab stands past the indentation",
+                fixture.display(),
+                at + 1
+            );
+        }
+    }
 }
 
 #[test]
@@ -129,13 +161,14 @@ fn a_block_too_wide_for_one_line_takes_one_item_per_line() {
         formatted.lines().all(|line| line.len() <= 70),
         "{formatted}"
     );
+    assert!(formatted.contains("\n\ta = "), "{formatted}");
 }
 
 #[test]
 fn items_the_author_grouped_on_a_line_stay_grouped() {
     assert_eq!(
-        formatted("[\n  True False\n\n  1 2\n]"),
-        "[\n  True False\n\n  1 2\n]\n"
+        formatted("[\n\tTrue False\n\n\t1 2\n]"),
+        "[\n\tTrue False\n\n\t1 2\n]\n"
     );
 }
 
@@ -143,7 +176,7 @@ fn items_the_author_grouped_on_a_line_stay_grouped() {
 fn a_run_of_blank_lines_becomes_one() {
     assert_eq!(
         formatted("{a = 1\n\n\n\nb = 2}"),
-        "{\n  a = 1\n\n  b = 2\n}\n"
+        "{\n\ta = 1\n\n\tb = 2\n}\n"
     );
 }
 
@@ -173,4 +206,15 @@ fn whitespace_around_a_dot_is_closed_up() {
         formatted("p := {a = {b = 1}}\n[p . a . b]"),
         "p := {a = {b = 1}}\n[p.a.b]\n"
     );
+}
+
+#[test]
+fn a_dot_after_a_number_keeps_the_room_that_makes_it_an_operator() {
+    for source in ["[1 . b]", "[1.5 . b]", "[1 . (0)]"] {
+        let formatted = formatted(source);
+        surface::parse(&formatted).unwrap_or_else(|error| {
+            panic!("{source} became {formatted:?}, which does not parse: {error}")
+        });
+    }
+    assert_eq!(formatted("[1 . b]"), "[1 .b]\n");
 }

@@ -1,16 +1,16 @@
 # An inner block shadows a name, and a binding's value is read before its own
 # name exists, so `n := n` names the one above rather than itself.
 {
-  n := 1
+	n := 1
 
-  outer = n
-  shadowed = {
-    n := 2
-    here = n
-  }
-  from_above = {
-    n := n
-    here = n
-  }
-  again = n
+	outer = n
+	shadowed = {
+		n := 2
+		here = n
+	}
+	from_above = {
+		n := n
+		here = n
+	}
+	again = n
 }

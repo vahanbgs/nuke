@@ -4,6 +4,6 @@
 accent := "FE8019"
 
 {
-  alacritty = {cursor = @concat ["#" accent]}
-  fish = {fish_color_command = accent}
+	alacritty = {cursor = @concat ["#" accent]}
+	fish = {fish_color_command = accent}
 }

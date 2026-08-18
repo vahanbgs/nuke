@@ -1,4 +1,4 @@
 {
-  editor = {theme = "#FE8019" tab_width = 2}
-  terminal = {cursor = "#FE8019"}
+	editor = {theme = "#FE8019" tab_width = 2}
+	terminal = {cursor = "#FE8019"}
 }

@@ -1,17 +1,17 @@
 # Before the document.
 
 [ # after an opening bracket
-  { # after an opening brace
-    a # after a field name
-    = # after an equals sign
-    1 # after a field value
-  } # after a tuple
+	{ # after an opening brace
+		a # after a field name
+		= # after an equals sign
+		1 # after a field value
+	} # after a tuple
 
-  {
-    "k" # after a map key
-    => # after an arrow
-    2 # after a map value
-  } # after a map
+	{
+		"k" # after a map key
+		=> # after an arrow
+		2 # after a map value
+	} # after a map
 
-  3 # after a list element
+	3 # after a list element
 ] # after the document

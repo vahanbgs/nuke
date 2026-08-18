@@ -4,7 +4,7 @@
 prefix := "#"
 
 [
-  @concat [prefix "1D2021"]
-  @concat ["a" "b" "c"]
-  @concat ["only"]
+	@concat [prefix "1D2021"]
+	@concat ["a" "b" "c"]
+	@concat ["only"]
 ]

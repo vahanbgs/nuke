@@ -1,15 +1,15 @@
 # A binding reaches to the end of its own block and no further, and a field name
 # is not a name a value can be found under.
 {
-  outer := 1
-  port := 8080
+	outer := 1
+	port := 8080
 
-  a = {
-    inner := 2
-    here = inner
-    above = outer
-  }
+	a = {
+		inner := 2
+		here = inner
+		above = outer
+	}
 
-  b = outer
-  port = port
+	b = outer
+	port = port
 }

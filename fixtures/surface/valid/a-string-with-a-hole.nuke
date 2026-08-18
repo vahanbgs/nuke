@@ -5,10 +5,10 @@ accent := "FE8019"
 theme := {name = "gruvbox" pad = 4}
 
 [
-  $"#{accent}"
-  $"{theme.name}-{theme.pad}"
-  $"{accent}{accent}"
-  $"no holes at all"
-  $""
-  "{icon} {percentage}%"
+	$"#{accent}"
+	$"{theme.name}-{theme.pad}"
+	$"{accent}{accent}"
+	$"no holes at all"
+	$""
+	"{icon} {percentage}%"
 ]

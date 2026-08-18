@@ -1,4 +1,4 @@
 {
-  editor = {theme = "#FE8019"}
-  status = {fg = "#928374"}
+	editor = {theme = "#FE8019"}
+	status = {fg = "#928374"}
 }

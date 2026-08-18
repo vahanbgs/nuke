@@ -2,6 +2,6 @@
 # without being bound first — and naming the same file twice is reuse, not a
 # second reading of it.
 [
-  @import "../modules/palette.nuke".accent
-  @import "../modules/palette.nuke".muted
+	@import "../modules/palette.nuke".accent
+	@import "../modules/palette.nuke".muted
 ]
