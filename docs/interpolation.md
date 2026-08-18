@@ -48,12 +48,13 @@ string it builds is flat. Of the six forms:
 | tuple, map, list  | **refused**                 | refused                                |
 
 An integer keeps the text it was written as, and `canonical-number` admits one spelling per value,
-so the hole hands text over rather than choosing it — `-0` included, settled as `0` when it was
-read. A float is refused because `1e5` and `100000.0` are one value with two canonical spellings
-and `docs/canonical-form.md` gives that choice to the formatter; a precision picks one, so the
-refusal is "say how many digits" and not "you cannot". An atom is uninterpreted, and answering
-`"True"` or `"true"` would be Nuke deciding what an atom means, which a backend does only because
-its target leaves it nowhere else to put one. A collection's text would be Nuke's own syntax.
+so the hole hands text over rather than choosing it — `-0` settled as `0` when it was read, and a
+dyadic literal settled into decimal beside it. A float is refused because `1e5` and `100000.0` are
+one value with two canonical spellings and `docs/canonical-form.md` gives that choice to the
+formatter; a precision picks one, so the refusal is "say how many digits" and not "you cannot". An
+atom is uninterpreted, and answering `"True"` or `"true"` would be Nuke deciding what an atom
+means, which a backend does only because its target leaves it nowhere else to put one. A
+collection's text would be Nuke's own syntax.
 
 `@concat` still refuses a non-string part, and that is a distinction rather than an
 inconsistency: a hole *spells* the conversion, the way `.` spells a projection, while a part in a

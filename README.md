@@ -38,8 +38,9 @@ inside the blocks nested there, and its value is read before its own name exists
 reference cycle has no spelling, which is how a language with names stays total. `.`
 projects a field out of a tuple, so one named value can hold what several places need.
 
-`$"…"` interpolates: `$"#{accent}"` and `$"{size}px"` build a string, a hole being the one place
-a value becomes text, with Rust's specifier after a `:`. A plain string never pays for it.
+`$"…"` interpolates: `$"#{accent}"` and `$"{size}px"` build a string, a hole being the one place a
+value becomes text, with Rust's specifier after a `:`. A plain string never pays for it. Its radix
+mirrors the literals: `0xFE8019` is hex and `0b101110100xC` nine bits of binary then four of hex.
 
 `@` calls a builtin, and `@import` reads another file's value — which is what lets one
 palette be written once and read by every program that needs it:
@@ -77,12 +78,11 @@ one that spells a value several ways, one that is a family rather than a languag
 specification, one that cannot spell a name Nuke guarantees, and one whose spelling depends on
 where the value stands.
 
-The surface language has begun. [`grammar/surface.abnf`](grammar/surface.abnf) adds bindings,
-field access, calls and interpolation, `crates/nuke-eval` reduces a document to the canonical
-form, and [`docs/surface.md`](docs/surface.md) argues the rules the grammar cannot state, with
-[`docs/imports.md`](docs/imports.md) taking the ones about files and
-[`docs/interpolation.md`](docs/interpolation.md) the ones about text — where a hole is the one
-place a value becomes text, which is why it is syntax and not a builtin. There are two of those:
+The surface language is finished. [`grammar/surface.abnf`](grammar/surface.abnf) adds bindings,
+field access, calls, interpolation and dyadic literals, `crates/nuke-eval` reduces a document to
+the canonical form, and [`docs/surface.md`](docs/surface.md) argues the rules the grammar cannot
+state, with [`docs/imports.md`](docs/imports.md), [`docs/interpolation.md`](docs/interpolation.md)
+and [`docs/dyadic.md`](docs/dyadic.md) taking files, text and the bases. There are two builtins:
 `@import` reads a file, and `@concat` puts strings end to end. What holds the two languages
 together is a test: evaluating a canonical document is the identity, so nothing the surface
 language adds reaches the form that carries data. Operators, conditionals and the tooling are

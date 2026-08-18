@@ -2,11 +2,11 @@
 
 A Nuke file is an expression, and evaluating it reduces it to the canonical form —
 `nuke_eval::eval_at` does both halves. `grammar/tokens.abnf` then `grammar/surface.abnf` are the
-normative grammar; this records what they cannot. The surface language adds four things: **a name
-stands for a value**, **a projection reads out of a collection**, **`@` calls a builtin**, and
-**`$"…"` interpolates** — the one place a value becomes text, and syntax rather than a fourth
-builtin because lambdas will make most builtins user-writeable and never supply syntax.
-`docs/interpolation.md` argues that one, as `docs/imports.md` argues the rules about files.
+normative grammar; this records what they cannot. The surface language adds five things: **a name
+stands for a value**, **a projection reads out of a collection**, **`@` calls a builtin**,
+**`$"…"` interpolates** — the one place a value becomes text, and syntax rather than a builtin —
+and **a number is spelled in a base other than ten**. `docs/interpolation.md` argues the fourth
+and `docs/dyadic.md` the fifth, as `docs/imports.md` argues the rules about files.
 
 ## Bindings
 

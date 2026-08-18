@@ -68,8 +68,8 @@ them and reports the loss. Floats are IEEE-754 doubles.
 
 There is one way to write a given number, enforced by `canonical-number`: no leading `+` and
 no leading zeros, in the exponent or before the point; no uppercase `E`; no digit-less
-fraction such as `1.` or `.5`; and no hex, octal or binary, which are surface syntax that
-reduces to a decimal integer. That governs spelling, not the choice among equal floats —
+fraction such as `1.` or `.5`; and no base but ten, the dyadic literals of `docs/dyadic.md`,
+which reduce to a decimal integer. That governs spelling, not the choice among equal floats —
 `1e5` and `100000.0` are both canonical, and deciding between them is the formatter's job.
 There is no infinity and no NaN; a backend that needs them takes them from atoms.
 

@@ -15,7 +15,7 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
 
 - `grammar/` — `tokens.abnf` then `canonical.abnf` or `surface.abnf`; a grammar is that pair.
 - `docs/canonical-form.md`, `docs/surface.md` — the rules ABNF cannot express, one per language,
-  plus `docs/imports.md` for the ones about files and `docs/interpolation.md` for text.
+  plus `docs/imports.md` for files, `docs/interpolation.md` for text, `docs/dyadic.md` for bases.
 - `docs/serde.md` — where Nuke and serde's data model disagree, and how the binding settles it.
 - `docs/json.md` and its eight siblings — each mapping, and what it degrades or refuses.
 - `fixtures/valid`, `fixtures/invalid` — conformance fixtures. Under `fixtures/surface`, `valid`
@@ -78,7 +78,7 @@ We are taking baby steps.
 - [x] Serde support: `Value` as a self-describing data model, and `from_str` into a user's type.
 - [x] The transpiler: nine backends, each owning its `ErrorKind` and its answer to what the target
       can spell. A target earns one when its lesson can be named before it is written.
-- [ ] The surface language: the expressions that reduce to the canonical form.
+- [x] The surface language: the expressions that reduce to the canonical form.
   - [x] Names. `:=` binds and contributes nothing; scope is sequential, so a cycle cannot be
         written; a field is not a binding. The invariant holding the surface language to the
         canonical form is that evaluating a canonical document is the identity.
@@ -88,12 +88,12 @@ We are taking baby steps.
   - [x] `@concat`, the second builtin and the first about values rather than files, which makes
         `@` a namespace. It does not stringify, and a string wants `MAX_BYTES` of its own.
   - [x] Interpolation. `$"a{expr:spec}b"` with Rust's specifier, and a hole is the one place a
-        value becomes text — so no `@text` was spent, lambdas being owed most builtins and no
-        syntax. A float needs a precision, `#` needs a radix, and a plain string never pays.
+        value becomes text, so no `@text` was spent — lambdas are owed most builtins and no syntax.
   - [x] Projection `.`. Postfix, whitespace insensitive, its operand any value, so `1.b` stays a
         malformed number. Two right operands: a name reads a tuple's field, `(expr)` the key a map
         or a list is read at — `5a7fa5a`'s `[ ]` overturned, its case against `m["a"]` kept.
-  - [ ] Hex, octal and binary, the last of the surface language. `{n:06X}` is already their mirror.
+  - [x] Dyadic literals, the last of the surface language. A marker per width — `b`, `q`, `o`, `x` —
+        so one number mixes bases. Uppercase hex frees the markers; `{n:06X}` shares the ceiling.
 - [ ] The dot file manager — a CLI, a manifest, and the targets the roster misses. This, and not
       the language, is what the dot files are waiting on.
 - [ ] The formatter, the linter, the LSP server.
