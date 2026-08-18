@@ -7,6 +7,7 @@ pub mod expr;
 mod hint;
 pub mod lexer;
 mod parser;
+pub mod printer;
 #[cfg(feature = "serde")]
 pub mod ser;
 pub mod spec;

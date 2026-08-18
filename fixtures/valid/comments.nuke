@@ -7,7 +7,8 @@
     1 # after a field value
   } # after a tuple
 
-  { "k" # after a map key
+  {
+    "k" # after a map key
     => # after an arrow
     2 # after a map value
   } # after a map

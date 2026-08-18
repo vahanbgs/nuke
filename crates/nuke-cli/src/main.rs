@@ -1,4 +1,5 @@
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::str::FromStr;
@@ -8,11 +9,13 @@ use nuke_transpile::Target;
 
 const EXTENSION: &str = "nuke";
 
+const STDIN: &str = "-";
+
 #[derive(Parser)]
 #[command(
     name = "nuke",
     version,
-    about = "Write a Nuke document out as a target"
+    about = "Render a Nuke document, list what it reads, and format it"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -29,12 +32,17 @@ enum Command {
     Deps {
         file: PathBuf,
     },
+    Fmt {
+        #[arg(value_name = "FILE")]
+        file: PathBuf,
+    },
 }
 
 fn main() -> ExitCode {
     match Cli::parse().command {
         Command::Render { format, file } => render(format, &file),
         Command::Deps { file } => deps(&file),
+        Command::Fmt { file } => fmt(&file),
     }
     .unwrap_or_else(|report| {
         eprintln!("{report}");
@@ -64,6 +72,33 @@ fn deps(file: &Path) -> Result<ExitCode, String> {
         println!("{}", read.display());
     }
     Ok(ExitCode::SUCCESS)
+}
+
+fn fmt(file: &Path) -> Result<ExitCode, String> {
+    let source = source(file)?;
+    let formatted = nuke_syntax::printer::format(&source)
+        .map_err(|error| format!("{}:{}: {error}", name(file), error.location(&source)))?;
+    print!("{formatted}");
+    Ok(ExitCode::SUCCESS)
+}
+
+fn source(file: &Path) -> Result<String, String> {
+    if file == Path::new(STDIN) {
+        let mut source = String::new();
+        return std::io::stdin()
+            .read_to_string(&mut source)
+            .map(|_| source)
+            .map_err(|error| format!("{}: {error}", name(file)));
+    }
+    read(file)
+}
+
+fn name(file: &Path) -> String {
+    if file == Path::new(STDIN) {
+        "<stdin>".to_owned()
+    } else {
+        file.display().to_string()
+    }
 }
 
 fn read(file: &Path) -> Result<String, String> {

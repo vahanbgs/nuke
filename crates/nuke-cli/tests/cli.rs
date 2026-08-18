@@ -1,5 +1,6 @@
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
 
 use nuke_transpile::{Target, toml};
 use tempfile::TempDir;
@@ -104,4 +105,49 @@ fn deps_names_the_entry_file_and_every_file_it_read() {
                 .unwrap(),
         ]
     );
+}
+
+fn piped(arguments: &[&str], input: &str) -> Output {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_nuke"))
+        .args(arguments)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("the binary should run");
+    child
+        .stdin
+        .as_mut()
+        .expect("stdin should be piped")
+        .write_all(input.as_bytes())
+        .expect("the document should be written");
+    child.wait_with_output().expect("the binary should finish")
+}
+
+#[test]
+fn a_document_is_formatted_from_stdin() {
+    let output = piped(&["fmt", "-"], "{a:=1 b:=\"x\" c=[a a]}");
+    assert!(output.status.success(), "{}", err(&output));
+    assert_eq!(out(&output), "{a := 1 b := \"x\" c = [a a]}\n");
+}
+
+#[test]
+fn formatting_a_file_writes_it_to_stdout_and_leaves_it_alone() {
+    let file = fixtures().join("surface/valid/dotfile.nuke");
+    let before = std::fs::read_to_string(&file).expect("the fixture should be readable");
+    let output = nuke(&["fmt", file.to_str().unwrap()]);
+    assert!(output.status.success(), "{}", err(&output));
+    assert_eq!(out(&output), before);
+    assert_eq!(
+        std::fs::read_to_string(&file).expect("the fixture should still be readable"),
+        before
+    );
+}
+
+#[test]
+fn a_document_that_cannot_be_parsed_is_reported_by_position() {
+    let output = piped(&["fmt", "-"], "{a = }");
+    assert!(!output.status.success());
+    let message = err(&output);
+    assert!(message.starts_with("<stdin>:1:6:"), "{message}");
 }
