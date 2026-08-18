@@ -4,4 +4,5 @@
 	later := 1
 
 	a = here
+	b = later
 }

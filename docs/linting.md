@@ -21,7 +21,7 @@ The converse bounds it. A lint never affects whether a document parses, and a do
 did not parse has one fault and it is the parser's — so `lint` returns `Err` for a syntax
 error rather than folding it in among the findings. An editor wants those two apart.
 
-## Three rules, and each is only the tail of its prose
+## Four rules, and three are only the tail of their prose
 
 `docs/canonical-form.md` says atoms are `UpperCamelCase` and identifiers are `snake_case`
 with no leading, trailing or doubled `_`. `docs/imports.md` says asking for the `.nuke`
@@ -33,11 +33,30 @@ extension is the linter's. The lexer already holds most of that, and what is lef
   so a leading `_` and every capital are token faults; the rule's third clause is paid already.
 - **`import-extension`** fires on an `@import` whose path does not end `.nuke`. Nothing precedes
   this one: the whole of the rule is the linter's.
+- **`unused-binding`** fires on a name nothing below it reads. Nothing precedes this one either:
+  the reducer evaluates every binding and keeps none of them, so it has no complaint to make.
 
 That is the shape to keep. **The linter's share of a rule is precisely the part the grammar
 admits**, never a second enforcement of what the lexer already refuses — two checks on one
 spelling is two places to disagree about it. `ident-case` therefore runs at every name a
 document has: a binding, a field, a projected field, a builtin's name, and a reference.
+
+## `unused-binding` resolves rather than walks
+
+It is the one rule that needs a scope, and the scope is `nuke-eval`'s: bindings stand at the
+head of a block and reach to the end of it, a binding's value is read before its own name
+exists, and a reference names the last binding of that name. So the pass pushes a binding
+*after* walking its value — which is what leaves `n := n` naming the one above — and reports
+whatever is unread when the block closes, at the **name**. Rebinding within one block is a
+parse error, so the only shadow is a nested one, and a name a nested block covers before
+anyone reads it is unread. A reference that resolves to nothing marks nothing: an unbound
+name is the reducer's fault and the linter does not say it twice.
+
+There is no `_name` to opt out of it, because a leading `_` is a token fault and there is no
+configuration either. That costs nothing while every binding is written by hand and can
+simply be deleted. It starts costing something when a lambda's parameter is forced on you by
+a signature — which is what Rust's `_x` is for — and that is when to spell it, with the
+reason to hand rather than borrowed.
 
 ## It takes no filesystem
 
@@ -58,18 +77,15 @@ Every fixture that parses reports nothing — `fixtures/valid` and
 `fixtures/surface/{valid,reduced,refused,modules}`, the set `docs/formatting.md` is held to,
 filtered the same way because `modules/is-not-a-document.nuke` exists to be unparseable. A
 fixture in the wrong style fails the suite rather than setting a second precedent for what
-Nuke looks like. It passed unchanged the day it was written, which is the corpus saying the
-rules were already the convention rather than a new opinion about it.
+Nuke looks like. Three rules passed the corpus unchanged the day they were written; the
+fourth cost two `refused/` fixtures a reference each, both of which bound a name only the
+refusal itself was interested in. That is the corpus agreeing rather than being made to.
 
 Each rule pins its **span** as well as its finding, because a diagnostic on the right
 document at the wrong place is one an editor underlines somewhere else, and findings arrive
 in source order so that stays a promise rather than an implementation detail.
 
 ## What it does not report yet
-
-An **unused binding** is the lint a user would meet first, and the only one that needs a
-scope pass rather than a walk — sequential scope with shadowing, which `locals.scm` already
-models for the editor. It is the next rule, not a declined one.
 
 `docs/toml.md` asks that a document wanting headers throughout put its tables last, and hands
 that to "the formatter — not the transpiler". The formatter never reorders, so it is really a

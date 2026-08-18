@@ -71,6 +71,67 @@ fn an_import_is_asked_for_the_extension() {
 }
 
 #[test]
+fn a_binding_nothing_reads_is_reported() {
+    clean("n := 1\n[n]");
+    clean("n := 1\n[$\"{n}\"]");
+    clean("p := {a = 1}\n[p.a]");
+    clean("m := {\"a\" => 1}\nwhich := \"a\"\n[m.(which)]");
+    clean("a := 1\nb := a\n[b]");
+    trips("n := 1\n[2]", Rule::UnusedBinding, "n", Span::new(0, 1));
+    trips("{n := 1 a = 2}", Rule::UnusedBinding, "n", Span::new(1, 2));
+}
+
+#[test]
+fn a_binding_reaches_to_the_end_of_its_own_block_and_no_further() {
+    clean("{outer := 1 a = {here = outer}}");
+    clean("{outer := 1 a = {\"k\" => outer}}");
+    trips(
+        "{a = {n := 1 x = 1}}",
+        Rule::UnusedBinding,
+        "n",
+        Span::new(6, 7),
+    );
+    trips(
+        "{a = {n := 1} b = n}",
+        Rule::UnusedBinding,
+        "n",
+        Span::new(6, 7),
+    );
+}
+
+#[test]
+fn a_name_a_shadow_covers_before_it_is_read_is_unread() {
+    clean("{n := 1 a = {n := n here = n}}");
+    clean("{n := 1 above = n a = {n := 2 here = n}}");
+    clean("n := n\n[n]");
+    let found = lint("{n := 1 a = {n := 2 here = n}}").expect("parses");
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].rule(), Rule::UnusedBinding);
+    assert_eq!(
+        found[0].span(),
+        Span::new(1, 2),
+        "the shadowed one is unread"
+    );
+}
+
+#[test]
+fn a_name_bound_below_the_only_reference_to_it_is_unread() {
+    trips(
+        "{here := later later := 1 a = here}",
+        Rule::UnusedBinding,
+        "later",
+        Span::new(15, 20),
+    );
+}
+
+#[test]
+fn an_unread_import_is_still_an_import() {
+    let found = lint("p := @import \"./palette\"\n[1]").expect("parses");
+    let rules: Vec<Rule> = found.iter().map(Diagnostic::rule).collect();
+    assert_eq!(rules, [Rule::UnusedBinding, Rule::ImportExtension]);
+}
+
+#[test]
 fn findings_come_in_the_order_the_document_spells_them() {
     let found = lint("{a__b = HTTPServer c_ = @import \"./p\"}").expect("parses");
     let rules: Vec<Rule> = found.iter().map(Diagnostic::rule).collect();
@@ -100,7 +161,15 @@ fn a_syntax_error_is_not_a_lint() {
 #[test]
 fn every_rule_names_itself() {
     let names: Vec<&str> = Rule::ALL.iter().copied().map(Rule::name).collect();
-    assert_eq!(names, ["atom-case", "ident-case", "import-extension"]);
+    assert_eq!(
+        names,
+        [
+            "atom-case",
+            "ident-case",
+            "import-extension",
+            "unused-binding"
+        ]
+    );
     for rule in Rule::ALL {
         assert_eq!(rule.to_string(), rule.name());
     }

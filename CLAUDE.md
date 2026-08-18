@@ -36,8 +36,8 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
 - `crates/nuke-transpile` — the backends, each owning its own `ErrorKind` and its own answer to what
   the target can spell: JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig, Nix. `docs/` argues each.
   `Target` names one and `Refusal` wraps the nine errors without flattening them.
-- `crates/nuke-lint` — the style `docs/canonical-form.md` owes: what the formatter may not fix. It
-  takes `nuke-syntax` and never the filesystem, so it follows no import and needs no saved file.
+- `crates/nuke-lint` — the style `docs/canonical-form.md` owes: what the formatter may not fix,
+  in one pass carrying the scope `unused-binding` needs. No filesystem, so it follows no import.
 - `crates/nuke-cli` — the binary `nuke`: `render` writes a document out, `deps` lists what it read,
   `fmt` formats one from a path or `-` and `lint` reports its style from either. None writes a file.
 - `tree-sitter-nuke/` — the surface language for editors, outside the workspace because a Rust
@@ -93,7 +93,7 @@ We are taking baby steps.
       `crates/nuke-cli`. Nuke ends at text and the host begins at files, which strikes the
       manifest — a name says where a file goes. `docs/embedding.md` argues the line.
 - [ ] The editor tooling, which `dot` waits on. `nuke fmt`, the `tree-sitter` grammar Helix
-      highlights from and `nuke lint` are done; the LSP server is not, nor is the unused binding
-      the linter still owes — the first rule needing a scope pass rather than a walk.
+      highlights from and `nuke lint` — four rules now, `unused-binding` among them — are done.
+      The LSP server is not, and it wants that rule's scope pass for go-to-definition.
 - [ ] `ghostty` and `plist`, the two targets the roster misses, and then `dot` linking this
       workspace. The shells stay declined: a template engine writes what has no grammar.
