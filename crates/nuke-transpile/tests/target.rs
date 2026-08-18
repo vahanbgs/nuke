@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use nuke_syntax::{Value, parse};
-use nuke_transpile::{Target, gitconfig, ini, json, kdl, lua, nix, toml, xml, yaml};
+use nuke_transpile::{Target, ghostty, gitconfig, ini, json, kdl, lua, nix, toml, xml, yaml};
 
 fn value_of(source: &str) -> Value {
     parse(source).expect("the source should parse")
@@ -18,6 +18,7 @@ fn by_module(target: Target, value: &Value) -> Result<String, String> {
         Target::Ini => ini::to_string(value).map_err(|error| error.to_string()),
         Target::Gitconfig => gitconfig::to_string(value).map_err(|error| error.to_string()),
         Target::Nix => nix::to_string(value).map_err(|error| error.to_string()),
+        Target::Ghostty => ghostty::to_string(value).map_err(|error| error.to_string()),
     }
 }
 
@@ -57,7 +58,16 @@ fn an_extension_names_the_target_that_writes_it() {
 
 #[test]
 fn an_extension_no_target_claims_is_nobodys() {
-    for extension in ["", "nuke", "conf", "gitconfig", "JSON", "tielpmet"] {
+    for extension in [
+        "",
+        "nuke",
+        "conf",
+        "config",
+        "gitconfig",
+        "ghostty",
+        "JSON",
+        "tielpmet",
+    ] {
         assert_eq!(Target::from_extension(extension), None);
     }
 }
