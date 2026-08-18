@@ -8,12 +8,21 @@ publish = false
 
 [dependencies]
 nuke-syntax.workspace = true
+serde = { workspace = true, optional = true }
 
 [dev-dependencies]
 nuke-fixtures.workspace = true
 nuke-grammar.workspace = true
 nuke-transpile.workspace = true
+serde = { workspace = true, features = ["derive"] }
 tempfile.workspace = true
+
+[features]
+serde = ["dep:serde", "nuke-syntax/serde"]
+
+[[test]]
+name = "binding"
+required-features = ["serde"]
 
 [lints]
 workspace = true

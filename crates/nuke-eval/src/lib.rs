@@ -1,3 +1,5 @@
+#[cfg(feature = "serde")]
+pub mod bind;
 pub mod error;
 mod text;
 
@@ -9,6 +11,8 @@ use std::path::{Path, PathBuf};
 use nuke_syntax::expr::{Binding, Document, Expr, ExprKind, Name, Piece};
 use nuke_syntax::{Ident, MAX_DEPTH, Map, Span, Tuple, Value, surface};
 
+#[cfg(feature = "serde")]
+pub use bind::{from_path, from_source};
 pub use error::{Error, ErrorKind};
 
 pub const MAX_VALUES: usize = 1 << 20;
