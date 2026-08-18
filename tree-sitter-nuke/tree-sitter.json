@@ -1,0 +1,16 @@
+{
+  "grammars": [
+    {
+      "name": "nuke",
+      "camelcase": "Nuke",
+      "scope": "source.nuke",
+      "path": ".",
+      "file-types": ["nuke"]
+    }
+  ],
+  "metadata": {
+    "version": "0.0.0",
+    "license": "MIT OR Apache-2.0",
+    "description": "Nuke grammar for tree-sitter"
+  }
+}

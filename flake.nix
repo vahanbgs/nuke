@@ -67,7 +67,9 @@
             toolchain
             pkgs.cargo-nextest
             pkgs.fd
+            pkgs.nodejs
             pkgs.ripgrep
+            pkgs.tree-sitter
           ];
         };
 
