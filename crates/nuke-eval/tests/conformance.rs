@@ -82,6 +82,16 @@ fn refusals() -> Vec<(&'static str, Fault)> {
             "no-such-field.nuke",
             Fault::Kind(ErrorKind::NoSuchField("b".to_owned())),
         ),
+        ("no-such-key.nuke", Fault::Kind(ErrorKind::NoSuchKey)),
+        ("a-key-into-a-tuple.nuke", Fault::Kind(ErrorKind::NotKeyed)),
+        (
+            "a-position-a-list-has-not-got.nuke",
+            Fault::Kind(ErrorKind::NoSuchKey),
+        ),
+        (
+            "a-position-that-is-not-one.nuke",
+            Fault::Kind(ErrorKind::NoSuchKey),
+        ),
         ("out-of-scope-name.nuke", nothing_binds("n")),
         ("self-reference.nuke", nothing_binds("n")),
         ("unbound-name.nuke", nothing_binds("missing")),

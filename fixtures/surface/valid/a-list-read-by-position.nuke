@@ -1,0 +1,5 @@
+# A list's keys are its positions, so the reader a map takes reads one too.
+palette := ["#282828" "#FE8019" "#928374"]
+second := 1
+
+[palette.(0) palette.(second) palette.(2)]

@@ -29,6 +29,10 @@ pub enum ExprKind {
         operand: Box<Expr>,
         field: Name,
     },
+    Index {
+        operand: Box<Expr>,
+        key: Box<Expr>,
+    },
     Call {
         name: Name,
         operand: Box<Expr>,

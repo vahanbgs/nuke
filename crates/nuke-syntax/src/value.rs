@@ -250,6 +250,10 @@ impl Map {
         self.0.get(key)
     }
 
+    pub fn take(mut self, key: &Value) -> Option<Value> {
+        self.0.shift_remove(key)
+    }
+
     pub fn len(&self) -> usize {
         self.0.len()
     }

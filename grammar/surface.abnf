@@ -16,19 +16,36 @@
 
 document   = ows *( binding ows ) value ows
 
-; Field access projects a field out of a tuple. It is postfix rather than
+; Projection reads a value out of a collection. It is postfix rather than
 ; recursive on its left because a PEG admits no left recursion, and it takes
 ; `ows` on both sides because every other operator does — so `[a .b]` holds one
 ; element, not two.
 ;
+; There is one operator and two right operands. A name is taken literally and
+; projects a tuple's field; a parenthesised expression is evaluated and its
+; value is the key an entry is read at. That is the whole rule — `p.accent` is
+; the field, `m.("accent")` and `m.(k)` are the entry — and it is what keeps
+; `.a` from becoming a second spelling of `.("a")`.
+;
+; The parenthesis is not a character spent. Grouping is owed `( )` the moment
+; arithmetic arrives, and what stands after the dot is exactly a grouped
+; expression, so the paren arrives early in the one position that needs it and
+; `m.(1 + 1)` is already what this rule says. The square bracket was the other
+; candidate and is refused: `[ ]` means list everywhere else here, so `m.["a"]`
+; reads as though a list were being projected. Postfix `m["a"]` is refused for
+; a harder reason — collections carry no separators, so `[a [1]]` would be read
+; as one projection and a list holding a name beside a list would have no
+; spelling at all.
+;
 ; It is also where the token layer's greediness finally shows: a number token
-; takes the point with it, so `1.b` is the malformed number `1.` beside a name
-; and only `1 . b` is a projection. Nothing new is at work — `[12]` and `[1 2]`
-; differ for the same reason — but `.` is the first thing that is not a value
-; and can still run together with one.
+; takes the point with it, so `1.b` is the malformed number `1.` beside a name,
+; `1.(k)` is that number beside a group, and only `1 . b` is a projection.
+; Nothing new is at work — `[12]` and `[1 2]` differ for the same reason — but
+; `.` is the first thing that is not a value and can still run together with one.
 
 value      = operand *( ows access )
-access     = "." ows ident
+access     = "." ows ( ident / computed )
+computed   = "(" ows value ows ")"
 operand    = call / interpolation / tuple / map / list / reference / atom / string / number
 
 ; `@` calls a builtin, and `import` is the first of them. It is a sigil and
@@ -40,9 +57,9 @@ operand    = call / interpolation / tuple / map / list / reference / atom / stri
 ;
 ; `@` is what is left. Arithmetic is owed `+ - * / %`, comparison `< > = !`,
 ; and — since a language without reserved words cannot spell `and`, `or` or
-; `not` as words — conjunction is owed `& | !` too. A conditional is owed `?`
-; and needs a bare `:` to stay untokenised, and grouping is owed `( )`. Of
-; what remains, `@` is the one that reads as "at", which is what a path is.
+; `not` as words — conjunction is owed `& | !` too. Grouping is owed `( )`,
+; which `access` now spends the near half of. Of what remains, `@` is the one
+; that reads as "at", which is what a path is.
 ;
 ; A call takes exactly one operand, and that is forced rather than chosen: a
 ; collection carries no separators, so in `[@f a b]` nothing could tell a call

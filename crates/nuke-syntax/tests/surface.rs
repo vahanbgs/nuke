@@ -35,6 +35,15 @@ fn faults() -> Vec<(&'static str, ErrorKind)> {
             ErrorKind::ExpectedHoleClose,
         ),
         (
+            "a-key-that-is-never-closed.nuke",
+            ErrorKind::UnterminatedKey,
+        ),
+        (
+            "a-key-that-holds-two-values.nuke",
+            ErrorKind::ExpectedKeyClose,
+        ),
+        ("a-projection-with-no-key.nuke", ErrorKind::ExpectedValue),
+        (
             "an-interpolation-that-is-never-closed.nuke",
             ErrorKind::UnterminatedString,
         ),

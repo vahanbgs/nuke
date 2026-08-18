@@ -1,0 +1,14 @@
+# A map is read by a key rather than by a name: the parentheses say the key is a
+# value to reduce, and a key is compared structurally, so a collection is one.
+sizes := {"gaps" => 4 "border" => 2}
+codes := {[1 2] => "pair" {x = 0} => "origin" 8 => "eight"}
+which := "border"
+
+{
+  gaps = sizes.("gaps")
+  border = sizes.(which)
+  pair = codes.([1 2])
+  origin = codes.({x = 0})
+  eight = codes.(8)
+  nested = {config = {"theme" => {accent = "#FE8019"}}}.config.("theme").accent
+}

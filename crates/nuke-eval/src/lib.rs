@@ -161,6 +161,18 @@ impl Reducer<'_> {
                     )
                 })
             }
+            ExprKind::Index { operand, key } => {
+                let collection = self.value(operand, depth)?;
+                let at = self.value(key, depth + 1)?;
+                let read = match collection {
+                    Value::Map(map) => map.take(&at),
+                    Value::List(mut items) => {
+                        position(&at, items.len()).map(|at| items.swap_remove(at))
+                    }
+                    _ => return Err(Error::new(ErrorKind::NotKeyed, operand.span)),
+                };
+                read.ok_or_else(|| Error::new(ErrorKind::NoSuchKey, key.span))
+            }
             ExprKind::Call { name, operand } => self.call(name, operand, expr.span, depth),
             ExprKind::Interpolation(pieces) => self.interpolate(pieces, expr.span, depth),
             ExprKind::List(items) => {
@@ -326,6 +338,14 @@ fn imported(path: &Path, source: &str, error: Error, span: Span) -> Error {
         },
         span,
     )
+}
+
+fn position(key: &Value, len: usize) -> Option<usize> {
+    let Value::Integer(integer) = key else {
+        return None;
+    };
+    let at = usize::try_from(integer.to_i64()?).ok()?;
+    (at < len).then_some(at)
 }
 
 fn measure(value: &Value) -> (usize, usize) {

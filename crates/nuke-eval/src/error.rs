@@ -12,6 +12,8 @@ pub enum ErrorKind {
     Unbound(String),
     NotATuple,
     NoSuchField(String),
+    NotKeyed,
+    NoSuchKey,
     DuplicateKey,
     TooDeep,
     TooLarge,
@@ -50,9 +52,19 @@ impl fmt::Display for ErrorKind {
             Self::NotATuple => write!(
                 f,
                 "only a tuple has fields; a map has entries keyed by values and a list has \
-                 positions"
+                 positions, and `.(key)` is what reads either"
             ),
             Self::NoSuchField(name) => write!(f, "this tuple has no field `{name}`"),
+            Self::NotKeyed => write!(
+                f,
+                "only a map and a list are read by a key; a tuple's fields are named, so \
+                 `.name` reads one"
+            ),
+            Self::NoSuchKey => write!(
+                f,
+                "nothing is at this key; a map's keys are the ones its entries spell and a \
+                 list's are its positions"
+            ),
             Self::DuplicateKey => write!(f, "this key is already in this map"),
             Self::TooDeep => write!(f, "this value nests deeper than {MAX_DEPTH} levels"),
             Self::TooLarge => write!(f, "this document expands past {MAX_VALUES} values"),

@@ -1,4 +1,4 @@
 # A map has entries keyed by values, not fields named by identifiers, so `.`
-# reaches nothing in one.
+# followed by a name reaches nothing in one; `m.("a")` is what reads it.
 m := {"a" => 1}
 m.a

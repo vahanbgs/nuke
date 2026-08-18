@@ -1,0 +1,5 @@
+# A tuple's fields are named rather than keyed, so `.name` reads one and the
+# key reader reaches nothing in it. That is what keeps `.a` from being a second
+# spelling of `.("a")`.
+p := {a = 1}
+p.("a")

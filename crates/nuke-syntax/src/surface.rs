@@ -82,25 +82,45 @@ impl Parser<'_> {
                 return Err(Error::new(ErrorKind::TooDeep, expr.span));
             }
             self.cursor.bump()?;
-            let field = match self.cursor.bump()? {
-                Some(token) if token.kind == TokenKind::Ident => Name {
-                    ident: Ident::new(token.text),
-                    span: token.span,
-                },
+            expr = match self.cursor.bump()? {
+                Some(token) if token.kind == TokenKind::Ident => {
+                    let field = Name {
+                        ident: Ident::new(token.text),
+                        span: token.span,
+                    };
+                    let span = Span::new(expr.span.start, field.span.end);
+                    Expr {
+                        kind: ExprKind::Access {
+                            operand: Box::new(expr),
+                            field,
+                        },
+                        span,
+                    }
+                }
+                Some(token) if token.kind == TokenKind::ParenOpen => {
+                    let key = self.value(reach + 1)?;
+                    let close = match self.cursor.bump()? {
+                        Some(token) if token.kind == TokenKind::ParenClose => token.span,
+                        Some(token) => {
+                            return Err(Error::new(ErrorKind::ExpectedKeyClose, token.span));
+                        }
+                        None => return Err(Error::new(ErrorKind::UnterminatedKey, token.span)),
+                    };
+                    let span = Span::new(expr.span.start, close.end);
+                    Expr {
+                        kind: ExprKind::Index {
+                            operand: Box::new(expr),
+                            key: Box::new(key),
+                        },
+                        span,
+                    }
+                }
                 Some(token) => {
                     return Err(Error::new(ErrorKind::ExpectedAccessName, token.span));
                 }
                 None => {
                     return Err(Error::new(ErrorKind::ExpectedAccessName, self.cursor.end()));
                 }
-            };
-            let span = Span::new(expr.span.start, field.span.end);
-            expr = Expr {
-                kind: ExprKind::Access {
-                    operand: Box::new(expr),
-                    field,
-                },
-                span,
             };
         }
         Ok(expr)

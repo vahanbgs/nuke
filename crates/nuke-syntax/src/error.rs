@@ -64,6 +64,8 @@ pub enum ErrorKind {
     MalformedSpec,
     ExpectedFieldName,
     ExpectedAccessName,
+    ExpectedKeyClose,
+    UnterminatedKey,
     ExpectedBuiltinName,
     ExpectedEquals,
     ExpectedArrow,
@@ -172,12 +174,17 @@ impl fmt::Display for ErrorKind {
                 f,
                 "expected a field name; this block is a tuple, because its first pair uses `=`"
             ),
-            Self::ExpectedAccessName => {
-                write!(
-                    f,
-                    "`.` projects a field, and a field is named by an identifier"
-                )
-            }
+            Self::ExpectedAccessName => write!(
+                f,
+                "`.` projects, and what follows it is a name for a tuple's field or a \
+                 parenthesised expression for the key an entry is read at"
+            ),
+            Self::ExpectedKeyClose => write!(
+                f,
+                "a key is one value, and `)` closes it; a collection wanting more than one \
+                 value is what a list is for"
+            ),
+            Self::UnterminatedKey => write!(f, "this `(` is never closed"),
             Self::ExpectedBuiltinName => {
                 write!(
                     f,

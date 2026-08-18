@@ -1,0 +1,8 @@
+{
+  gaps = 4
+  border = 2
+  pair = "pair"
+  origin = "origin"
+  eight = "eight"
+  nested = "#FE8019"
+}
