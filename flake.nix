@@ -34,7 +34,7 @@
           ];
         };
 
-        manifest = builtins.fromTOML (builtins.readFile ./crates/nuke-cli/Cargo.toml);
+        manifest = builtins.fromTOML (builtins.readFile ./Cargo.toml);
 
         rustPlatform = pkgs.makeRustPlatform {
           cargo = toolchain;
@@ -44,7 +44,7 @@
       {
         packages.default = rustPlatform.buildRustPackage {
           pname = "nuke";
-          version = manifest.package.version;
+          version = manifest.workspace.package.version;
           src = ./.;
 
           cargoLock.lockFile = ./Cargo.lock;
