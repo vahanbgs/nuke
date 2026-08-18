@@ -16,7 +16,8 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
 - `grammar/` — `tokens.abnf` then `canonical.abnf` or `surface.abnf`; a grammar is that pair.
 - `docs/canonical-form.md`, `docs/surface.md` — the rules ABNF cannot express, one per language,
   plus `docs/imports.md` for files, `docs/interpolation.md` for text, `docs/dyadic.md` for bases.
-- `docs/serde.md` — where Nuke and serde's data model disagree, and how the binding settles it.
+- `docs/serde.md` — where Nuke and serde's data model disagree, and how the binding settles it;
+  `docs/embedding.md` — where the language stops and a host program begins.
 - `docs/json.md` and its eight siblings — each mapping, and what it degrades or refuses.
 - `fixtures/valid`, `fixtures/invalid` — conformance fixtures. Under `fixtures/surface`, `valid`
   pairs with `reduced` by name, `invalid` is what the parser refuses, `refused` what cannot, and
@@ -29,8 +30,11 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
   Each carries what ABNF cannot state. `serde` adds `from_str`/`to_value`.
 - `crates/nuke-eval` — reduces a `Document` to a `Value`; owns the filesystem (resolution, the
   import cache, the cycle check) and `text.rs`, where a value becomes text under a specifier.
+  `bind` reads a Rust type out of a surface document, and a reduction reports the files it read.
 - `crates/nuke-transpile` — the backends, each owning its own `ErrorKind` and its own answer to what
   the target can spell: JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig, Nix. `docs/` argues each.
+  `Target` names one and `Refusal` wraps the nine errors without flattening them.
+- `crates/nuke-cli` — the binary `nuke`: `render` writes a document out, `deps` lists what it read.
 
 Work in the devshell: `nix develop -c cargo test --workspace --all-features` covers serde too.
 
@@ -78,22 +82,14 @@ We are taking baby steps.
 - [x] Serde support: `Value` as a self-describing data model, and `from_str` into a user's type.
 - [x] The transpiler: nine backends, each owning its `ErrorKind` and its answer to what the target
       can spell. A target earns one when its lesson can be named before it is written.
-- [x] The surface language: the expressions that reduce to the canonical form.
-  - [x] Names. `:=` binds and contributes nothing; scope is sequential, so a cycle cannot be
-        written; a field is not a binding. The invariant holding the surface language to the
-        canonical form is that evaluating a canonical document is the identity.
-  - [x] Imports. `@` calls a builtin and `import` is the first; its path is a literal, so what a
-        file imports is a property of its text. A file is its canonical path, its bindings are
-        private, and a cycle needs a detector because a directory has no top.
-  - [x] `@concat`, the second builtin and the first about values rather than files, which makes
-        `@` a namespace. It does not stringify, and a string wants `MAX_BYTES` of its own.
-  - [x] Interpolation. `$"a{expr:spec}b"` with Rust's specifier, and a hole is the one place a
-        value becomes text, so no `@text` was spent — lambdas are owed most builtins and no syntax.
-  - [x] Projection `.`. Postfix, whitespace insensitive, its operand any value, so `1.b` stays a
-        malformed number. Two right operands: a name reads a tuple's field, `(expr)` the key a map
-        or a list is read at — `5a7fa5a`'s `[ ]` overturned, its case against `m["a"]` kept.
-  - [x] Dyadic literals, the last of the surface language. A marker per width — `b`, `q`, `o`, `x` —
-        so one number mixes bases. Uppercase hex frees the markers; `{n:06X}` shares the ceiling.
-- [ ] The dot file manager — a CLI, a manifest, and the targets the roster misses. This, and not
-      the language, is what the dot files are waiting on.
+- [x] The surface language: sequential scope and `:=`, `@import` and `@concat`, `$"…"` with
+      Rust's specifier, projection by name and by computed key, and dyadic literals.
+      `docs/surface.md` and its three companions argue each; what holds the two languages together
+      is that evaluating a canonical document is the identity.
+- [x] The embedding surface. The dot file manager is `~/Documents/dot`, which already exists, so
+      what was owed was an API and not a manager: `Target`, `bind::from_path`, the files a
+      reduction read, and `crates/nuke-cli`. Nuke ends at text and the host begins at files, which
+      strikes the manifest — a name says where a file goes. `docs/embedding.md` argues the line.
+- [ ] `ghostty` and `plist`, the two targets the roster misses, and then `dot` linking this
+      workspace. The shells stay declined: a template engine writes what has no grammar.
 - [ ] The formatter, the linter, the LSP server.

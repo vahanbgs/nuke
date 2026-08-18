@@ -64,29 +64,30 @@ that makes a cycle unspellable inside one file has no counterpart in a directory
 
 ## Status
 
-Early. A grammar is [`grammar/tokens.abnf`](grammar/tokens.abnf) — the token layer both
-languages share — followed by a syntax layer, and the assembly is normative.
-[`docs/canonical-form.md`](docs/canonical-form.md) covers what the grammar cannot state.
-`crates/nuke-syntax` parses both forms, and its `serde` feature reads a canonical document
-straight into a Rust type; [`docs/serde.md`](docs/serde.md) records what that carries and
-what it cannot. `crates/nuke-transpile` writes JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig
-and Nix, and each has a document arguing what its target can spell and what it therefore
-degrades or refuses: [`docs/json.md`](docs/json.md) settles how atoms, keys and numbers degrade
-for the eight that follow it, and each of those names the lesson only that target teaches — a
-target wider than the canonical form, one of a different shape, one with no data model at all,
-one that spells a value several ways, one that is a family rather than a language, one with no
-specification, one that cannot spell a name Nuke guarantees, and one whose spelling depends on
-where the value stands.
+Early. A grammar is [`grammar/tokens.abnf`](grammar/tokens.abnf) — the token layer both languages
+share — followed by a syntax layer, and the assembly is normative.
+[`docs/canonical-form.md`](docs/canonical-form.md) covers what the grammar cannot state,
+`crates/nuke-syntax` parses both forms, and [`docs/serde.md`](docs/serde.md) records what the
+`serde` feature carries. `crates/nuke-transpile` writes the nine targets above, each with a
+document arguing what it degrades or refuses: [`docs/json.md`](docs/json.md) settles how atoms,
+keys and numbers degrade for the eight that follow it, and each of those names the lesson only
+that target teaches — one wider than the canonical form, one of a different shape, one with no
+data model, one spelling a value several ways, one that is a family, one with no specification,
+one that cannot spell a name Nuke guarantees, one positional.
 
 The surface language is finished. [`grammar/surface.abnf`](grammar/surface.abnf) adds bindings,
 field access, calls, interpolation and dyadic literals, `crates/nuke-eval` reduces a document to
-the canonical form, and [`docs/surface.md`](docs/surface.md) argues the rules the grammar cannot
-state, with [`docs/imports.md`](docs/imports.md), [`docs/interpolation.md`](docs/interpolation.md)
-and [`docs/dyadic.md`](docs/dyadic.md) taking files, text and the bases. There are two builtins:
-`@import` reads a file, and `@concat` puts strings end to end. What holds the two languages
-together is a test: evaluating a canonical document is the identity, so nothing the surface
-language adds reaches the form that carries data. Operators, conditionals and the tooling are
-still ahead.
+the canonical form, and [`docs/surface.md`](docs/surface.md) argues what the grammar cannot state,
+with [`docs/imports.md`](docs/imports.md), [`docs/interpolation.md`](docs/interpolation.md) and
+[`docs/dyadic.md`](docs/dyadic.md) taking files, text and the bases. What holds the two languages
+together is a test: evaluating a canonical document is the identity.
+
+Nuke is meant to be embedded. `eval_at` turns a file into a value, `bind::from_path` turns one
+into a Rust type, `Target` names a backend so a host chooses one while it runs, and a reduction
+reports the files it read. The binary `nuke` is the worked example — `render` writes a document
+out, `deps` lists what built it — and it writes no file of its own, because where a dot file goes
+belongs to a manager; [`docs/embedding.md`](docs/embedding.md) draws the line. Operators,
+conditionals and the two targets the roster misses are ahead.
 
 ## Development
 
@@ -94,6 +95,5 @@ still ahead.
 nix develop -c cargo test --workspace --all-features
 ```
 
-`crates/nuke-grammar` assembles each grammar's ABNF, translates it to pest at test time and
-runs every fixture under `fixtures/` through it, so the specification is executable and cannot
-drift from the implementation.
+`crates/nuke-grammar` assembles each grammar's ABNF, translates it to pest at test time and runs
+every fixture through it, so the specification is executable and cannot drift from the code.
