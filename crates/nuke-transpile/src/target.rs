@@ -7,6 +7,7 @@ use crate::error::Path;
 use crate::{ghostty, gitconfig, ini, json, kdl, lua, nix, plist, toml, xml, yaml};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 pub enum Target {
     Json,
     Yaml,

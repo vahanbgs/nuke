@@ -21,8 +21,7 @@ reads its own configuration. They are one customer: the first ends at `render`, 
 There is no `write`, no `link` and no `$HOME`. A value is the same value wherever it lands, so a
 destination, an extension, an atomic rename, a backup and a permission bit are decisions about a
 filesystem rather than about a document, and a language that made them would be a manager wearing
-a grammar. The extension was the one of these ever in doubt, and `c425c2d` gave it to the manager
-before there was a manager to give it to.
+a grammar. The extension was the one ever in doubt, and it went to the manager first.
 
 The line also settles which formats Nuke will never write. A backend is defined by what it
 refuses, so a Turing-complete target refuses nothing and a backend into one has decided nothing —
@@ -44,9 +43,8 @@ documents spent their length arguing survive contact with a host that does not c
 it is holding; `target()` and `path()` answer the two questions such a host does ask.
 
 `Target` names targets and not options. `json::to_string_compact` and `xml::to_string_rooted` stay
-functions, because a struct carrying two knobs that nine targets ignore is the room that is not a
-distinction `docs/kdl.md` refuses — and a host writing into someone else's schema, which is what
-the XML root is for, is calling a specific backend on purpose by then.
+functions, because a struct of knobs nine targets ignore is the room `docs/kdl.md` refuses, and a
+host writing into someone else's schema is calling that backend on purpose by then.
 
 ## An extension is a hint and never a promise
 
@@ -60,6 +58,11 @@ by the deployed path and read *before* the extension, so it overrides a name as 
 one, and a **module** for what neither names — an input others import, never an output — because
 `render` demands a `--format` there and a deployment has nobody to ask. So does the final newline.
 
+That table is written in Nuke, so `Target` deserializes under a `serde` feature and its values are
+atoms: `Ghostty`, not `"ghostty"`. An atom is what a closed set of eleven is for, and it differs
+from `name()` on purpose, the lowercase one being a command line's. A misspelling is then a
+**binding** fault as the host loads its own config, not a surprise against an innocent file later.
+
 ## A file becomes a Rust type in one call
 
 `nuke_syntax::from_str` reads the **canonical** form, so a document carrying a binding or an
@@ -71,18 +74,16 @@ could not host them without taking the filesystem, which is the split the whole 
 `from_source` takes a path beside its text, and that path is not where the text came from: it is
 what the text's relative imports resolve against, the distinction `eval_at` already draws against
 `eval`. The error names the file and carries a `Location` rather than a `Span`, because a caller
-who handed over a path never saw the source — which is what `ErrorKind::Import` had already
-discovered at a file boundary. A value the target type cannot hold is a **binding** fault and not
-a reduction one, so a host can tell a document that is wrong from one that is merely not what this
-program wanted.
+who handed over a path never saw the source — which is what `ErrorKind::Import` had already found
+at a file boundary. A value the target type cannot hold is a **binding** fault and not a reduction
+one, so a host tells a document that is wrong from one merely not what this program wanted.
 
 ## A reduction says what it read
 
 `eval_at_with_files` returns the value and the files it was built from, the entry file first and
 each import after it in the order it was first read. The list was already being kept: a file is
 cached by its canonical path because that is what makes one path denote one value, so the cache's
-keys **are** the set and asking for it costs a `Vec`. A diamond names the file it shares once, for
-the same reason.
+keys **are** the set and asking costs a `Vec`. A diamond names the file it shares once, likewise.
 
 That is what a watcher needs and what `docs/imports.md` promised it, and `docs/lsp.md` is the
 watcher: a server re-diagnoses an open document when a file it read is saved. It is not what a
@@ -93,7 +94,6 @@ linter needs — reading the dependency graph *without* a filesystem is a walk o
 
 `nuke render -f <target> FILE`, `nuke deps FILE`, `nuke fmt`, `nuke lint` and `nuke lsp`, and
 nothing else. `--format` is optional because a name can say it — `config.toml.nuke` strips its
-`.nuke` and reads what is underneath, which is the host convention met from the other side — and a
-name that says nothing asks rather than guessing. The binary exists to be the worked example, to
-debug a document by hand, and to be what a host that is not Rust gets. It is not the manager, and
-it grows no verb that writes a file.
+`.nuke` and reads what is underneath, the host convention met from the other side — and a name
+that says nothing asks rather than guessing. The binary is the worked example, the way to debug a
+document by hand, and what a host that is not Rust gets. It grows no verb that writes a file.
