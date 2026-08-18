@@ -268,6 +268,59 @@ fn a_projection_reads_left_to_right_and_takes_any_value_on_its_left() {
 }
 
 #[test]
+fn parentheses_are_what_tell_the_dot_to_evaluate_a_key_rather_than_read_a_name() {
+    let ExprKind::Index { operand, key } = document("m := {\"a\" => 1} m.(\"a\")").value.kind
+    else {
+        panic!("the document should be a projection by key");
+    };
+    assert!(matches!(key.kind, ExprKind::String(_)));
+    assert!(matches!(operand.kind, ExprKind::Reference(_)));
+
+    let ExprKind::Access { operand, field } =
+        document("p := {a = {\"k\" => {b = 1}}} p.a.(\"k\").b")
+            .value
+            .kind
+    else {
+        panic!("a chain ends in whichever reader stands last");
+    };
+    assert_eq!(field.ident.as_str(), "b");
+    let ExprKind::Index { operand, key } = operand.kind else {
+        panic!("the two readers chain into one another");
+    };
+    assert!(matches!(key.kind, ExprKind::String(_)));
+    assert!(matches!(operand.kind, ExprKind::Access { .. }));
+
+    let ExprKind::Index { key, .. } = document("m := {} k := \"a\" m.(k)").value.kind else {
+        panic!("a key is an expression, which is the whole point of the parentheses");
+    };
+    assert!(matches!(key.kind, ExprKind::Reference(_)));
+
+    document("[1 2].(0)");
+    document("m := {} m . ( \"a\" )");
+}
+
+#[test]
+fn a_key_is_one_value_the_parentheses_close_around() {
+    assert_eq!(fault("m := {} m.()"), ErrorKind::ExpectedValue);
+    assert_eq!(
+        fault("m := {} m.(\"a\" \"b\")"),
+        ErrorKind::ExpectedKeyClose
+    );
+    assert_eq!(fault("m := {} m.(\"a\""), ErrorKind::UnterminatedKey);
+    assert_eq!(fault("m := {} m.\"a\""), ErrorKind::ExpectedAccessName);
+    assert_eq!(fault("m := {} m.[\"a\"]"), ErrorKind::ExpectedAccessName);
+    assert_eq!(fault("(1)"), ErrorKind::ExpectedValue);
+}
+
+#[test]
+fn a_key_reaches_a_hole_because_a_bracket_is_no_brace() {
+    let Piece::Hole { expr, .. } = &pieces(r#"$"{m.("a")}""#)[0] else {
+        panic!("the piece should be a hole");
+    };
+    assert!(matches!(expr.kind, ExprKind::Index { .. }));
+}
+
+#[test]
 fn a_field_is_named_rather_than_pathed() {
     assert_eq!(fault("{a.b = 1}"), ErrorKind::ExpectedArrow);
     assert_eq!(fault("{x = 1 a.b = 2}"), ErrorKind::ExpectedEquals);

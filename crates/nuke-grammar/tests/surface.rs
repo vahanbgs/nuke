@@ -197,6 +197,37 @@ fn a_field_is_projected_out_of_whatever_stands_to_the_left_of_the_dot() {
 }
 
 #[test]
+fn a_key_is_parenthesised_so_that_the_dot_evaluates_it_rather_than_reading_a_name() {
+    let grammar = Grammar::surface().unwrap();
+    admitted(
+        &grammar,
+        &[
+            "m := {\"a\" => 1} m.(\"a\")",
+            "m := {\"a\" => 1} k := \"a\" m.(k)",
+            "m := {[1 2] => 1} m.([1 2])",
+            "m := {{x = 1} => 1} m.({x = 1})",
+            "[1 2].(0)",
+            "p := {a = {\"b\" => {c = 1}}} p.a.(\"b\").c",
+            "m := {\"a\" => 1} m . ( \"a\" )",
+            "m := {\"a\" => 1} [m.(\"a\")]",
+            "m := {\"a\" => 1} {b = m.(\"a\")}",
+        ],
+    );
+    refused(
+        &grammar,
+        &[
+            "m := {\"a\" => 1} m.()",
+            "m := {\"a\" => 1} m.(\"a\"",
+            "m := {\"a\" => 1} m.(\"a\" \"b\")",
+            "m := {\"a\" => 1} m.\"a\"",
+            "m := {\"a\" => 1} m.[\"a\"]",
+            "1.(a)",
+            "(1)",
+        ],
+    );
+}
+
+#[test]
 fn the_dot_takes_whitespace_the_way_every_other_operator_does() {
     let grammar = Grammar::surface().unwrap();
     admitted(
@@ -288,6 +319,11 @@ fn a_projection_is_a_shape_of_its_own_until_it_is_reduced() {
         ("[{a = 1}.a]", Shape::List(vec![scalar("access")])),
         ("@import \"p.nuke\"", scalar("call")),
         ("@import \"p.nuke\".accent", scalar("access")),
+        ("m := {\"a\" => 1} m.(\"a\")", scalar("access")),
+        (
+            "m := {\"a\" => 1} [m.(\"a\")]",
+            Shape::List(vec![scalar("access")]),
+        ),
         (r#"$"a{b}""#, scalar("interpolation")),
         (
             r#"{a = $"x"}"#,

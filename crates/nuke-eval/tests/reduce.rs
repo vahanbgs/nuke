@@ -120,6 +120,52 @@ fn only_a_tuple_has_fields_and_only_the_ones_it_holds() {
 }
 
 #[test]
+fn a_key_reads_a_map_at_the_value_it_reduces_to_and_a_list_at_a_position() {
+    assert_eq!(reduced("m := {\"a\" => 1} m.(\"a\")"), reduced("1"));
+    assert_eq!(reduced("{\"a\" => 1}.(\"a\")"), reduced("1"));
+    assert_eq!(reduced("k := \"a\" {\"a\" => 1}.(k)"), reduced("1"));
+    assert_eq!(
+        reduced("m := {[1 2] => \"pair\" {x = 0} => \"origin\"} [m.([1 2]) m.({x = 0})]"),
+        reduced("[\"pair\" \"origin\"]")
+    );
+    assert_eq!(
+        reduced("m := {\"a\" => {b = {c = 1}}} m.(\"a\").b"),
+        reduced("{c = 1}")
+    );
+    assert_eq!(reduced("[\"x\" \"y\"].(1)"), reduced("\"y\""));
+    assert_eq!(reduced("[[1] [2]].(0)"), reduced("[1]"));
+}
+
+#[test]
+fn only_a_map_and_a_list_are_read_by_a_key_and_only_at_the_keys_they_hold() {
+    for source in [
+        "p := {a = 1} p.(\"a\")",
+        "{}.(\"a\")",
+        "m := {} m.(\"a\")",
+        "1 . (0)",
+        "\"text\" . (0)",
+        "True . (0)",
+    ] {
+        assert_eq!(refused(source).kind(), &ErrorKind::NotKeyed, "for {source}");
+    }
+    for source in [
+        "m := {\"a\" => 1} m.(\"b\")",
+        "m := {1 => \"one\"} m.(1.0)",
+        "[1 2].(2)",
+        "[1 2].(-1)",
+        "[1 2].(1.0)",
+        "[1 2].(\"a\")",
+        "[].(0)",
+    ] {
+        assert_eq!(
+            refused(source).kind(),
+            &ErrorKind::NoSuchKey,
+            "for {source}"
+        );
+    }
+}
+
+#[test]
 fn a_projection_costs_what_reaching_its_operand_costs() {
     let mut source = String::from("a0 := [1 1]\n");
     for line in 1..30 {
@@ -136,6 +182,12 @@ fn a_projection_costs_what_reaching_its_operand_costs() {
     assert!(
         matches!(refused(&deep).kind(), ErrorKind::Syntax(_)),
         "a chain long enough to overflow the evaluator is stopped by the parser first"
+    );
+
+    let keyed = format!("m := {{}} m{}", ".(\"a\")".repeat(200));
+    assert!(
+        matches!(refused(&keyed).kind(), ErrorKind::Syntax(_)),
+        "a chain of keys is bounded the way a chain of names is"
     );
 }
 
