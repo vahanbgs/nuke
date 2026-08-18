@@ -52,11 +52,15 @@ parse error, so the only shadow is a nested one, and a name a nested block cover
 anyone reads it is unread. A reference that resolves to nothing marks nothing: an unbound
 name is the reducer's fault and the linter does not say it twice.
 
+That pass is `crates/nuke-resolve` and no longer this crate's, because the server resolves the
+same names for go-to-definition and two implementations of one scope would be free to disagree
+about which binding a word means. The linter pays a second walk over a tree already in memory
+for that, and asks `Resolution` for the names nothing read.
+
 There is no `_name` to opt out of it, because a leading `_` is a token fault and there is no
-configuration either. That costs nothing while every binding is written by hand and can
-simply be deleted. It starts costing something when a lambda's parameter is forced on you by
-a signature — which is what Rust's `_x` is for — and that is when to spell it, with the
-reason to hand rather than borrowed.
+configuration either. That costs nothing while every binding is written by hand and can simply
+be deleted. It starts costing something when a lambda's parameter is forced on you by a
+signature — which is what Rust's `_x` is for — and that is when to spell it.
 
 ## It takes no filesystem
 
@@ -69,7 +73,9 @@ This is that tool.
 So `nuke lint` reports the file it was given and follows no import. A linter that opened what
 a document imports would report a fault in a file its author may not own and cannot fix from
 here, and `nuke deps` already answers the question about the graph. It is also what makes the
-linter safe to run on every keystroke, which is what the LSP server will do with it.
+linter safe to run on every keystroke, which is what the server does with it. `docs/lsp.md`
+publishes these findings beside the reducer's, having a filesystem of its own, and reports an
+imported file's fault at the `@import` that asked for it.
 
 ## What holds it
 

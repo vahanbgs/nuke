@@ -88,14 +88,18 @@ reports the files it read. The binary `nuke` is the worked example — `render` 
 out, `deps` lists what built it — and it writes no file of its own, because where a dot file goes
 belongs to a manager; [`docs/embedding.md`](docs/embedding.md) draws the line.
 
-Editing it is what is being built now. `nuke fmt` formats a document without reflowing it, and
+Editing it works. `nuke fmt` formats a document without reflowing it, and
 [`tree-sitter-nuke/`](tree-sitter-nuke) is the grammar Helix takes its highlighting from — a
 third grammar, this one for text that is not finished yet, held to the same fixtures with every
 place it disagrees with the other two written down;
 [`docs/highlighting.md`](docs/highlighting.md) argues them. `nuke lint` reports the style the
 grammar admits and the convention does not, which is what the formatter may not fix for you:
-[`docs/linting.md`](docs/linting.md) draws that line. The LSP server comes next, and operators,
-conditionals and the two targets the roster misses after it.
+[`docs/linting.md`](docs/linting.md) draws that line. `nuke lsp` serves all of it to an editor,
+publishing the parser's, the linter's and the reducer's faults without confusing the three and
+following a name to the binding it reads — `crates/nuke-resolve` is the scope pass the linter and
+the server share, so neither can disagree with the other about what a word means;
+[`docs/lsp.md`](docs/lsp.md) says what it refuses. Operators, conditionals and the two targets
+the roster misses come next.
 
 ## Development
 

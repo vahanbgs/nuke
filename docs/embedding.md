@@ -79,14 +79,16 @@ cached by its canonical path because that is what makes one path denote one valu
 keys **are** the set and asking for it costs a `Vec`. A diamond names the file it shares once, for
 the same reason.
 
-That is what a watcher needs and what `docs/imports.md` promised it. It is not what a linter
-needs: reading the dependency graph *without* a filesystem is a walk over `ExprKind::Call`, whose
-operand is a literal precisely so that walk is possible, and it waits for the tool that wants it.
+That is what a watcher needs and what `docs/imports.md` promised it, and `docs/lsp.md` is the
+watcher: a server re-diagnoses an open document when a file it read is saved. It is not what a
+linter needs — reading the dependency graph *without* a filesystem is a walk over
+`ExprKind::Call`, whose operand is a literal precisely so that walk is possible.
 
 ## The command line is the reference consumer
 
-`nuke render -f <target> FILE` and `nuke deps FILE`, and nothing else. `--format` is optional
-because a name can say it — `config.toml.nuke` strips its `.nuke` and reads what is underneath,
-which is the host convention met from the other side — and a name that says nothing asks rather
-than guessing. The binary exists to be the worked example, to debug a document by hand, and to be
-what a host that is not Rust gets. It is not the manager, and it grows no verb that writes a file.
+`nuke render -f <target> FILE`, `nuke deps FILE`, `nuke fmt`, `nuke lint` and `nuke lsp`, and
+nothing else. `--format` is optional because a name can say it — `config.toml.nuke` strips its
+`.nuke` and reads what is underneath, which is the host convention met from the other side — and a
+name that says nothing asks rather than guessing. The binary exists to be the worked example, to
+debug a document by hand, and to be what a host that is not Rust gets. It is not the manager, and
+it grows no verb that writes a file.

@@ -8,8 +8,7 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
 - Nuke is whitespace insensitive, except inside a comment, a string, and a format specifier.
 - Nuke configuration files are Nuke expressions which are evaluated and reduced down to a
   core canonical form, which is to Nuke what JSON is to Javascript.
-- Nuke will first be used in a dot file manager which will allow users to write all of
-  their dot files using a single language, sharing values between them with imports.
+- Its first host is a dot file manager: every dot file in one language, sharing values by import.
 
 ## Layout
 
@@ -17,29 +16,34 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
 - `docs/canonical-form.md`, `docs/surface.md` — the rules ABNF cannot express, one per language,
   plus `docs/imports.md` for files, `docs/interpolation.md` for text, `docs/dyadic.md` for bases.
 - `docs/serde.md` — where Nuke and serde disagree; `docs/embedding.md` — where the language stops
-  and a host begins; `docs/formatting.md` — what the formatter decides, `docs/linting.md` what it
-  may not fix, and `docs/highlighting.md` what a third grammar may disagree with the other two on.
+  and a host begins; then the editor's four: `docs/formatting.md` what the formatter decides,
+  `docs/linting.md` what it may not fix, `docs/highlighting.md` what a third grammar may disagree
+  with the other two on, `docs/lsp.md` what an editor is told.
 - `docs/json.md` and its eight siblings — each mapping, and what it degrades or refuses.
 - `fixtures/valid`, `fixtures/invalid` — conformance fixtures. Under `fixtures/surface`, `valid`
   pairs with `reduced` by name, `invalid` is what the parser refuses, `refused` what cannot, and
-  `modules` holds the files those fixtures import, which are inputs rather than fixtures.
+  `modules` holds what those import, which are inputs rather than fixtures.
 - `crates/nuke-fixtures` — reads those trees, so no crate keeps its own copy of the walker.
 - `crates/nuke-grammar` — assembles a `Layer`'s ABNF, translates it to pest at test time and
   checks the fixtures against it, so the grammar is executable and cannot drift from the code.
 - `crates/nuke-syntax` — one hand-written lexer, whose mode stack is what interpolation needs, and
-  two parsers over it: `parse` for the canonical form, `surface::parse` for the surface language.
-  Each carries what ABNF cannot state. `serde` adds `from_str`/`to_value`, and `printer` puts a
-  document back to text, taking every literal's spelling from its span rather than from the tree.
+  two parsers over it: `parse` for the canonical form, `surface::parse` for the surface language,
+  each carrying what ABNF cannot state. `serde` adds `from_str`/`to_value`, and `printer` puts a
+  document back to text, taking every literal's spelling from its span, never from the tree.
 - `crates/nuke-eval` — reduces a `Document` to a `Value`; owns the filesystem (resolution, the
   import cache, the cycle check) and `text.rs`, where a value becomes text under a specifier.
-  `bind` reads a Rust type out of a surface document, and a reduction reports the files it read.
-- `crates/nuke-transpile` — the backends, each owning its own `ErrorKind` and its own answer to what
-  the target can spell: JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig, Nix. `docs/` argues each.
+  `bind` reads a Rust type out of one, and a reduction reports the files it read.
+- `crates/nuke-transpile` — the backends, each owning its `ErrorKind` and its answer to what the
+  target spells: JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig, Nix, argued one per `docs/` file.
   `Target` names one and `Refusal` wraps the nine errors without flattening them.
-- `crates/nuke-lint` — the style `docs/canonical-form.md` owes: what the formatter may not fix,
-  in one pass carrying the scope `unused-binding` needs. No filesystem, so it follows no import.
+- `crates/nuke-resolve` — sequential scope kept rather than spent: which binding each name reads,
+  and which names nothing read. No filesystem, and the linter and the server share it.
+- `crates/nuke-lint` — the style `docs/canonical-form.md` owes: what the formatter may not fix.
+  No filesystem, so it follows no import, and it asks `nuke-resolve` for `unused-binding`.
+- `crates/nuke-lsp` — the server, over `lsp-server`: the parser's, the linter's and the reducer's
+  faults kept apart, navigation from `nuke-resolve`, and the reduction only a host may run.
 - `crates/nuke-cli` — the binary `nuke`: `render` writes a document out, `deps` lists what it read,
-  `fmt` formats one from a path or `-` and `lint` reports its style from either. None writes a file.
+  `fmt` and `lint` take a path or `-`, and `lsp` serves an editor. None writes a file.
 - `tree-sitter-nuke/` — the surface language for editors, outside the workspace because a Rust
   binding would be unsafe. `test/verdicts` names every fixture it does not simply accept.
 
@@ -84,16 +88,12 @@ convention says nothing about bodies, so the two compose.
 
 We are taking baby steps.
 
-- [x] The canonical form, and the nine transpiler backends over it — a target earns one when its
-      lesson can be named before it is written.
-- [x] The surface language: sequential scope and `:=`, `@import` and `@concat`, `$"…"` with Rust's
-      specifier, projection by name and by computed key, and dyadic literals, argued by
-      `docs/surface.md` and its three companions. Evaluating a canonical document is the identity.
-- [x] The embedding surface: `Target`, `bind::from_path`, the files a reduction read, and
-      `crates/nuke-cli`. Nuke ends at text and the host begins at files, which strikes the
-      manifest — a name says where a file goes. `docs/embedding.md` argues the line.
-- [ ] The editor tooling, which `dot` waits on. `nuke fmt`, the `tree-sitter` grammar Helix
-      highlights from and `nuke lint` — four rules now, `unused-binding` among them — are done.
-      The LSP server is not, and it wants that rule's scope pass for go-to-definition.
+- [x] The canonical form and the nine backends over it, a target earning one when its lesson can
+      be named first; then the surface language, where evaluating a canonical document is the
+      identity; then the embedding surface, where Nuke ends at text and the host begins at files.
+- [x] The editor tooling, which `dot` waits on: `nuke fmt`, the `tree-sitter` grammar Helix
+      highlights from, `nuke lint`'s four rules, and `nuke lsp` over the scope pass that moved out
+      of the linter into `crates/nuke-resolve` so both read one scope. A name is followed inside
+      one file and not across an `@import`, which wants an index of the graph and waits.
 - [ ] `ghostty` and `plist`, the two targets the roster misses, and then `dot` linking this
       workspace. The shells stay declined: a template engine writes what has no grammar.
