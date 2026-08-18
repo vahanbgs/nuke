@@ -1,6 +1,7 @@
 use kdl::{KdlDocument, KdlNode, KdlValue};
 use nuke_fixtures::Fixture;
 use nuke_syntax::{Value, parse};
+use nuke_transpile::ghostty;
 use nuke_transpile::gitconfig;
 use nuke_transpile::ini as ini_backend;
 use nuke_transpile::json::{ErrorKind, to_string, to_string_compact};
@@ -925,6 +926,7 @@ fn the_flat_targets_are_the_ones_no_fixture_crosses_into_at_all() {
     for (target, refused) in [
         ("an INI", names(ini_refusals())),
         ("a git config", names(gitconfig_refusals())),
+        ("a Ghostty config", names(ghostty_refusals())),
     ] {
         assert_eq!(
             refused, written,
@@ -1259,4 +1261,84 @@ fn stop_of<K>(refusals: Vec<(&'static str, K, &'static str)>, fixture: &str) -> 
         .find(|(name, _, _)| *name == fixture)
         .map(|(_, _, path)| path)
         .unwrap_or_else(|| panic!("{fixture} is no longer refused"))
+}
+
+fn ghostty_refusals() -> Vec<(&'static str, ghostty::ErrorKind, &'static str)> {
+    let root = ghostty::ErrorKind::UnrepresentableRoot("list");
+    vec![
+        ("collections.nuke", root.clone(), "the document"),
+        ("comments.nuke", root.clone(), "the document"),
+        (
+            "dotfile.nuke",
+            ghostty::ErrorKind::UnrepresentableValue("tuple"),
+            "editor",
+        ),
+        (
+            "maps.nuke",
+            ghostty::ErrorKind::UnspellableName("string key".to_owned()),
+            "#1",
+        ),
+        ("scalars.nuke", root.clone(), "the document"),
+        ("strings.nuke", root.clone(), "the document"),
+        (
+            "tuples.nuke",
+            ghostty::ErrorKind::UnrepresentableValue("tuple"),
+            "nested",
+        ),
+        ("whitespace.nuke", root, "the document"),
+    ]
+}
+
+#[test]
+fn every_fixture_ghostty_cannot_carry_is_refused_by_the_error_that_names_its_fault() {
+    for (name, kind, path) in ghostty_refusals() {
+        let fixture = fixture(name);
+        let error = ghostty::to_string(&value_of(&fixture))
+            .err()
+            .unwrap_or_else(|| panic!("{name} should have been refused"));
+        assert_eq!(error.kind(), &kind, "for {name}");
+        assert_eq!(error.path().to_string(), path, "for {name}");
+    }
+}
+
+#[test]
+fn the_three_flat_targets_take_three_different_prefixes_of_one_tuple() {
+    assert_eq!(stop_of(gitconfig_refusals(), "tuples.nuke"), "name");
+    assert_eq!(stop_of(ghostty_refusals(), "tuples.nuke"), "nested");
+    assert_eq!(
+        stop_of(ini_refusals(), "tuples.nuke"),
+        "nested.a",
+        "the prefix each one takes is how deep its shape goes: gitconfig wants a section before any variable, Ghostty admits one level and no section, INI admits the section and stops inside it"
+    );
+}
+
+#[test]
+fn ghostty_stops_the_dot_file_at_its_first_field_where_the_others_stop_inside_one() {
+    let ghostty = stop_of(ghostty_refusals(), "dotfile.nuke");
+    assert_eq!(ghostty, "editor");
+    assert!(
+        !ghostty.contains('.'),
+        "a file with no section cannot enter a field, so it stops at one"
+    );
+    for (target, stop) in [
+        ("INI", stop_of(ini_refusals(), "dotfile.nuke")),
+        ("gitconfig", stop_of(gitconfig_refusals(), "dotfile.nuke")),
+    ] {
+        assert!(
+            stop.contains('.'),
+            "{target} takes the field itself and stops on something inside it"
+        );
+    }
+}
+
+#[test]
+fn the_map_fixture_stops_where_gitconfig_stops_it_but_on_the_name_and_not_the_section() {
+    assert_eq!(stop_of(gitconfig_refusals(), "maps.nuke"), "#1");
+    assert_eq!(stop_of(ghostty_refusals(), "maps.nuke"), "#1");
+    let error = ghostty::to_string(&value_of(&fixture("maps.nuke")))
+        .expect_err("the map fixture should be refused");
+    assert!(
+        matches!(error.kind(), ghostty::ErrorKind::UnspellableName(name) if name == "string key"),
+        "a space is what stops it here, where gitconfig stopped on the key standing outside a section"
+    );
 }
