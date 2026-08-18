@@ -3,11 +3,11 @@ pub mod bind;
 pub mod error;
 mod text;
 
-use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use indexmap::IndexMap;
 use nuke_syntax::expr::{Binding, Document, Expr, ExprKind, Name, Piece};
 use nuke_syntax::{Ident, MAX_DEPTH, Map, Span, Tuple, Value, surface};
 
@@ -29,22 +29,40 @@ pub fn eval_at(source: &str, path: &Path) -> Result<Value, Error> {
     reduce_at(&surface::parse(source)?, path)
 }
 
+pub fn eval_at_with_files(source: &str, path: &Path) -> Result<Reduction, Error> {
+    reduce_at_with_files(&surface::parse(source)?, path)
+}
+
 pub fn reduce(document: &Document) -> Result<Value, Error> {
     Session::new().document(document, None)
 }
 
 pub fn reduce_at(document: &Document, path: &Path) -> Result<Value, Error> {
+    reduce_at_with_files(document, path).map(|reduction| reduction.value)
+}
+
+pub fn reduce_at_with_files(document: &Document, path: &Path) -> Result<Reduction, Error> {
     let anchor = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     let origin = anchor.parent().map(Path::to_path_buf);
     let mut session = Session::new();
-    session.open.push(anchor);
-    session.document(document, origin)
+    session.open.push(anchor.clone());
+    let value = session.document(document, origin)?;
+    let mut files = Vec::with_capacity(session.loaded.len() + 1);
+    files.push(anchor);
+    files.extend(session.loaded.into_keys());
+    Ok(Reduction { value, files })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Reduction {
+    pub value: Value,
+    pub files: Vec<PathBuf>,
 }
 
 struct Session {
     budget: usize,
     open: Vec<PathBuf>,
-    loaded: HashMap<PathBuf, Measured>,
+    loaded: IndexMap<PathBuf, Measured>,
 }
 
 impl Session {
@@ -52,7 +70,7 @@ impl Session {
         Self {
             budget: MAX_VALUES,
             open: Vec::new(),
-            loaded: HashMap::new(),
+            loaded: IndexMap::new(),
         }
     }
 
