@@ -116,3 +116,9 @@ nix develop -c ./tree-sitter-nuke/conformance.sh
 `crates/nuke-grammar` assembles each grammar's ABNF, translates it to pest at test time and runs
 every fixture through it, so the specification is executable and cannot drift from the code. The
 second command does the same for the tree-sitter grammar, which is not a Cargo crate.
+
+`crates/nuke-cli/build.rs` renders the shell completions and the manual pages from the clap
+definition, which lives in `src/cli.rs` precisely so the build script can `include!` it — that file
+has to stay self-contained, with no `mod` and no `crate::`. The command line itself grows no verb
+for either, so `docs/embedding.md` keeps its word; `nix build` installs completions for bash, fish,
+zsh and nushell, and `man nuke` beside a page for every verb.

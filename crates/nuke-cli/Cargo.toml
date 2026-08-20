@@ -18,6 +18,13 @@ nuke-lsp.workspace = true
 nuke-syntax.workspace = true
 nuke-transpile.workspace = true
 
+[build-dependencies]
+clap.workspace = true
+clap_complete.workspace = true
+clap_complete_nushell.workspace = true
+clap_mangen.workspace = true
+nuke-transpile.workspace = true
+
 [dev-dependencies]
 lsp-server.workspace = true
 serde_json.workspace = true

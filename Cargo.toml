@@ -28,6 +28,9 @@ nuke-resolve = { path = "crates/nuke-resolve" }
 nuke-syntax = { path = "crates/nuke-syntax" }
 nuke-transpile = { path = "crates/nuke-transpile" }
 clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
+clap_complete_nushell = "4"
+clap_mangen = "0.3"
 gix-config = { version = "0.59", features = ["sha1"] }
 indexmap = "2"
 kdl = "6"

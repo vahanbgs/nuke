@@ -55,6 +55,17 @@
 
           doCheck = false;
 
+          nativeBuildInputs = [ pkgs.installShellFiles ];
+
+          postInstall = ''
+            installManPage $releaseDir/build/nuke-cli-*/out/*.1
+            installShellCompletion --cmd nuke \
+              --bash $releaseDir/build/nuke-cli-*/out/nuke.bash \
+              --fish $releaseDir/build/nuke-cli-*/out/nuke.fish \
+              --zsh $releaseDir/build/nuke-cli-*/out/_nuke \
+              --nushell $releaseDir/build/nuke-cli-*/out/nuke.nu
+          '';
+
           meta = {
             description = "Render, inspect and format Nuke documents";
             mainProgram = "nuke";

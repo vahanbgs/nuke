@@ -268,6 +268,56 @@ fn said(pipe: &mut impl Write, message: Message) {
     message.write(pipe).expect("the message should be written");
 }
 
+fn generated(name: &str) -> String {
+    let file = Path::new(env!("OUT_DIR")).join(name);
+    std::fs::read_to_string(&file)
+        .unwrap_or_else(|error| panic!("{} should have been generated: {error}", file.display()))
+}
+
+const COMPLETIONS: [&str; 6] = [
+    "nuke.bash",
+    "nuke.elv",
+    "nuke.fish",
+    "_nuke.ps1",
+    "_nuke",
+    "nuke.nu",
+];
+
+const INSTALLED: [&str; 4] = ["nuke.bash", "nuke.fish", "_nuke", "nuke.nu"];
+
+const MANUALS: [&str; 6] = [
+    "nuke.1",
+    "nuke-render.1",
+    "nuke-deps.1",
+    "nuke-fmt.1",
+    "nuke-lint.1",
+    "nuke-lsp.1",
+];
+
+#[test]
+fn the_build_writes_a_completion_for_every_shell_and_a_page_for_every_verb() {
+    for name in COMPLETIONS.into_iter().chain(MANUALS) {
+        assert!(!generated(name).trim().is_empty(), "{name} is empty");
+    }
+}
+
+#[test]
+fn a_completion_a_shell_installs_names_every_verb_and_every_target() {
+    for name in INSTALLED {
+        let script = generated(name);
+        for verb in ["render", "deps", "fmt", "lint", "lsp"] {
+            assert!(script.contains(verb), "{name} does not offer {verb}");
+        }
+        for target in Target::ALL {
+            assert!(
+                script.contains(target.name()),
+                "{name} does not offer {}",
+                target.name()
+            );
+        }
+    }
+}
+
 #[test]
 fn the_help_for_render_lists_the_targets_that_can_be_named() {
     let output = nuke(&["render", "--help"]);

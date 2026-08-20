@@ -42,8 +42,8 @@ grammar in ABNF, and implementations in Rust of the tools used to work with it.
   No filesystem, so it follows no import, and it asks `nuke-resolve` for `unused-binding`.
 - `crates/nuke-lsp` — the server, over `lsp-server`: the parser's, the linter's and the reducer's
   faults kept apart, navigation from `nuke-resolve`, and the reduction only a host may run.
-- `crates/nuke-cli` — the binary `nuke`: `render` writes a document out, `deps` lists what it read,
-  `fmt` and `lint` take a path or `-`, and `lsp` serves an editor. None writes a file.
+- `crates/nuke-cli` — the binary `nuke`: `render`, `deps`, `fmt`, `lint` and `lsp`, none writing a
+  file. `build.rs` renders their completions and man pages from `src/cli.rs`, which it `include!`s.
 - `tree-sitter-nuke/` — the surface language for editors, outside the workspace because a Rust
   binding would be unsafe. `test/verdicts` names every fixture it does not simply accept.
 
