@@ -1,13 +1,14 @@
 # The canonical form
 
-Every Nuke file is an expression. Evaluating it reduces it to the **canonical form**: the
+Every Nuke file is a document. Evaluating it reduces it to the **canonical form**: the
 subset of Nuke that carries data and nothing else. It is to Nuke what JSON is to JavaScript,
 and it is the input every transpiler backend consumes. `grammar/tokens.abnf` then
 `grammar/canonical.abnf` are the normative grammar; this document records what it cannot say.
 
 ## Values
 
-A document is exactly one value. There are six:
+A document is exactly one value — the surface language's may spell a tuple as a run of fields with
+the braces left to the file, and this one may not. There are six:
 
 | form   | example                 |
 | ------ | ----------------------- |
@@ -42,8 +43,7 @@ is one bad token that names itself, not two good ones.
 ## Encoding
 
 Files are UTF-8 with no byte order mark. The only whitespace characters are space, tab and
-line feed; a carriage return is a syntax error wherever it appears, so canonical files are
-LF-only. Parsers may accept CRLF input and formatters normalise it; what they write is canonical.
+line feed; a carriage return is a syntax error wherever it appears, so files are LF-only.
 
 ## Strings
 

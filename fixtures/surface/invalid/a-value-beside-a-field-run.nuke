@@ -1,0 +1,4 @@
+# A file's fields are its document, so nothing stands beside them; this is the
+# fault `{a = 1 2}` raises, with the file's boundary for the braces.
+bg = "#282828"
+2

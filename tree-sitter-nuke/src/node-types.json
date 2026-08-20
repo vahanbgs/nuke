@@ -278,6 +278,10 @@
           "named": true
         },
         {
+          "type": "field",
+          "named": true
+        },
+        {
           "type": "interpolation",
           "named": true
         },

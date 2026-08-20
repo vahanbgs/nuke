@@ -1,5 +1,5 @@
 use crate::error::{Error, Span};
-use crate::expr::{Binding, Document, Entry, Expr, ExprKind, Field};
+use crate::expr::{Binding, Document, Entry, Expr, ExprKind, Field, Form};
 use crate::lexer::{Lexer, TokenKind};
 use crate::surface;
 
@@ -200,13 +200,17 @@ impl<'a> Printer<'a> {
     }
 
     fn document(&mut self, document: &Document) {
-        for binding in &document.bindings {
-            self.lead(binding.name.span.start, 0, false);
-            self.emit(&Item::Binding(binding), 0);
+        let mut items: Vec<Item<'_>> = document.bindings.iter().map(Item::Binding).collect();
+        match (document.form, &document.value.kind) {
+            (Form::Fields, ExprKind::Tuple { fields, .. }) => {
+                items.extend(fields.iter().map(Item::Field));
+            }
+            _ => items.push(Item::Value(&document.value)),
         }
-        self.lead(document.value.span.start, 0, false);
-        self.expr(&document.value, 0);
-        self.last = document.value.span.end;
+        for item in &items {
+            self.lead(item.start(), 0, false);
+            self.emit(item, 0);
+        }
         self.flush(self.source.len(), 0);
     }
 

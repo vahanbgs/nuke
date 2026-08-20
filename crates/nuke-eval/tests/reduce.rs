@@ -10,6 +10,22 @@ fn refused(source: &str) -> Error {
 }
 
 #[test]
+fn a_file_of_fields_means_what_the_braces_would_have_meant() {
+    assert_eq!(reduced("a = 1"), reduced("{a = 1}"));
+    assert_eq!(reduced("a = 1 b = 2"), reduced("{a = 1 b = 2}"));
+    assert_eq!(reduced("n := 1 a = n"), reduced("{n := 1 a = n}"));
+    assert_eq!(
+        reduced("a = 1\nb = {c = 2}"),
+        reduced("{a = 1 b = {c = 2}}")
+    );
+    assert_eq!(
+        refused("a = 1 b = a").kind(),
+        &ErrorKind::Unbound("a".to_owned()),
+        "a field is no binding at the top of a file either"
+    );
+}
+
+#[test]
 fn a_binding_contributes_nothing_and_a_block_of_bindings_is_empty() {
     assert_eq!(reduced("{n := 1}"), reduced("{}"));
     assert_eq!(reduced("{n := 1 a = n}"), reduced("{a = 1}"));

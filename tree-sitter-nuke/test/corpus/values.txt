@@ -128,3 +128,24 @@ A comment runs to the end of its line and stands wherever whitespace does
       (ident)
       (comment)
       (number))))
+
+================================================================================
+A file stands in for the braces of the tuple it holds
+================================================================================
+
+accent := "#FE8019"
+editor = {theme = accent}
+
+--------------------------------------------------------------------------------
+
+(document
+  (binding
+    (ident)
+    (string))
+  (field
+    (ident)
+    (tuple
+      (field
+        (ident)
+        (reference
+          (ident))))))

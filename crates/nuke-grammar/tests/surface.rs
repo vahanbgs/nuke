@@ -37,11 +37,12 @@ fn every_canonical_document_is_a_surface_document() {
 }
 
 #[test]
-fn the_surface_language_admits_four_documents_the_canonical_form_refuses_and_no_others() {
+fn the_surface_language_admits_five_documents_the_canonical_form_refuses_and_no_others() {
     let canonical = Grammar::canonical().unwrap();
     let surface = Grammar::surface().unwrap();
     let admits = [
         "bare-ident.nuke",
+        "braceless-fields.nuke",
         "hex-literal.nuke",
         "ident-as-map-key.nuke",
         "interpolated-string.nuke",
@@ -120,6 +121,44 @@ fn a_binding_stands_at_the_head_of_a_document_and_of_a_brace_block() {
             "{n:=1 a=n}",
         ],
     );
+}
+
+#[test]
+fn a_file_stands_in_for_the_braces_of_the_tuple_it_holds() {
+    let grammar = Grammar::surface().unwrap();
+    admitted(
+        &grammar,
+        &[
+            "a = 1",
+            "a = 1 b = 2",
+            "a = 1\nb = 2",
+            "n := 1 a = n",
+            "a = {b = 1}",
+            "a=1b=2",
+        ],
+    );
+    assert_eq!(
+        grammar.parse("bg = 1 fg = 2").unwrap().shape(),
+        grammar.parse("{bg = 1 fg = 2}").unwrap().shape(),
+        "a file's fields are the tuple its braces would have held"
+    );
+}
+
+#[test]
+fn nothing_stands_beside_a_file_of_fields_and_a_map_keeps_its_braces() {
+    let grammar = Grammar::surface().unwrap();
+    refused(
+        &grammar,
+        &[
+            "a = 1 2",
+            "1 a = 2",
+            "a = 1 b",
+            "a = 1 }",
+            "\"a\" => 1",
+            "n := 1 \"a\" => 1",
+        ],
+    );
+    admitted(&grammar, &["{\"a\" => 1}"]);
 }
 
 #[test]

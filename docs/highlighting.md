@@ -17,8 +17,8 @@ fails the suite rather than settling in. That is the arrangement
 `crates/nuke-syntax/tests/conformance.rs` already uses against the ABNF, moved to the tool that
 can run it.
 
-Six fixtures the parser refuses are absent on purpose. Four are the boundary the surface
-language already crossed — `bare-ident`, `hex-literal`, `ident-as-map-key` and
+Seven fixtures the parser refuses are absent on purpose. Five are the boundary the surface
+language already crossed — `bare-ident`, `braceless-fields`, `hex-literal`, `ident-as-map-key` and
 `interpolated-string` are refused by the canonical form and admitted by this one. One is
 `a-specifier-that-is-not-one`, `{1:007}`, because a specifier is a raw tail to the closing brace
 here and `Spec::parse` is what reads it. The last is `byte-order-mark`, and it is the only one

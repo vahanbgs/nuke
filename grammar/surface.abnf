@@ -13,7 +13,31 @@
 ; contains also matches `surface-number`, which is where this language stops
 ; spelling a number the way the canonical form does.
 
-document   = ows *( binding ows ) value ows
+; A document is one value, and a file whose value is a tuple may leave the braces
+; to the file. What stands after the bindings is then either one value or a run
+; of fields, and the boundary of the text is what `{` and `}` would have been —
+; which is Rust's arrangement, where `mod foo { … }` and `foo.rs` are one thing
+; and the file is what replaces the braces. `docs/imports.md` already said a
+; file's bindings are private and its fields are its surface; braceless, that is
+; true of the text rather than of a tuple the author had to write.
+;
+; It is `1*field` and not `*field`, so `{}` keeps its one spelling and a file
+; that only binds names is still no document. A map has no braceless spelling: a
+; field run is decided after one identifier, where an entry could not be told
+; from a value until a whole value had been read and an `=>` found past it.
+;
+; `fields` stands ahead of `value` because an alternation is ordered once
+; translated, and `value` would match the `x` of `x = 1` as a reference and stop
+; there. Nothing is taken away by the order — a document beginning `ident ows
+; "="` cannot be read as a value today either, so this rule only ever fires
+; where the other one had already failed.
+;
+; No `ows` leads `fields`. The document's own leading `ows`, or the one after
+; the last binding, has already run, which is why this is not the tuple's
+; `*( ows field )`.
+
+document   = ows *( binding ows ) ( fields / value ) ows
+fields     = field *( ows field )
 
 ; Projection reads a value out of a collection. It is postfix rather than
 ; recursive on its left because a PEG admits no left recursion, and it takes

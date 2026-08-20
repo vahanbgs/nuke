@@ -153,6 +153,29 @@ fn indentation_is_never_a_space_and_alignment_is_never_a_tab() {
 }
 
 #[test]
+fn a_file_that_stands_in_for_its_braces_grows_none() {
+    assert_eq!(formatted("a = 1\nb = 2"), "a = 1\nb = 2\n");
+    assert_eq!(formatted("a = 1 b = 2"), "a = 1 b = 2\n");
+    assert_eq!(formatted("a:=1 b=a"), "a := 1 b = a\n");
+    assert_eq!(
+        formatted("a = 1 # after a field\n# after the document\n"),
+        "a = 1 # after a field\n# after the document\n"
+    );
+}
+
+#[test]
+fn a_file_of_fields_keeps_the_authors_lines_and_is_never_reflowed() {
+    let wide = format!("a = \"{}\" b = \"{}\"", "x".repeat(60), "y".repeat(60));
+    let once = formatted(&wide);
+    assert_eq!(
+        once.lines().count(),
+        1,
+        "there is no delimiter to hang a break on, so the author's line stands"
+    );
+    assert_eq!(formatted(&once), once, "and that is stable");
+}
+
+#[test]
 fn a_block_too_wide_for_one_line_takes_one_item_per_line() {
     let wide = format!("{{a = \"{}\" b = \"{}\"}}", "x".repeat(60), "y".repeat(60));
     let formatted = formatted(&wide);

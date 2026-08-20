@@ -2,36 +2,35 @@
 
 A simple total configuration language.
 
-Nuke files are expressions. Evaluating one reduces it to a canonical form, which transpiles
-to JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig, Nix, Ghostty and plist — so a dot file can
+Nuke files are documents. Evaluating one reduces it to a canonical form, which transpiles
+to JSON, YAML, TOML, XML, KDL, Lua, INI, gitconfig, Nix, Ghostty and plist — so a dot file can be
 written once, in one language, and shared between the programs that need it.
 
 ```nuke
 # A dot file, with what it repeats named once.
 palette := {accent = "#fe8019" muted = "#928374"}
 
-{
-	editor = {
-		theme = "gruvbox-dark"
-		cursor = palette.accent
-		line_numbers = Relative
-	}
+editor = {
+	theme = "gruvbox-dark"
+	cursor = palette.accent
+	line_numbers = Relative
+}
 
-	shell = {
-		prompt_color = palette.accent
-		comment_color = palette.muted
-		aliases = {
-			"ll" => "eza -l"
-			"gs" => "git status"
-		}
+shell = {
+	prompt_color = palette.accent
+	comment_color = palette.muted
+	aliases = {
+		"ll" => "eza -l"
+		"gs" => "git status"
 	}
 }
 ```
 
 Braces hold a named tuple when their pairs use `=` and a map when they use `=>`; maps take
-any value as a key, not just strings. Brackets hold a list. Unquoted `UpperCamelCase` words
-are atoms, which is all `True`, `False` and `Null` are. Nothing is separated by commas, and
-whitespace only matters where two tokens would otherwise run together.
+any value as a key, not just strings. A file whose value is a tuple leaves those braces to the
+file, as above — its own boundary stands in for them. Brackets hold a list. Unquoted
+`UpperCamelCase` words are atoms, which is all `True`, `False` and `Null` are. Nothing is
+separated by commas, and whitespace only matters where two tokens would otherwise run together.
 
 `:=` binds a name and puts nothing in the result. A binding is visible below itself and
 inside the blocks nested there, and its value is read before its own name exists — so a
@@ -47,14 +46,16 @@ palette be written once and read by every program that needs it:
 
 ```nuke
 # ~/.config/nuke/palette.nuke
-{accent = "#fe8019" muted = "#928374"}
+accent = "#fe8019"
+muted = "#928374"
 ```
 
 ```nuke
 # ~/.config/nuke/shell.nuke
 palette := @import "./palette.nuke"
 
-{prompt_color = palette.accent comment_color = palette.muted}
+prompt_color = palette.accent
+comment_color = palette.muted
 ```
 
 The path is a string and never an expression, so a tool can list a file's dependencies
@@ -77,8 +78,8 @@ one that cannot spell a name Nuke guarantees, one positional, one whose reader c
 and one wider than the language itself, typing what the target with no data model erased.
 
 The surface language is finished. [`grammar/surface.abnf`](grammar/surface.abnf) adds bindings,
-field access, calls, interpolation and dyadic literals, `crates/nuke-eval` reduces a document to
-the canonical form, and [`docs/surface.md`](docs/surface.md) argues what the grammar cannot state,
+braceless documents, field access, calls, interpolation and dyadic literals, `crates/nuke-eval`
+reduces a document, and [`docs/surface.md`](docs/surface.md) argues what the grammar cannot state,
 with [`docs/imports.md`](docs/imports.md), [`docs/interpolation.md`](docs/interpolation.md) and
 [`docs/dyadic.md`](docs/dyadic.md) taking files, text and the bases. What holds the two languages
 together is a test: evaluating a canonical document is the identity.

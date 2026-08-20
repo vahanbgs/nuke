@@ -1,0 +1,4 @@
+# A file standing in for its own braces is the surface language's, and the
+# canonical form reads an identifier here as no value at all.
+bg = "#282828"
+fg = "#EBDBB2"

@@ -1,5 +1,5 @@
 use nuke_grammar::Grammar;
-use nuke_syntax::{Align, ErrorKind, ExprKind, Notation, Piece, Spec, parse, surface};
+use nuke_syntax::{Align, ErrorKind, ExprKind, Form, Notation, Piece, Spec, parse, surface};
 
 fn faults() -> Vec<(&'static str, ErrorKind)> {
     vec![
@@ -14,6 +14,11 @@ fn faults() -> Vec<(&'static str, ErrorKind)> {
         (
             "binding-a-name-that-is-not-one.nuke",
             ErrorKind::ExpectedBindingName,
+        ),
+        ("a-map-that-needs-its-braces.nuke", ErrorKind::TrailingInput),
+        (
+            "a-value-beside-a-field-run.nuke",
+            ErrorKind::ExpectedFieldName,
         ),
         ("binding-after-a-field.nuke", ErrorKind::MisplacedBinding),
         ("binding-after-an-entry.nuke", ErrorKind::MisplacedBinding),
@@ -176,6 +181,7 @@ fn the_parser_is_stricter_than_the_grammar_where_the_spec_says_so() {
     for source in [
         "{n := 1 n := 2 a = n}",
         "{a = 1 a = 2}",
+        "a = 1 a = 2",
         "[\"\\u{D800}\"]",
         "[1e400]",
         "[0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF]",
@@ -207,6 +213,61 @@ fn a_block_binds_a_name_once_and_an_inner_block_may_shadow_it() {
     );
     document("{n := 1 a = {n := 2 b = n}}");
     document("n := 1 {n := 2 a = n}");
+}
+
+#[test]
+fn a_file_stands_in_for_the_braces_of_the_tuple_it_holds() {
+    let braceless = document("accent := \"#FE8019\"\n\neditor = {theme = accent}\nterminal = 1");
+    let braced = document("accent := \"#FE8019\"\n\n{editor = {theme = accent} terminal = 1}");
+    assert_eq!(braceless.form, Form::Fields);
+    assert_eq!(braced.form, Form::Value);
+    assert_eq!(braceless.bindings, braced.bindings);
+
+    let ExprKind::Tuple { bindings, fields } = &braceless.value.kind else {
+        panic!("a file of fields is a tuple");
+    };
+    assert!(
+        bindings.is_empty(),
+        "the file's bindings stay the document's, as a brace block's stay its own"
+    );
+    let ExprKind::Tuple {
+        fields: braced_fields,
+        ..
+    } = &braced.value.kind
+    else {
+        panic!("the braced twin is a tuple");
+    };
+    let named = |fields: &[nuke_syntax::Field]| -> Vec<String> {
+        fields
+            .iter()
+            .map(|field| field.name.ident.as_str().to_owned())
+            .collect()
+    };
+    assert_eq!(named(fields), named(braced_fields));
+
+    let source = "editor = {theme = 1}\nterminal = 2";
+    let span = document(source).value.span;
+    assert_eq!(
+        &source[span.start..span.end],
+        source,
+        "the span runs from the first field's name to the last field's value"
+    );
+}
+
+#[test]
+fn a_file_of_fields_raises_the_faults_a_brace_block_raises() {
+    assert_eq!(fault("a = 1 2"), ErrorKind::ExpectedFieldName);
+    assert_eq!(fault("a = 1 }"), ErrorKind::TrailingInput);
+    assert_eq!(fault("a = 1 b"), ErrorKind::ExpectedEquals);
+    assert_eq!(fault("a = 1 n := 2"), ErrorKind::MisplacedBinding);
+    assert_eq!(fault("a = 1 \"b\" => 2"), ErrorKind::MixedPairOperators);
+    assert_eq!(
+        fault("a = 1 a = 2"),
+        ErrorKind::DuplicateField("a".to_owned())
+    );
+    assert_eq!(fault("\"a\" => 1"), ErrorKind::TrailingInput);
+    assert_eq!(fault("n := 1"), ErrorKind::OnlyBindings);
+    assert_eq!(fault(""), ErrorKind::EmptyDocument);
 }
 
 #[test]

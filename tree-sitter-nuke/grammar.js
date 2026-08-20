@@ -15,7 +15,11 @@ module.exports = grammar({
   extras: $ => [/[ \t\n]/, $.comment],
 
   rules: {
-    document: $ => seq(repeat($.binding), $._value),
+    // A file stands in for the braces of the tuple it holds, so what follows the bindings is
+    // either one value or a run of fields. `repeat1` and not `repeat`, or an empty file would
+    // be a document. The fields are the document's own children rather than a node of their
+    // own, which is what makes `(document) @local.scope` the scope `(tuple)` would have been.
+    document: $ => seq(repeat($.binding), choice(repeat1($.field), $._value)),
 
     binding: $ => seq(field('name', $.ident), ':=', field('value', $._value)),
 

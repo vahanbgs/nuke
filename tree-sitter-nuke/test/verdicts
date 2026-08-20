@@ -1,7 +1,7 @@
 # Every fixture this grammar does not simply accept, and the list is exhaustive: a
 # fixture missing from here must parse clean, and a name here that is no longer a
-# fixture is a stale line. Six fixtures are absent on purpose, because the fault in
-# them is one no grammar of this language can see; docs/highlighting.md names all six.
+# fixture is a stale line. Seven fixtures are absent on purpose, because the fault in
+# them is one no grammar of this language can see; docs/highlighting.md names all seven.
 
 # Refused — the tree holds an ERROR or a MISSING node, which is what an editor paints
 # red and what an incremental parser recovers from. The fault is in the shape.
@@ -30,8 +30,10 @@ surface/invalid/a-hole-with-no-value.nuke refused
 surface/invalid/a-key-that-holds-two-values.nuke refused
 surface/invalid/a-key-that-is-never-closed.nuke refused
 surface/invalid/a-lone-brace-in-an-interpolation.nuke refused
+surface/invalid/a-map-that-needs-its-braces.nuke refused
 surface/invalid/an-interpolation-that-is-never-closed.nuke refused
 surface/invalid/a-projection-with-no-key.nuke refused
+surface/invalid/a-value-beside-a-field-run.nuke refused
 surface/invalid/binding-after-a-field.nuke refused
 surface/invalid/binding-after-an-entry.nuke refused
 surface/invalid/binding-a-name-that-is-not-one.nuke refused

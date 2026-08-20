@@ -1,0 +1,3 @@
+# A map has no braceless spelling: an entry could not be told from a value until
+# a whole value had been read and an `=>` found past it.
+"a" => 1

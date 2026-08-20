@@ -1,0 +1,7 @@
+# The file's own boundary stands in for a tuple's braces, the way a Rust `foo.rs`
+# stands in for `mod foo { … }`. The bindings still stand at the head, and what
+# this one imports is written the same way.
+palette := @import "../modules/a-file-of-fields.nuke"
+
+editor = {theme = palette.accent background = palette.bg}
+terminal = {cursor = palette.accent}

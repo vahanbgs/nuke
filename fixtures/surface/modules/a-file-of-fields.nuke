@@ -1,0 +1,6 @@
+# A module needs braces no more than any other file does. Its fields are its
+# surface, and the boundary of this text is what stands in for them.
+base := "#282828"
+
+bg = base
+accent = "#FE8019"

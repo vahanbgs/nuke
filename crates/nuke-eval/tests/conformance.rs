@@ -18,6 +18,10 @@ fn standing() -> Vec<(&'static str, Standing)> {
     vec![
         ("bare-carriage-return.nuke", Standing::Refused),
         ("bare-ident.nuke", unbound("x")),
+        (
+            "braceless-fields.nuke",
+            Standing::Reduces("{bg = \"#282828\" fg = \"#EBDBB2\"}"),
+        ),
         ("byte-order-mark.nuke", Standing::Refused),
         ("chained-dots.nuke", Standing::Refused),
         ("colon-instead-of-equals.nuke", Standing::Refused),
@@ -343,7 +347,7 @@ fn every_canonically_invalid_fixture_declares_where_it_stands_in_the_surface_lan
                 assert_eq!(
                     value,
                     parse(canonical).unwrap(),
-                    "{} is the one canonically invalid fixture the surface language reduces",
+                    "{} is a canonically invalid fixture the surface language reduces",
                     fixture.display()
                 );
             }

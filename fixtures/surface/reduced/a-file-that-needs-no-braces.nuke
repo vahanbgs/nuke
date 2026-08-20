@@ -1,0 +1,4 @@
+{
+	editor = {theme = "#FE8019" background = "#282828"}
+	terminal = {cursor = "#FE8019"}
+}

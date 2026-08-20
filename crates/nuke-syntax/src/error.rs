@@ -185,7 +185,7 @@ impl fmt::Display for ErrorKind {
             ),
             Self::ExpectedFieldName => write!(
                 f,
-                "expected a field name; this block is a tuple, because its first pair uses `=`"
+                "expected a field name; this is a tuple, because its first pair uses `=`"
             ),
             Self::ExpectedAccessName => write!(
                 f,

@@ -170,12 +170,17 @@ pub struct Parse<'a> {
 
 impl<'a> Parse<'a> {
     pub fn shape(&self) -> Shape {
-        let value = self
-            .pairs
+        let Some(document) = self.pairs.clone().next() else {
+            return Shape::Empty;
+        };
+        if let Some(fields) = document
             .clone()
-            .next()
-            .and_then(|document| descend(document, &["value"]));
-        value.map_or(Shape::Empty, shape_of)
+            .into_inner()
+            .find(|child| child.as_rule() == "fields")
+        {
+            return Shape::Tuple(fields_of(&fields));
+        }
+        descend(document, &["value"]).map_or(Shape::Empty, shape_of)
     }
 }
 
@@ -210,6 +215,17 @@ fn children<'a>(
         .collect()
 }
 
+fn fields_of(pair: &pest::iterators::Pair<'_, &str>) -> Vec<(String, Shape)> {
+    children(pair, "field")
+        .into_iter()
+        .filter_map(|field| {
+            let name = descend(field.clone(), &["ident"])?.as_str().to_owned();
+            let value = descend(field, &["value"])?;
+            Some((name, shape_of(value)))
+        })
+        .collect()
+}
+
 fn shape_of(value: pest::iterators::Pair<'_, &str>) -> Shape {
     if !children(&value, "access").is_empty() {
         return Shape::Scalar("access".to_owned());
@@ -232,16 +248,7 @@ fn shape_of(value: pest::iterators::Pair<'_, &str>) -> Shape {
                 .map(shape_of)
                 .collect(),
         ),
-        "tuple" => Shape::Tuple(
-            children(&inner, "field")
-                .into_iter()
-                .filter_map(|field| {
-                    let name = descend(field.clone(), &["ident"])?.as_str().to_owned();
-                    let value = descend(field, &["value"])?;
-                    Some((name, shape_of(value)))
-                })
-                .collect(),
-        ),
+        "tuple" => Shape::Tuple(fields_of(&inner)),
         "map" => Shape::Map(
             children(&inner, "entry")
                 .into_iter()

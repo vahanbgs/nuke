@@ -6,6 +6,13 @@ use crate::value::{Atom, Float, Ident, Integer};
 pub struct Document {
     pub bindings: Vec<Binding>,
     pub value: Expr,
+    pub form: Form,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Form {
+    Value,
+    Fields,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::MAX_DEPTH;
 use crate::cursor::{Cursor, Number, surface_number};
 use crate::error::{Error, ErrorKind, Span};
-use crate::expr::{Binding, Document, Entry, Expr, ExprKind, Field, Name, Piece};
+use crate::expr::{Binding, Document, Entry, Expr, ExprKind, Field, Form, Name, Piece};
 use crate::lexer::{TokenKind, cook, unescape};
 use crate::spec::Spec;
 use crate::value::{Atom, Ident};
@@ -25,11 +25,29 @@ pub fn parse(source: &str) -> Result<Document, Error> {
             Span::new(0, source.len()),
         ));
     }
+    if parser.heads_a_field()? {
+        let value = parser.tuple(Vec::new(), Close::Eof, 0)?;
+        return Ok(Document {
+            bindings,
+            value,
+            form: Form::Fields,
+        });
+    }
     let value = parser.value(0)?;
     match parser.cursor.peek(0)? {
         Some(token) => Err(Error::new(ErrorKind::TrailingInput, token.span)),
-        None => Ok(Document { bindings, value }),
+        None => Ok(Document {
+            bindings,
+            value,
+            form: Form::Value,
+        }),
     }
+}
+
+#[derive(Clone, Copy)]
+enum Close {
+    Brace(Span),
+    Eof,
 }
 
 struct Parser<'a> {
@@ -261,40 +279,52 @@ impl Parser<'_> {
         }
     }
 
+    fn heads_a_field(&mut self) -> Result<bool, Error> {
+        Ok(matches!(
+            (self.cursor.peek(0)?, self.cursor.peek(1)?),
+            (Some(name), Some(bound))
+                if name.kind == TokenKind::Ident && bound.kind == TokenKind::Equals
+        ))
+    }
+
     fn block(&mut self, depth: usize) -> Result<Expr, Error> {
         let open = self
             .cursor
             .bump()?
             .map_or_else(|| self.cursor.end(), |token| token.span);
         let bindings = self.bindings(depth + 1)?;
-        match (self.cursor.peek(0)?, self.cursor.peek(1)?) {
-            (None, _) => Err(Error::new(ErrorKind::UnterminatedBlock, open)),
-            (Some(token), _) if token.kind == TokenKind::BraceClose => {
+        match self.cursor.peek(0)? {
+            None => Err(Error::new(ErrorKind::UnterminatedBlock, open)),
+            Some(token) if token.kind == TokenKind::BraceClose => {
                 let kind = ExprKind::Tuple {
                     bindings,
                     fields: Vec::new(),
                 };
                 self.closed(kind, open, token.span)
             }
-            (Some(name), Some(bound))
-                if name.kind == TokenKind::Ident && bound.kind == TokenKind::Equals =>
-            {
-                self.tuple(bindings, open, depth)
-            }
-            _ => self.map(bindings, open, depth),
+            Some(_) if self.heads_a_field()? => self.tuple(bindings, Close::Brace(open), depth),
+            Some(_) => self.map(bindings, open, depth),
         }
     }
 
-    fn tuple(&mut self, bindings: Vec<Binding>, open: Span, depth: usize) -> Result<Expr, Error> {
+    fn tuple(&mut self, bindings: Vec<Binding>, close: Close, depth: usize) -> Result<Expr, Error> {
         let mut fields: Vec<Field> = Vec::new();
         let mut named: HashSet<&str> = HashSet::new();
         loop {
             let Some(token) = self.cursor.peek(0)? else {
-                return Err(Error::new(ErrorKind::UnterminatedBlock, open));
+                return match close {
+                    Close::Brace(open) => Err(Error::new(ErrorKind::UnterminatedBlock, open)),
+                    Close::Eof => Ok(run(bindings, fields, self.cursor.end())),
+                };
             };
             if token.kind == TokenKind::BraceClose {
-                let kind = ExprKind::Tuple { bindings, fields };
-                return self.closed(kind, open, token.span);
+                return match close {
+                    Close::Brace(open) => {
+                        let kind = ExprKind::Tuple { bindings, fields };
+                        self.closed(kind, open, token.span)
+                    }
+                    Close::Eof => Err(Error::new(ErrorKind::TrailingInput, token.span)),
+                };
             }
             if token.kind == TokenKind::Binder {
                 return Err(Error::new(ErrorKind::MisplacedBinding, token.span));
@@ -321,7 +351,12 @@ impl Parser<'_> {
                     return Err(Error::new(ErrorKind::MisplacedBinding, bound.span));
                 }
                 Some(bound) => return Err(Error::new(ErrorKind::ExpectedEquals, bound.span)),
-                None => return Err(Error::new(ErrorKind::UnterminatedBlock, open)),
+                None => {
+                    return match close {
+                        Close::Brace(open) => Err(Error::new(ErrorKind::UnterminatedBlock, open)),
+                        Close::Eof => Err(Error::new(ErrorKind::ExpectedEquals, self.cursor.end())),
+                    };
+                }
             }
             let value = self.value(depth + 1)?;
             if !named.insert(token.text) {
@@ -375,5 +410,18 @@ impl Parser<'_> {
             kind,
             span: Span::new(open.start, close.end),
         })
+    }
+}
+
+fn run(bindings: Vec<Binding>, fields: Vec<Field>, end: Span) -> Expr {
+    let span = fields
+        .first()
+        .zip(fields.last())
+        .map_or(end, |(first, last)| {
+            Span::new(first.name.span.start, last.value.span.end)
+        });
+    Expr {
+        kind: ExprKind::Tuple { bindings, fields },
+        span,
     }
 }

@@ -9,6 +9,10 @@ fn faults() -> Vec<(&'static str, ErrorKind)> {
     vec![
         ("bare-carriage-return.nuke", ErrorKind::CarriageReturn),
         ("bare-ident.nuke", ErrorKind::IdentAsValue("x".to_owned())),
+        (
+            "braceless-fields.nuke",
+            ErrorKind::IdentAsValue("bg".to_owned()),
+        ),
         ("byte-order-mark.nuke", ErrorKind::ByteOrderMark),
         ("chained-dots.nuke", ErrorKind::SurfaceDot),
         (
