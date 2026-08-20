@@ -1111,7 +1111,7 @@ dependencies = [
 
 [[package]]
 name = "nuke-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "clap",
  "lsp-server",
@@ -1126,7 +1126,7 @@ dependencies = [
 
 [[package]]
 name = "nuke-eval"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "indexmap 2.14.0",
  "nuke-fixtures",
@@ -1139,11 +1139,11 @@ dependencies = [
 
 [[package]]
 name = "nuke-fixtures"
-version = "0.2.0"
+version = "0.3.0"
 
 [[package]]
 name = "nuke-grammar"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "abnf",
  "abnf_to_pest",
@@ -1155,7 +1155,7 @@ dependencies = [
 
 [[package]]
 name = "nuke-lint"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "nuke-fixtures",
  "nuke-resolve",
@@ -1164,7 +1164,7 @@ dependencies = [
 
 [[package]]
 name = "nuke-lsp"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "line-index",
  "lsp-server",
@@ -1180,7 +1180,7 @@ dependencies = [
 
 [[package]]
 name = "nuke-resolve"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "nuke-fixtures",
  "nuke-syntax",
@@ -1188,7 +1188,7 @@ dependencies = [
 
 [[package]]
 name = "nuke-syntax"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "indexmap 2.14.0",
  "nuke-fixtures",
@@ -1198,7 +1198,7 @@ dependencies = [
 
 [[package]]
 name = "nuke-transpile"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "gix-config",
  "kdl",
