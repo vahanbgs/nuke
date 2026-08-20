@@ -1,47 +1,18 @@
+mod cli;
+
 use std::fs;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::ExitCode;
-use std::str::FromStr;
 
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use nuke_transpile::Target;
+
+use cli::{Cli, Command};
 
 const EXTENSION: &str = "nuke";
 
 const STDIN: &str = "-";
-
-#[derive(Parser)]
-#[command(
-    name = "nuke",
-    version,
-    about = "Render a Nuke document, list what it reads, format it, check its style and serve an editor"
-)]
-struct Cli {
-    #[command(subcommand)]
-    command: Command,
-}
-
-#[derive(Subcommand)]
-enum Command {
-    Render {
-        #[arg(short, long, value_name = "TARGET", value_parser = Target::from_str)]
-        format: Option<Target>,
-        file: PathBuf,
-    },
-    Deps {
-        file: PathBuf,
-    },
-    Fmt {
-        #[arg(value_name = "FILE")]
-        file: PathBuf,
-    },
-    Lint {
-        #[arg(value_name = "FILE")]
-        file: PathBuf,
-    },
-    Lsp,
-}
 
 fn main() -> ExitCode {
     match Cli::parse().command {

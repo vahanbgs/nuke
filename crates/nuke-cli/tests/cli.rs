@@ -267,3 +267,13 @@ fn the_server_speaks_the_protocol_over_a_pipe() {
 fn said(pipe: &mut impl Write, message: Message) {
     message.write(pipe).expect("the message should be written");
 }
+
+#[test]
+fn the_help_for_render_lists_the_targets_that_can_be_named() {
+    let output = nuke(&["render", "--help"]);
+    assert!(output.status.success(), "{}", err(&output));
+    let help = out(&output);
+    for target in Target::ALL {
+        assert!(help.contains(target.name()), "{help}");
+    }
+}
