@@ -94,7 +94,7 @@ impl Pass {
     }
 
     fn imported(&mut self, function: &Expr, argument: &Expr) {
-        let ExprKind::Builtin(name) = &function.kind else {
+        let ExprKind::Builtin(name) = &function.ungrouped().kind else {
             return;
         };
         if name.ident.as_str() != IMPORT {

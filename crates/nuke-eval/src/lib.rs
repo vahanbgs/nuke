@@ -1,5 +1,6 @@
 #[cfg(feature = "serde")]
 pub mod bind;
+pub mod builtin;
 pub mod error;
 mod text;
 
@@ -13,6 +14,7 @@ use nuke_syntax::{Ident, MAX_DEPTH, Map, Span, Tuple, surface};
 
 #[cfg(feature = "serde")]
 pub use bind::{from_path, from_source};
+pub use builtin::Builtin;
 pub use error::{Error, ErrorKind};
 pub use nuke_syntax::{Location, Value};
 
@@ -199,12 +201,18 @@ impl Reducer<'_> {
             ExprKind::Apply {
                 function, argument, ..
             } => {
-                let ExprKind::Builtin(name) = &function.kind else {
+                let ExprKind::Builtin(name) = &function.ungrouped().kind else {
                     return Err(Error::new(ErrorKind::NotAFunction, function.span));
                 };
                 self.call(name, argument, expr.span, depth)
             }
-            ExprKind::Builtin(_) => Err(Error::new(ErrorKind::UnappliedBuiltin, expr.span)),
+            ExprKind::Builtin(name) => Err(match Builtin::of(name.ident.as_str()) {
+                Some(_) => Error::new(ErrorKind::UnappliedBuiltin, expr.span),
+                None => Error::new(
+                    ErrorKind::NoSuchBuiltin(name.ident.as_str().to_owned()),
+                    name.span,
+                ),
+            }),
             ExprKind::Group(inner) => self.value(inner, depth),
             ExprKind::Interpolation(pieces) => self.interpolate(pieces, expr.span, depth),
             ExprKind::List(items) => {
@@ -241,11 +249,11 @@ impl Reducer<'_> {
         span: Span,
         depth: usize,
     ) -> Result<Value, Error> {
-        match name.ident.as_str() {
-            "import" => self.import(operand, span, depth),
-            "concat" => self.concat(operand, span, depth),
-            other => Err(Error::new(
-                ErrorKind::NoSuchBuiltin(other.to_owned()),
+        match Builtin::of(name.ident.as_str()) {
+            Some(Builtin::Import) => self.import(operand, span, depth),
+            Some(Builtin::Concat) => self.concat(operand, span, depth),
+            None => Err(Error::new(
+                ErrorKind::NoSuchBuiltin(name.ident.as_str().to_owned()),
                 name.span,
             )),
         }

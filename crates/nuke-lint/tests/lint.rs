@@ -68,6 +68,12 @@ fn an_import_is_asked_for_the_extension() {
         "./palette.toml",
         Span::new(11, 27),
     );
+    trips(
+        "(@import) <| \"./palette\"",
+        Rule::ImportExtension,
+        "./palette",
+        Span::new(13, 24),
+    );
 }
 
 #[test]

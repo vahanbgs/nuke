@@ -1,10 +1,12 @@
 # Grouping arrives with the operator that made it unambiguous: `[f (x)]` is two
 # elements only while juxtaposition means nothing, which is what an application
-# operator settles. A group is a shape and not a step, so `(1)` reduces to `1`.
+# operator settles. A group is a shape and not a step, so `(1)` reduces to `1` and
+# a builtin inside one is still the function it names.
 xs := ["a" "b"]
 
 [
 	(1)
 	((xs |> @concat))
 	(@concat <| xs)
+	(@concat) <| xs
 ]

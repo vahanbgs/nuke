@@ -1,4 +1,4 @@
-use nuke_eval::{Error, ErrorKind, eval};
+use nuke_eval::{Builtin, Error, ErrorKind, eval};
 use nuke_syntax::{Value, surface};
 
 fn reduced(source: &str) -> Value {
@@ -683,6 +683,48 @@ fn a_builtin_is_named_at_reduction_and_import_takes_a_literal() {
             refused_in(&root, name).kind(),
             &ErrorKind::ExpectedImportPath,
             "for {name}"
+        );
+    }
+}
+
+#[test]
+fn a_group_holds_no_step_so_the_function_inside_one_is_still_a_function() {
+    assert_eq!(
+        reduced("{a = (@concat) <| [\"a\" \"b\"]}"),
+        reduced("{a = @concat <| [\"a\" \"b\"]}"),
+        "`(1)` and `1` reduce alike, and a builtin is no exception"
+    );
+    assert_eq!(
+        reduced("{a = [\"a\" \"b\"] |> ((@concat))}"),
+        reduced("{a = @concat <| [\"a\" \"b\"]}"),
+        "in either direction, however many parentheses"
+    );
+    assert_eq!(
+        refused("{a = concat <| [\"a\"]}").kind(),
+        &ErrorKind::NotAFunction,
+        "a name is still not one, until functions arrive"
+    );
+}
+
+#[test]
+fn an_unapplied_builtin_is_named_before_it_is_refused_for_standing_alone() {
+    assert_eq!(
+        refused("{a = @improt}").kind(),
+        &ErrorKind::NoSuchBuiltin("improt".to_owned()),
+        "the typo is the fault, and the name is already in hand"
+    );
+    assert_eq!(
+        refused("{a = @concat}").kind(),
+        &ErrorKind::UnappliedBuiltin,
+        "a name the roster knows is refused only for standing alone"
+    );
+    for builtin in Builtin::ALL {
+        assert!(
+            !matches!(
+                refused(&format!("{{a = @{} <| 1}}", builtin.name())).kind(),
+                ErrorKind::NoSuchBuiltin(_)
+            ),
+            "{builtin} is on the roster, so something must answer it"
         );
     }
 }

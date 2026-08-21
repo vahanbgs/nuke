@@ -21,6 +21,16 @@ pub struct Expr {
     pub span: Span,
 }
 
+impl Expr {
+    pub fn ungrouped(&self) -> &Self {
+        let mut expr = self;
+        while let ExprKind::Group(inner) = &expr.kind {
+            expr = inner;
+        }
+        expr
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExprKind {
     Tuple {
