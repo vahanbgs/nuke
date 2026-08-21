@@ -27,10 +27,9 @@ put it on is the only hint there is. A formatter that reflowed would destroy the
 human has. Prettier keeps an object expanded for a weaker reason; here it is the grammar.
 
 What is *not* the author's is everything between tokens: `{a:=1}` becomes `{a := 1}`, `p . a . b`
-becomes `p.a.b`, `@import<|"p.nuke"` gets its spaces too, and a run of blank lines becomes one.
-Three fixtures show this whitespace optional — `whitespace.nuke` twice and `access-whitespace.nuke`
-— and the formatter putting it back is what they test. Which *direction* an application was written
-in is the author's, `<|` and `|>` reducing alike, so the printer reprints the one it finds.
+becomes `p.a.b`, `@concat<|[x]` gets its spaces too, and a run of blank lines becomes one. Three
+fixtures show that whitespace optional, and putting it back is what they test. Which *direction* an
+application was written in is the author's, `<|` and `|>` reducing alike, so the printer keeps it.
 
 The dot has one exception, and it is not cosmetic. `1 . b` is a projection off a number, which
 reduces to nothing but parses; `1.b` is a malformed *number*, which does not. So the dot closes up
@@ -41,7 +40,8 @@ reads at all, and this is the one place in the grammar where closing a gap cross
 Two more rules are the formatter's own rather than the author's. An expanded block starts its items
 on the line after the delimiter, because `{ a = 1` with a broken tail reads as neither shape. And a
 block past **100 columns** breaks one item per line, the author's single line there being the
-absence of a grouping rather than one they chose.
+absence of a grouping rather than one they chose. A group is a block holding one value, which is
+what keeps its `)` off the line a comment ends — a formatter may not write what will not read.
 
 Neither reaches the top of a file, where a run of fields has no delimiter to start after or hang a
 break on. So a braceless document keeps the author's lines and is never reflowed, the rule its

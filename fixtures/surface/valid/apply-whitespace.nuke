@@ -1,0 +1,16 @@
+# `<|` and `|>` need no more room around them than `=` does, and each adds two
+# positions a comment may stand in. A group adds two more, and the `)` that closes
+# it cannot share a line with a comment.
+xs := ["a" "b"]
+
+[
+	@concat # after the function
+	<| # after the arrow
+	xs
+	xs # after the argument
+	|> # after the pipe
+	@concat
+	( # after the paren
+		@concat <| xs # before the paren
+	)
+]

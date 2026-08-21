@@ -291,13 +291,7 @@ impl<'a> Printer<'a> {
                 self.after(right, indent);
             }
             ExprKind::Group(inner) => {
-                self.push("(");
-                self.last = expr.span.start + 1;
-                self.expr(inner, indent);
-                self.last = inner.span.end;
-                self.flush(expr.span.end, indent);
-                self.push(")");
-                self.last = expr.span.end;
+                self.block(expr.span, '(', ')', &[Item::Value(inner)], indent);
             }
             ExprKind::Builtin(name) => {
                 self.push("@");
@@ -305,12 +299,26 @@ impl<'a> Printer<'a> {
                 self.push(text);
                 self.last = name.span.end;
             }
-            _ => {
-                let text = self.text(expr.span);
-                self.push(text);
-                self.last = expr.span.end;
-            }
+            ExprKind::Interpolation(_)
+            | ExprKind::Reference(_)
+            | ExprKind::Atom(_)
+            | ExprKind::String(_)
+            | ExprKind::Integer(_)
+            | ExprKind::Float(_) => self.verbatim(expr.span),
         }
+    }
+
+    fn verbatim(&mut self, span: Span) {
+        let text = self.text(span);
+        self.push(text);
+        while self
+            .comments
+            .get(self.next)
+            .is_some_and(|comment| comment.start < span.end)
+        {
+            self.next += 1;
+        }
+        self.last = span.end;
     }
 
     fn dot(&mut self, operand: &Expr, before: usize, indent: usize) {

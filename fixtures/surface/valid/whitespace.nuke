@@ -1,2 +1,2 @@
-# `:=` needs no more room around it than `=` does.
-{a:=1 b:="x" c=[a a] d={a=>b}}
+# `:=` needs no more room around it than `=` does, and neither do `<|` and `|>`.
+{a:=1 b:="x" c=[a a] d={a=>b} e=@concat<|[b] f=(a)}
