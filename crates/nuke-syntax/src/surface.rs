@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::MAX_DEPTH;
 use crate::cursor::{Cursor, Number, surface_number};
 use crate::error::{Error, ErrorKind, Span};
-use crate::expr::{Binding, Document, Entry, Expr, ExprKind, Field, Form, Name, Piece};
+use crate::expr::{Binding, Direction, Document, Entry, Expr, ExprKind, Field, Form, Name, Piece};
 use crate::lexer::{TokenKind, cook, unescape};
 use crate::spec::Spec;
 use crate::value::{Atom, Ident};
@@ -88,6 +88,59 @@ impl Parser<'_> {
     }
 
     fn value(&mut self, depth: usize) -> Result<Expr, Error> {
+        self.apply(depth)
+    }
+
+    fn apply(&mut self, depth: usize) -> Result<Expr, Error> {
+        let function = self.pipe(depth)?;
+        if !self
+            .cursor
+            .peek(0)?
+            .is_some_and(|token| token.kind == TokenKind::Apply)
+        {
+            return Ok(function);
+        }
+        self.cursor.bump()?;
+        let argument = self.apply(depth + 1)?;
+        let span = Span::new(function.span.start, argument.span.end);
+        Ok(Expr {
+            kind: ExprKind::Apply {
+                function: Box::new(function),
+                argument: Box::new(argument),
+                direction: Direction::Backward,
+            },
+            span,
+        })
+    }
+
+    fn pipe(&mut self, depth: usize) -> Result<Expr, Error> {
+        let mut expr = self.projection(depth)?;
+        let mut reach = depth;
+        while self
+            .cursor
+            .peek(0)?
+            .is_some_and(|token| token.kind == TokenKind::Pipe)
+        {
+            reach += 1;
+            if reach > MAX_DEPTH {
+                return Err(Error::new(ErrorKind::TooDeep, expr.span));
+            }
+            self.cursor.bump()?;
+            let function = self.projection(reach)?;
+            let span = Span::new(expr.span.start, function.span.end);
+            expr = Expr {
+                kind: ExprKind::Apply {
+                    function: Box::new(function),
+                    argument: Box::new(expr),
+                    direction: Direction::Forward,
+                },
+                span,
+            };
+        }
+        Ok(expr)
+    }
+
+    fn projection(&mut self, depth: usize) -> Result<Expr, Error> {
         let mut expr = self.operand(depth)?;
         let mut reach = depth;
         while self
@@ -154,7 +207,8 @@ impl Parser<'_> {
         let kind = match token.kind {
             TokenKind::BracketOpen => return self.list(depth),
             TokenKind::BraceOpen => return self.block(depth),
-            TokenKind::At => return self.call(token.span, depth),
+            TokenKind::At => return self.builtin(token.span),
+            TokenKind::ParenOpen => return self.group(token.span, depth),
             TokenKind::InterpolationOpen => return self.interpolation(token.span, depth),
             TokenKind::Ident => {
                 self.cursor.bump()?;
@@ -186,7 +240,21 @@ impl Parser<'_> {
         })
     }
 
-    fn call(&mut self, at: Span, depth: usize) -> Result<Expr, Error> {
+    fn group(&mut self, at: Span, depth: usize) -> Result<Expr, Error> {
+        self.cursor.bump()?;
+        let inner = self.value(depth + 1)?;
+        let close = match self.cursor.bump()? {
+            Some(token) if token.kind == TokenKind::ParenClose => token.span,
+            Some(token) => return Err(Error::new(ErrorKind::ExpectedGroupClose, token.span)),
+            None => return Err(Error::new(ErrorKind::UnterminatedGroup, at)),
+        };
+        Ok(Expr {
+            kind: ExprKind::Group(Box::new(inner)),
+            span: Span::new(at.start, close.end),
+        })
+    }
+
+    fn builtin(&mut self, at: Span) -> Result<Expr, Error> {
         self.cursor.bump()?;
         let name = match self.cursor.bump()? {
             Some(token) if token.kind == TokenKind::Ident => Name {
@@ -201,13 +269,9 @@ impl Parser<'_> {
                 ));
             }
         };
-        let operand = self.operand(depth + 1)?;
-        let span = Span::new(at.start, operand.span.end);
+        let span = Span::new(at.start, name.span.end);
         Ok(Expr {
-            kind: ExprKind::Call {
-                name,
-                operand: Box::new(operand),
-            },
+            kind: ExprKind::Builtin(name),
             span,
         })
     }

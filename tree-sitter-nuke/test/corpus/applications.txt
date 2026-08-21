@@ -1,0 +1,85 @@
+================================================================================
+An application is spelled in either direction, and `import` is a name only after the sigil
+================================================================================
+
+import := @import <| "./palette.nuke"
+
+{import = ["#" import.accent] |> @concat}
+
+--------------------------------------------------------------------------------
+
+(document
+  (binding
+    (ident)
+    (apply
+      (builtin
+        (ident))
+      (string)))
+  (tuple
+    (field
+      (ident)
+      (pipe
+        (list
+          (string)
+          (access
+            (reference
+              (ident))
+            (ident)))
+        (builtin
+          (ident))))))
+
+================================================================================
+The dot binds tighter than either operator, so a group is what hands it the import
+================================================================================
+
+(@import <| "./palette.nuke").accent
+
+--------------------------------------------------------------------------------
+
+(document
+  (access
+    (group
+      (apply
+        (builtin
+          (ident))
+        (string)))
+    (ident)))
+
+================================================================================
+`<|` is the loosest and right-associative, `|>` left-associative and tighter
+================================================================================
+
+[
+	@concat <| xs |> @flatten
+	xs |> @flatten |> @concat
+	@concat <| @flatten <| xs
+]
+
+--------------------------------------------------------------------------------
+
+(document
+  (list
+    (apply
+      (builtin
+        (ident))
+      (pipe
+        (reference
+          (ident))
+        (builtin
+          (ident))))
+    (pipe
+      (pipe
+        (reference
+          (ident))
+        (builtin
+          (ident)))
+      (builtin
+        (ident)))
+    (apply
+      (builtin
+        (ident))
+      (apply
+        (builtin
+          (ident))
+        (reference
+          (ident))))))

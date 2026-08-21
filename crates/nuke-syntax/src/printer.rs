@@ -1,5 +1,5 @@
 use crate::error::{Error, Span};
-use crate::expr::{Binding, Document, Entry, Expr, ExprKind, Field, Form};
+use crate::expr::{Binding, Direction, Document, Entry, Expr, ExprKind, Field, Form};
 use crate::lexer::{Lexer, TokenKind};
 use crate::surface;
 
@@ -276,12 +276,34 @@ impl<'a> Printer<'a> {
                 self.last = key.span.end;
                 self.push(")");
             }
-            ExprKind::Call { name, operand } => {
+            ExprKind::Apply {
+                function,
+                argument,
+                direction,
+            } => {
+                let (left, right, symbol) = match direction {
+                    Direction::Backward => (function, argument, "<|"),
+                    Direction::Forward => (argument, function, "|>"),
+                };
+                self.expr(left, indent);
+                self.last = left.span.end;
+                self.binder(symbol, right.span.start, indent);
+                self.after(right, indent);
+            }
+            ExprKind::Group(inner) => {
+                self.push("(");
+                self.last = expr.span.start + 1;
+                self.expr(inner, indent);
+                self.last = inner.span.end;
+                self.flush(expr.span.end, indent);
+                self.push(")");
+                self.last = expr.span.end;
+            }
+            ExprKind::Builtin(name) => {
                 self.push("@");
                 let text = self.text(name.span);
                 self.push(text);
                 self.last = name.span.end;
-                self.after(operand, indent);
             }
             _ => {
                 let text = self.text(expr.span);

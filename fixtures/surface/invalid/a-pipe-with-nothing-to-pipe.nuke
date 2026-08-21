@@ -1,0 +1,2 @@
+# `|>` takes the argument on its left, and no operator here opens a value.
+{a = |> @concat}

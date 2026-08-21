@@ -23,18 +23,34 @@ module.exports = grammar({
 
     binding: $ => seq(field('name', $.ident), ':=', field('value', $._value)),
 
-    _value: $ => choice($._operand, $.access),
+    _value: $ => choice($._operand, $.access, $.apply, $.pipe),
 
-    access: $ => prec.left(seq(
-      field('operand', $._value),
-      '.',
-      field('key', choice($.ident, $.computed)),
+    // `<|` is the loosest operator and right-associative, `|>` is looser than the dot and
+    // left-associative, and the dot binds tightest of the three. `grammar/surface.abnf`
+    // spells the same ladder as four rules, a PEG having no precedence of its own.
+    apply: $ => prec.right(1, seq(
+      field('function', $._value),
+      '<|',
+      field('argument', $._value),
     )),
 
-    computed: $ => seq('(', $._value, ')'),
+    pipe: $ => prec.left(2, seq(
+      field('argument', $._value),
+      '|>',
+      field('function', $._value),
+    )),
+
+    access: $ => prec.left(3, seq(
+      field('operand', $._value),
+      '.',
+      field('key', choice($.ident, $.group)),
+    )),
+
+    group: $ => seq('(', $._value, ')'),
 
     _operand: $ => choice(
-      $.call,
+      $.group,
+      $.builtin,
       $.interpolation,
       $.tuple,
       $.map,
@@ -46,7 +62,7 @@ module.exports = grammar({
       $.malformed_number,
     ),
 
-    call: $ => seq('@', field('builtin', $.ident), field('operand', $._operand)),
+    builtin: $ => seq('@', field('name', $.ident)),
 
     tuple: $ => seq('{', repeat($.binding), repeat($.field), '}'),
     field: $ => seq(field('name', $.ident), '=', field('value', $._value)),

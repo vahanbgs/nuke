@@ -51,11 +51,15 @@ impl Pass {
                 self.expr(operand);
                 self.expr(key);
             }
-            ExprKind::Call { name, operand } => {
-                self.named(name);
-                self.imported(name, operand);
-                self.expr(operand);
+            ExprKind::Apply {
+                function, argument, ..
+            } => {
+                self.imported(function, argument);
+                self.expr(function);
+                self.expr(argument);
             }
+            ExprKind::Builtin(name) => self.named(name),
+            ExprKind::Group(inner) => self.expr(inner),
             ExprKind::Interpolation(pieces) => {
                 for piece in pieces {
                     if let Piece::Hole { expr, .. } = piece {
@@ -89,15 +93,18 @@ impl Pass {
         }
     }
 
-    fn imported(&mut self, name: &Name, operand: &Expr) {
+    fn imported(&mut self, function: &Expr, argument: &Expr) {
+        let ExprKind::Builtin(name) = &function.kind else {
+            return;
+        };
         if name.ident.as_str() != IMPORT {
             return;
         }
-        let ExprKind::String(path) = &operand.kind else {
+        let ExprKind::String(path) = &argument.kind else {
             return;
         };
         if !path.ends_with(EXTENSION) {
-            self.report(Rule::ImportExtension, path, operand.span);
+            self.report(Rule::ImportExtension, path, argument.span);
         }
     }
 

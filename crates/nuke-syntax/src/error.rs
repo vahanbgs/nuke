@@ -58,7 +58,8 @@ pub enum ErrorKind {
     IdentAsValue(String),
     SurfaceBinder,
     SurfaceDot,
-    SurfaceCall,
+    SurfaceBuiltin,
+    SurfaceApply,
     SurfaceInterpolation,
     SurfaceDyadic,
     ExpectedValue,
@@ -68,6 +69,8 @@ pub enum ErrorKind {
     ExpectedAccessName,
     ExpectedKeyClose,
     UnterminatedKey,
+    ExpectedGroupClose,
+    UnterminatedGroup,
     ExpectedBuiltinName,
     ExpectedEquals,
     ExpectedArrow,
@@ -157,10 +160,15 @@ impl fmt::Display for ErrorKind {
                 "`.` projects a field in the surface language, and the canonical form carries \
                  data alone"
             ),
-            Self::SurfaceCall => write!(
+            Self::SurfaceBuiltin => write!(
                 f,
-                "`@` calls a builtin in the surface language, and the canonical form carries \
+                "`@` names a builtin in the surface language, and the canonical form carries \
                  data alone"
+            ),
+            Self::SurfaceApply => write!(
+                f,
+                "`<|` and `|>` apply a function in the surface language, and the canonical \
+                 form carries data alone"
             ),
             Self::SurfaceInterpolation => write!(
                 f,
@@ -198,10 +206,16 @@ impl fmt::Display for ErrorKind {
                  value is what a list is for"
             ),
             Self::UnterminatedKey => write!(f, "this `(` is never closed"),
+            Self::ExpectedGroupClose => write!(
+                f,
+                "a group holds one value, and `)` closes it; a collection wanting more than \
+                 one value is what a list is for"
+            ),
+            Self::UnterminatedGroup => write!(f, "this `(` is never closed"),
             Self::ExpectedBuiltinName => {
                 write!(
                     f,
-                    "`@` calls a builtin, and a builtin is named by an identifier"
+                    "`@` names a builtin, and a builtin is named by an identifier"
                 )
             }
             Self::ExpectedEquals => write!(f, "expected `=` after a field name"),

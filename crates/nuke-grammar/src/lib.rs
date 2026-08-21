@@ -227,20 +227,29 @@ fn fields_of(pair: &pest::iterators::Pair<'_, &str>) -> Vec<(String, Shape)> {
 }
 
 fn shape_of(value: pest::iterators::Pair<'_, &str>) -> Shape {
-    if !children(&value, "access").is_empty() {
-        return Shape::Scalar("access".to_owned());
-    }
-    let Some(inner) = value.into_inner().next() else {
-        return Shape::Empty;
-    };
-    let inner = if inner.as_rule() == "operand" {
-        let Some(taken) = inner.into_inner().next() else {
+    let mut inner = value;
+    loop {
+        let below = match inner.as_rule() {
+            "value" if !children(&inner, "apply").is_empty() => "apply",
+            "apply" if children(&inner, "apply").is_empty() => "pipe",
+            "pipe" if children(&inner, "projection").len() == 1 => "projection",
+            "projection" if children(&inner, "access").is_empty() => "operand",
+            "apply" | "pipe" => return Shape::Scalar(inner.as_rule().to_owned()),
+            "projection" => return Shape::Scalar("access".to_owned()),
+            "value" | "operand" => {
+                let Some(taken) = inner.into_inner().next() else {
+                    return Shape::Empty;
+                };
+                inner = taken;
+                continue;
+            }
+            _ => break,
+        };
+        let Some(next) = children(&inner, below).into_iter().next() else {
             return Shape::Empty;
         };
-        taken
-    } else {
-        inner
-    };
+        inner = next;
+    }
     match inner.as_rule() {
         "list" => Shape::List(
             children(&inner, "value")
@@ -248,6 +257,10 @@ fn shape_of(value: pest::iterators::Pair<'_, &str>) -> Shape {
                 .map(shape_of)
                 .collect(),
         ),
+        "group" => children(&inner, "value")
+            .into_iter()
+            .next()
+            .map_or(Shape::Empty, shape_of),
         "tuple" => Shape::Tuple(fields_of(&inner)),
         "map" => Shape::Map(
             children(&inner, "entry")

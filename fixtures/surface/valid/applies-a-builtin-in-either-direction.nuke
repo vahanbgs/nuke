@@ -1,0 +1,10 @@
+# `@concat <| xs` and `xs |> @concat` reduce alike, and no tool prefers either —
+# the bargain a file standing in for its own braces already struck. A chain reads
+# one way and a call the other, so neither is the readable one in both places.
+parts := ["#" "1D2021"]
+
+[
+	@concat <| parts
+	parts |> @concat
+	@concat <| [["a" "b"] |> @concat "c"]
+]

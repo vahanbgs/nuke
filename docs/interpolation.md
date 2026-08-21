@@ -34,9 +34,9 @@ not. And `{{` wins over a hole, so a tuple in a hole is written `$"{ {a = 1}.a }
 
 ## What a hole holds
 
-A hole takes a **value** rather than an operand, the braces having done the grouping a call cannot,
-so `$"{p.a}"` and `$"{@import "./palette.nuke".accent}"` read the way they look. It is a level of
-the expression the way a projection is, since it nests the tree the evaluator walks even though the
+A hole takes a **value** rather than an operand, the braces having done the grouping, so `$"{p.a}"`
+and `$"{(@import <| "./palette.nuke").accent}"` read the way they look. It is a level of the
+expression the way a projection is, since it nests the tree the evaluator walks even though the
 string it builds is flat. Of the six forms:
 
 | form              | bare                        | with a specifier                       |

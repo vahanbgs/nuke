@@ -237,19 +237,22 @@ fn every_fault_carries_the_span_of_what_raised_it() {
 #[test]
 fn a_string_is_built_from_its_parts_in_the_order_they_stand() {
     assert_eq!(
-        reduced("@concat [\"#\" \"1D2021\"]"),
+        reduced("@concat <| [\"#\" \"1D2021\"]"),
         reduced("\"#1D2021\"")
     );
-    assert_eq!(reduced("@concat [\"a\" \"b\" \"c\"]"), reduced("\"abc\""));
-    assert_eq!(reduced("@concat [\"only\"]"), reduced("\"only\""));
-    assert_eq!(reduced("@concat []"), reduced("\"\""));
     assert_eq!(
-        reduced("c := \"FE8019\" [@concat [\"#\" c] c]"),
+        reduced("@concat <| [\"a\" \"b\" \"c\"]"),
+        reduced("\"abc\"")
+    );
+    assert_eq!(reduced("@concat <| [\"only\"]"), reduced("\"only\""));
+    assert_eq!(reduced("@concat <| []"), reduced("\"\""));
+    assert_eq!(
+        reduced("c := \"FE8019\" [@concat <| [\"#\" c] c]"),
         reduced("[\"#FE8019\" \"FE8019\"]"),
         "a colour is spelled once and reaches two readers that disagree about the hash"
     );
     assert_eq!(
-        reduced("concat := \"c\" {concat = @concat [concat concat]}"),
+        reduced("concat := \"c\" {concat = @concat <| [concat concat]}"),
         reduced("{concat = \"cc\"}"),
         "a builtin's name is a name only after `@`, so no word is spent on this one either"
     );
@@ -257,16 +260,16 @@ fn a_string_is_built_from_its_parts_in_the_order_they_stand() {
 
 #[test]
 fn only_a_list_of_strings_concatenates() {
-    for source in ["@concat \"a\"", "@concat {a = \"b\"}", "@concat 1"] {
+    for source in ["@concat <| \"a\"", "@concat <| {a = \"b\"}", "@concat <| 1"] {
         assert_eq!(refused(source).kind(), &ErrorKind::NotAList, "for {source}");
     }
     for source in [
-        "@concat [1]",
-        "@concat [\"a\" 1.5]",
-        "@concat [Dark]",
-        "@concat [[\"a\"]]",
-        "@concat [{a = \"b\"}]",
-        "@concat [{\"a\" => \"b\"}]",
+        "@concat <| [1]",
+        "@concat <| [\"a\" 1.5]",
+        "@concat <| [Dark]",
+        "@concat <| [[\"a\"]]",
+        "@concat <| [{a = \"b\"}]",
+        "@concat <| [{\"a\" => \"b\"}]",
     ] {
         assert_eq!(
             refused(source).kind(),
@@ -425,7 +428,7 @@ fn doubling(lines: usize) -> String {
     let mut source = String::from("s0 := \"0123456789\"\n");
     for level in 1..lines {
         source.push_str(&format!(
-            "s{level} := @concat [s{} s{}]\n",
+            "s{level} := @concat <| [s{} s{}]\n",
             level - 1,
             level - 1
         ));
@@ -485,11 +488,11 @@ fn refused_in(root: &tempfile::TempDir, name: &str) -> Error {
 fn an_import_is_the_reduced_value_of_the_file_it_names_wherever_a_value_stands() {
     let root = tree(&[
         ("p.nuke", "{accent = \"#FE8019\"}"),
-        ("bound.nuke", "p := @import \"./p.nuke\" [p p.accent]"),
-        ("field.nuke", "{a = @import \"./p.nuke\"}"),
-        ("key.nuke", "{@import \"./p.nuke\" => 1}"),
-        ("naked.nuke", "@import \"./p.nuke\".accent"),
-        ("bare.nuke", "@import \"p.nuke\""),
+        ("bound.nuke", "p := @import <| \"./p.nuke\" [p p.accent]"),
+        ("field.nuke", "{a = @import <| \"./p.nuke\"}"),
+        ("key.nuke", "{@import <| \"./p.nuke\" => 1}"),
+        ("naked.nuke", "(@import <| \"./p.nuke\").accent"),
+        ("bare.nuke", "@import <| \"p.nuke\""),
     ]);
     assert_eq!(
         reduced_in(&root, "bound.nuke"),
@@ -515,9 +518,9 @@ fn an_import_is_the_reduced_value_of_the_file_it_names_wherever_a_value_stands()
 fn an_import_resolves_against_the_file_that_spells_it() {
     let root = tree(&[
         ("sub/p.nuke", "{accent = \"#FE8019\"}"),
-        ("sub/theme.nuke", "{fg = @import \"./p.nuke\".accent}"),
-        ("main.nuke", "@import \"./sub/theme.nuke\""),
-        ("up/deep/leaf.nuke", "@import \"../../sub/p.nuke\""),
+        ("sub/theme.nuke", "{fg = (@import <| \"./p.nuke\").accent}"),
+        ("main.nuke", "@import <| \"./sub/theme.nuke\""),
+        ("up/deep/leaf.nuke", "@import <| \"../../sub/p.nuke\""),
     ]);
     assert_eq!(
         reduced_in(&root, "main.nuke"),
@@ -536,8 +539,8 @@ fn an_imported_file_hands_over_its_value_and_not_its_names() {
     let root = tree(&[
         ("keeps.nuke", "secret := 1 {a = secret}"),
         ("needs.nuke", "[secret]"),
-        ("reads.nuke", "p := @import \"./keeps.nuke\" [p secret]"),
-        ("lends.nuke", "secret := 1 @import \"./needs.nuke\""),
+        ("reads.nuke", "p := @import <| \"./keeps.nuke\" [p secret]"),
+        ("lends.nuke", "secret := 1 @import <| \"./needs.nuke\""),
     ]);
     assert_eq!(reduced_in(&root, "keeps.nuke"), reduced("{a = 1}"));
     assert!(
@@ -557,15 +560,15 @@ fn an_imported_file_hands_over_its_value_and_not_its_names() {
 fn a_diamond_is_not_a_cycle_and_one_file_imported_twice_is_reuse() {
     let root = tree(&[
         ("p.nuke", "{accent = \"#FE8019\"}"),
-        ("left.nuke", "@import \"./p.nuke\""),
-        ("right.nuke", "@import \"./p.nuke\""),
+        ("left.nuke", "@import <| \"./p.nuke\""),
+        ("right.nuke", "@import <| \"./p.nuke\""),
         (
             "top.nuke",
-            "{a = @import \"./left.nuke\" b = @import \"./right.nuke\"}",
+            "{a = @import <| \"./left.nuke\" b = @import <| \"./right.nuke\"}",
         ),
         (
             "twice.nuke",
-            "{a = @import \"./p.nuke\".accent b = @import \"./p.nuke\".accent}",
+            "{a = (@import <| \"./p.nuke\").accent b = (@import <| \"./p.nuke\").accent}",
         ),
     ]);
     assert_eq!(
@@ -581,11 +584,11 @@ fn a_diamond_is_not_a_cycle_and_one_file_imported_twice_is_reuse() {
 #[test]
 fn a_cycle_between_files_is_refused_from_whichever_end_it_is_entered() {
     let root = tree(&[
-        ("a.nuke", "@import \"./b.nuke\""),
-        ("b.nuke", "@import \"./c.nuke\""),
-        ("c.nuke", "@import \"./a.nuke\""),
-        ("self.nuke", "@import \"./self.nuke\""),
-        ("spelled.nuke", "@import \"././spelled.nuke\""),
+        ("a.nuke", "@import <| \"./b.nuke\""),
+        ("b.nuke", "@import <| \"./c.nuke\""),
+        ("c.nuke", "@import <| \"./a.nuke\""),
+        ("self.nuke", "@import <| \"./self.nuke\""),
+        ("spelled.nuke", "@import <| \"././spelled.nuke\""),
     ]);
     for name in ["a.nuke", "b.nuke", "c.nuke"] {
         let error = innermost(refused_in(&root, name));
@@ -610,8 +613,8 @@ fn a_cycle_between_files_is_refused_from_whichever_end_it_is_entered() {
 #[test]
 fn a_file_that_cannot_be_read_is_refused_where_the_import_stands() {
     let root = tree(&[
-        ("gone.nuke", "{a = @import \"./nowhere.nuke\"}"),
-        ("dir.nuke", "{a = @import \"./sub\"}"),
+        ("gone.nuke", "{a = @import <| \"./nowhere.nuke\"}"),
+        ("dir.nuke", "{a = @import <| \"./sub\"}"),
         ("sub/p.nuke", "{}"),
     ]);
     assert_eq!(
@@ -636,8 +639,8 @@ fn a_fault_inside_an_imported_file_is_located_in_that_file() {
     let root = tree(&[
         ("broken.nuke", "{a = 1\n b = missing}"),
         ("torn.nuke", "{a = ,}"),
-        ("needs.nuke", "\n{a = @import \"./broken.nuke\"}"),
-        ("reads.nuke", "{a = @import \"./torn.nuke\"}"),
+        ("needs.nuke", "\n{a = @import <| \"./broken.nuke\"}"),
+        ("reads.nuke", "{a = @import <| \"./torn.nuke\"}"),
     ]);
     let error = refused_in(&root, "needs.nuke");
     let source = std::fs::read_to_string(root.path().join("needs.nuke")).unwrap();
@@ -667,9 +670,9 @@ fn a_fault_inside_an_imported_file_is_located_in_that_file() {
 fn a_builtin_is_named_at_reduction_and_import_takes_a_literal() {
     let root = tree(&[
         ("p.nuke", "{}"),
-        ("nope.nuke", "{a = @nope \"p.nuke\"}"),
-        ("computed.nuke", "n := \"./p.nuke\" {a = @import n}"),
-        ("joined.nuke", "{a = @import {b = \"x\"}.b}"),
+        ("nope.nuke", "{a = @nope <| \"p.nuke\"}"),
+        ("computed.nuke", "n := \"./p.nuke\" {a = @import <| n}"),
+        ("joined.nuke", "{a = (@import <| {b = \"x\"}).b}"),
     ]);
     assert_eq!(
         refused_in(&root, "nope.nuke").kind(),
@@ -687,7 +690,7 @@ fn a_builtin_is_named_at_reduction_and_import_takes_a_literal() {
 #[test]
 fn a_document_with_no_file_of_its_own_resolves_no_import() {
     assert_eq!(
-        refused("@import \"./p.nuke\"").kind(),
+        refused("@import <| \"./p.nuke\"").kind(),
         &ErrorKind::NoOrigin,
         "the working directory is the process's, not the document's"
     );
@@ -705,7 +708,7 @@ fn a_chain_of_files_deeper_than_the_bound_is_refused_rather_than_overflowing() {
         .map(|at| {
             (
                 format!("f{at}.nuke"),
-                format!("@import \"./f{}.nuke\"", at + 1),
+                format!("@import <| \"./f{}.nuke\"", at + 1),
             )
         })
         .collect();
@@ -740,7 +743,7 @@ fn a_file_is_read_once_however_often_a_document_imports_it() {
         ("m.nuke", &list_of(size)),
         (
             "twice.nuke",
-            "{a = @import \"./m.nuke\" b = @import \"./m.nuke\"}",
+            "{a = @import <| \"./m.nuke\" b = @import <| \"./m.nuke\"}",
         ),
     ]);
     reduced_in(&root, "twice.nuke");
@@ -751,10 +754,10 @@ fn an_import_costs_its_size_at_every_site_that_names_it() {
     let size = nuke_eval::MAX_VALUES * 4 / 10;
     let root = tree(&[
         ("m.nuke", &list_of(size)),
-        ("once.nuke", "{a = @import \"./m.nuke\"}"),
+        ("once.nuke", "{a = @import <| \"./m.nuke\"}"),
         (
             "twice.nuke",
-            "{a = @import \"./m.nuke\" b = @import \"./m.nuke\"}",
+            "{a = @import <| \"./m.nuke\" b = @import <| \"./m.nuke\"}",
         ),
     ]);
     reduced_in(&root, "once.nuke");
@@ -771,10 +774,10 @@ fn the_budget_is_one_document_wide_however_many_files_it_reads() {
     let root = tree(&[
         ("one.nuke", &list_of(size)),
         ("other.nuke", &list_of(size)),
-        ("alone.nuke", "@import \"./one.nuke\""),
+        ("alone.nuke", "@import <| \"./one.nuke\""),
         (
             "both.nuke",
-            "{a = @import \"./one.nuke\" b = @import \"./other.nuke\"}",
+            "{a = @import <| \"./one.nuke\" b = @import <| \"./other.nuke\"}",
         ),
     ]);
     reduced_in(&root, "alone.nuke");
@@ -795,8 +798,8 @@ fn an_import_nested_past_what_the_canonical_parser_would_read_back_is_refused() 
     );
     let root = tree(&[
         ("deep.nuke", &deep),
-        ("flat.nuke", "@import \"./deep.nuke\""),
-        ("wrapped.nuke", "[@import \"./deep.nuke\"]"),
+        ("flat.nuke", "@import <| \"./deep.nuke\""),
+        ("wrapped.nuke", "[@import <| \"./deep.nuke\"]"),
     ]);
     reduced_in(&root, "flat.nuke");
     assert_eq!(
@@ -809,8 +812,8 @@ fn an_import_nested_past_what_the_canonical_parser_would_read_back_is_refused() 
 #[test]
 fn a_fault_below_a_file_reads_as_one_line_naming_every_file_it_passed_through() {
     let root = tree(&[
-        ("a.nuke", "{x = @import \"./b.nuke\"}"),
-        ("b.nuke", "[@import \"./c.nuke\"]"),
+        ("a.nuke", "{x = @import <| \"./b.nuke\"}"),
+        ("b.nuke", "[@import <| \"./c.nuke\"]"),
         ("c.nuke", "{y = missing}"),
     ]);
     let b = root.path().join("b.nuke").canonicalize().unwrap();

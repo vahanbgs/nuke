@@ -1,0 +1,5 @@
+# `@name` is the only spelling a function has, so a binding of the same name is
+# unrelated to the builtin — which is the whole of what the sigil buys.
+concat := "not the builtin"
+
+["a" "b"] |> concat

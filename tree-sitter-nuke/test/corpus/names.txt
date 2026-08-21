@@ -75,18 +75,18 @@ A parenthesised key is evaluated, and a bare name never is
     (access
       (reference
         (ident))
-      (computed
+      (group
         (string)))
     (access
       (reference
         (ident))
-      (computed
+      (group
         (reference
           (ident))))
     (access
       (reference
         (ident))
-      (computed
+      (group
         (number)))
     (access
       (reference

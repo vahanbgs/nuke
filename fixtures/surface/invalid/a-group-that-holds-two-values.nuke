@@ -1,0 +1,3 @@
+# A group holds one value; a collection wanting more than one is what a list is
+# for. It is the key's rule, now standing wherever a value stands.
+(1 2)

@@ -8,7 +8,7 @@
         "required": true,
         "types": [
           {
-            "type": "computed",
+            "type": "group",
             "named": true
           },
           {
@@ -26,11 +26,19 @@
             "named": true
           },
           {
+            "type": "apply",
+            "named": true
+          },
+          {
             "type": "atom",
             "named": true
           },
           {
-            "type": "call",
+            "type": "builtin",
+            "named": true
+          },
+          {
+            "type": "group",
             "named": true
           },
           {
@@ -51,6 +59,140 @@
           },
           {
             "type": "number",
+            "named": true
+          },
+          {
+            "type": "pipe",
+            "named": true
+          },
+          {
+            "type": "reference",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "tuple",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "apply",
+    "named": true,
+    "fields": {
+      "argument": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "access",
+            "named": true
+          },
+          {
+            "type": "apply",
+            "named": true
+          },
+          {
+            "type": "atom",
+            "named": true
+          },
+          {
+            "type": "builtin",
+            "named": true
+          },
+          {
+            "type": "group",
+            "named": true
+          },
+          {
+            "type": "interpolation",
+            "named": true
+          },
+          {
+            "type": "list",
+            "named": true
+          },
+          {
+            "type": "malformed_number",
+            "named": true
+          },
+          {
+            "type": "map",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "pipe",
+            "named": true
+          },
+          {
+            "type": "reference",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "tuple",
+            "named": true
+          }
+        ]
+      },
+      "function": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "access",
+            "named": true
+          },
+          {
+            "type": "apply",
+            "named": true
+          },
+          {
+            "type": "atom",
+            "named": true
+          },
+          {
+            "type": "builtin",
+            "named": true
+          },
+          {
+            "type": "group",
+            "named": true
+          },
+          {
+            "type": "interpolation",
+            "named": true
+          },
+          {
+            "type": "list",
+            "named": true
+          },
+          {
+            "type": "malformed_number",
+            "named": true
+          },
+          {
+            "type": "map",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "pipe",
             "named": true
           },
           {
@@ -92,11 +234,19 @@
             "named": true
           },
           {
+            "type": "apply",
+            "named": true
+          },
+          {
             "type": "atom",
             "named": true
           },
           {
-            "type": "call",
+            "type": "builtin",
+            "named": true
+          },
+          {
+            "type": "group",
             "named": true
           },
           {
@@ -120,6 +270,10 @@
             "named": true
           },
           {
+            "type": "pipe",
+            "named": true
+          },
+          {
             "type": "reference",
             "named": true
           },
@@ -136,10 +290,10 @@
     }
   },
   {
-    "type": "call",
+    "type": "builtin",
     "named": true,
     "fields": {
-      "builtin": {
+      "name": {
         "multiple": false,
         "required": true,
         "types": [
@@ -148,108 +302,7 @@
             "named": true
           }
         ]
-      },
-      "operand": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "atom",
-            "named": true
-          },
-          {
-            "type": "call",
-            "named": true
-          },
-          {
-            "type": "interpolation",
-            "named": true
-          },
-          {
-            "type": "list",
-            "named": true
-          },
-          {
-            "type": "malformed_number",
-            "named": true
-          },
-          {
-            "type": "map",
-            "named": true
-          },
-          {
-            "type": "number",
-            "named": true
-          },
-          {
-            "type": "reference",
-            "named": true
-          },
-          {
-            "type": "string",
-            "named": true
-          },
-          {
-            "type": "tuple",
-            "named": true
-          }
-        ]
       }
-    }
-  },
-  {
-    "type": "computed",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": false,
-      "required": true,
-      "types": [
-        {
-          "type": "access",
-          "named": true
-        },
-        {
-          "type": "atom",
-          "named": true
-        },
-        {
-          "type": "call",
-          "named": true
-        },
-        {
-          "type": "interpolation",
-          "named": true
-        },
-        {
-          "type": "list",
-          "named": true
-        },
-        {
-          "type": "malformed_number",
-          "named": true
-        },
-        {
-          "type": "map",
-          "named": true
-        },
-        {
-          "type": "number",
-          "named": true
-        },
-        {
-          "type": "reference",
-          "named": true
-        },
-        {
-          "type": "string",
-          "named": true
-        },
-        {
-          "type": "tuple",
-          "named": true
-        }
-      ]
     }
   },
   {
@@ -266,6 +319,10 @@
           "named": true
         },
         {
+          "type": "apply",
+          "named": true
+        },
+        {
           "type": "atom",
           "named": true
         },
@@ -274,11 +331,15 @@
           "named": true
         },
         {
-          "type": "call",
+          "type": "builtin",
           "named": true
         },
         {
           "type": "field",
+          "named": true
+        },
+        {
+          "type": "group",
           "named": true
         },
         {
@@ -299,6 +360,10 @@
         },
         {
           "type": "number",
+          "named": true
+        },
+        {
+          "type": "pipe",
           "named": true
         },
         {
@@ -329,11 +394,19 @@
             "named": true
           },
           {
+            "type": "apply",
+            "named": true
+          },
+          {
             "type": "atom",
             "named": true
           },
           {
-            "type": "call",
+            "type": "builtin",
+            "named": true
+          },
+          {
+            "type": "group",
             "named": true
           },
           {
@@ -354,6 +427,10 @@
           },
           {
             "type": "number",
+            "named": true
+          },
+          {
+            "type": "pipe",
             "named": true
           },
           {
@@ -379,11 +456,19 @@
             "named": true
           },
           {
+            "type": "apply",
+            "named": true
+          },
+          {
             "type": "atom",
             "named": true
           },
           {
-            "type": "call",
+            "type": "builtin",
+            "named": true
+          },
+          {
+            "type": "group",
             "named": true
           },
           {
@@ -404,6 +489,10 @@
           },
           {
             "type": "number",
+            "named": true
+          },
+          {
+            "type": "pipe",
             "named": true
           },
           {
@@ -445,11 +534,19 @@
             "named": true
           },
           {
+            "type": "apply",
+            "named": true
+          },
+          {
             "type": "atom",
             "named": true
           },
           {
-            "type": "call",
+            "type": "builtin",
+            "named": true
+          },
+          {
+            "type": "group",
             "named": true
           },
           {
@@ -473,6 +570,10 @@
             "named": true
           },
           {
+            "type": "pipe",
+            "named": true
+          },
+          {
             "type": "reference",
             "named": true
           },
@@ -486,6 +587,73 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "group",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "access",
+          "named": true
+        },
+        {
+          "type": "apply",
+          "named": true
+        },
+        {
+          "type": "atom",
+          "named": true
+        },
+        {
+          "type": "builtin",
+          "named": true
+        },
+        {
+          "type": "group",
+          "named": true
+        },
+        {
+          "type": "interpolation",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "malformed_number",
+          "named": true
+        },
+        {
+          "type": "map",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "pipe",
+          "named": true
+        },
+        {
+          "type": "reference",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        },
+        {
+          "type": "tuple",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -511,11 +679,19 @@
             "named": true
           },
           {
+            "type": "apply",
+            "named": true
+          },
+          {
             "type": "atom",
             "named": true
           },
           {
-            "type": "call",
+            "type": "builtin",
+            "named": true
+          },
+          {
+            "type": "group",
             "named": true
           },
           {
@@ -536,6 +712,10 @@
           },
           {
             "type": "number",
+            "named": true
+          },
+          {
+            "type": "pipe",
             "named": true
           },
           {
@@ -590,11 +770,19 @@
           "named": true
         },
         {
+          "type": "apply",
+          "named": true
+        },
+        {
           "type": "atom",
           "named": true
         },
         {
-          "type": "call",
+          "type": "builtin",
+          "named": true
+        },
+        {
+          "type": "group",
           "named": true
         },
         {
@@ -615,6 +803,10 @@
         },
         {
           "type": "number",
+          "named": true
+        },
+        {
+          "type": "pipe",
           "named": true
         },
         {
@@ -649,6 +841,136 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "pipe",
+    "named": true,
+    "fields": {
+      "argument": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "access",
+            "named": true
+          },
+          {
+            "type": "apply",
+            "named": true
+          },
+          {
+            "type": "atom",
+            "named": true
+          },
+          {
+            "type": "builtin",
+            "named": true
+          },
+          {
+            "type": "group",
+            "named": true
+          },
+          {
+            "type": "interpolation",
+            "named": true
+          },
+          {
+            "type": "list",
+            "named": true
+          },
+          {
+            "type": "malformed_number",
+            "named": true
+          },
+          {
+            "type": "map",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "pipe",
+            "named": true
+          },
+          {
+            "type": "reference",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "tuple",
+            "named": true
+          }
+        ]
+      },
+      "function": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "access",
+            "named": true
+          },
+          {
+            "type": "apply",
+            "named": true
+          },
+          {
+            "type": "atom",
+            "named": true
+          },
+          {
+            "type": "builtin",
+            "named": true
+          },
+          {
+            "type": "group",
+            "named": true
+          },
+          {
+            "type": "interpolation",
+            "named": true
+          },
+          {
+            "type": "list",
+            "named": true
+          },
+          {
+            "type": "malformed_number",
+            "named": true
+          },
+          {
+            "type": "map",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "pipe",
+            "named": true
+          },
+          {
+            "type": "reference",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "tuple",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -729,6 +1051,10 @@
     "named": false
   },
   {
+    "type": "<|",
+    "named": false
+  },
+  {
     "type": "=",
     "named": false
   },
@@ -783,6 +1109,10 @@
   },
   {
     "type": "{",
+    "named": false
+  },
+  {
+    "type": "|>",
     "named": false
   },
   {

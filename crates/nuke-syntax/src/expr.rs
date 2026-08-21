@@ -40,16 +40,25 @@ pub enum ExprKind {
         operand: Box<Expr>,
         key: Box<Expr>,
     },
-    Call {
-        name: Name,
-        operand: Box<Expr>,
+    Apply {
+        function: Box<Expr>,
+        argument: Box<Expr>,
+        direction: Direction,
     },
+    Builtin(Name),
+    Group(Box<Expr>),
     Interpolation(Vec<Piece>),
     Reference(Ident),
     Atom(Atom),
     String(String),
     Integer(Integer),
     Float(Float),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Direction {
+    Backward,
+    Forward,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

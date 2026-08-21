@@ -1,5 +1,7 @@
 use nuke_grammar::Grammar;
-use nuke_syntax::{Align, ErrorKind, ExprKind, Form, Notation, Piece, Spec, parse, surface};
+use nuke_syntax::{
+    Align, Direction, ErrorKind, ExprKind, Form, Notation, Piece, Spec, parse, surface,
+};
 
 fn faults() -> Vec<(&'static str, ErrorKind)> {
     vec![
@@ -26,10 +28,22 @@ fn faults() -> Vec<(&'static str, ErrorKind)> {
         ("binding-in-a-list.nuke", ErrorKind::MisplacedBinding),
         ("binding-without-a-document.nuke", ErrorKind::OnlyBindings),
         (
-            "a-call-without-a-builtin-name.nuke",
+            "a-builtin-without-a-name.nuke",
             ErrorKind::ExpectedBuiltinName,
         ),
-        ("a-call-without-an-operand.nuke", ErrorKind::ExpectedValue),
+        (
+            "an-application-with-no-argument.nuke",
+            ErrorKind::ExpectedValue,
+        ),
+        ("a-pipe-with-nothing-to-pipe.nuke", ErrorKind::ExpectedValue),
+        (
+            "a-group-that-is-never-closed.nuke",
+            ErrorKind::UnterminatedGroup,
+        ),
+        (
+            "a-group-that-holds-two-values.nuke",
+            ErrorKind::ExpectedGroupClose,
+        ),
         (
             "a-lone-brace-in-an-interpolation.nuke",
             ErrorKind::UnmatchedBrace,
@@ -394,7 +408,7 @@ fn a_key_is_one_value_the_parentheses_close_around() {
     assert_eq!(fault("m := {} m.(\"a\""), ErrorKind::UnterminatedKey);
     assert_eq!(fault("m := {} m.\"a\""), ErrorKind::ExpectedAccessName);
     assert_eq!(fault("m := {} m.[\"a\"]"), ErrorKind::ExpectedAccessName);
-    assert_eq!(fault("(1)"), ErrorKind::ExpectedValue);
+    document("(1)");
 }
 
 #[test]
@@ -435,19 +449,19 @@ fn the_canonical_form_refuses_the_dot_by_name_where_it_reaches_it() {
 }
 
 #[test]
-fn a_call_names_a_builtin_with_an_identifier_and_takes_one_operand() {
-    let ExprKind::Call { name, operand } = document("@import \"p.nuke\"").value.kind else {
-        panic!("the document should be a call");
+fn a_builtin_is_named_by_an_identifier_and_stands_where_a_value_stands() {
+    let ExprKind::Builtin(name) = document("@import").value.kind else {
+        panic!("the document should be a builtin");
     };
     assert_eq!(name.ident.as_str(), "import");
-    assert!(matches!(operand.kind, ExprKind::String(text) if text == "p.nuke"));
 
-    document("@ import \"p.nuke\"");
-    document("@import # here\n\"p.nuke\"");
-    document("@import @import \"p.nuke\"");
-    document("p := \"p.nuke\" @import p");
+    document("@ import");
+    document("@import # here\n<| \"p.nuke\"");
+    document("[@import]");
+    document("{a = @concat}");
+    document("i := @import [i]");
 
-    for source in ["@\"p.nuke\"", "@Import \"p.nuke\"", "@1", "@", "[@]"] {
+    for source in ["@\"p.nuke\"", "@Import", "@1", "@", "[@]"] {
         assert_eq!(
             fault(source),
             ErrorKind::ExpectedBuiltinName,
@@ -459,42 +473,149 @@ fn a_call_names_a_builtin_with_an_identifier_and_takes_one_operand() {
         ErrorKind::ExpectedBindingName,
         "a block dispatches on `ident :=` before it reads a value, so that is the earlier fault"
     );
+}
+
+#[test]
+fn an_application_takes_one_argument_and_is_spelled_in_either_direction() {
+    let ExprKind::Apply {
+        function,
+        argument,
+        direction,
+    } = document("@import <| \"p.nuke\"").value.kind
+    else {
+        panic!("the document should be an application");
+    };
+    assert!(matches!(function.kind, ExprKind::Builtin(name) if name.ident.as_str() == "import"));
+    assert!(matches!(argument.kind, ExprKind::String(text) if text == "p.nuke"));
+    assert_eq!(direction, Direction::Backward);
+
+    let ExprKind::Apply {
+        function,
+        argument,
+        direction,
+    } = document("\"p.nuke\" |> @import").value.kind
+    else {
+        panic!("the document should be an application");
+    };
+    assert!(matches!(function.kind, ExprKind::Builtin(name) if name.ident.as_str() == "import"));
+    assert!(matches!(argument.kind, ExprKind::String(text) if text == "p.nuke"));
+    assert_eq!(direction, Direction::Forward);
+
+    document("[@import <| \"p.nuke\"]");
+    document("{a = \"p.nuke\" |> @import}");
+    document("{@import <| \"p.nuke\" => 1}");
+    document("p := \"p.nuke\" [@import <| p]");
+
+    for source in [
+        "@concat <|",
+        "{a = @concat <|}",
+        "{a = |> @concat}",
+        "[|> @concat]",
+    ] {
+        assert_eq!(
+            fault(source),
+            ErrorKind::ExpectedValue,
+            "an operator stands between two values, for {source}"
+        );
+    }
     assert_eq!(
-        fault("@import \"a.nuke\" \"b.nuke\""),
+        fault("@import <| \"a.nuke\" \"b.nuke\""),
         ErrorKind::TrailingInput,
-        "a call takes one operand, because a collection carries no separators"
+        "an application takes one argument, because a collection carries no separators"
     );
 }
 
 #[test]
-fn the_dot_takes_what_a_call_yields_rather_than_what_it_was_given() {
-    let ExprKind::Access { operand, field } = document("@import \"p.nuke\".accent").value.kind
+fn the_dot_binds_tightest_and_the_backward_operator_loosest() {
+    let ExprKind::Apply { argument, .. } = document("@concat <| p.parts").value.kind else {
+        panic!("the dot should bind tighter than the operator");
+    };
+    assert!(matches!(argument.kind, ExprKind::Access { .. }));
+
+    let ExprKind::Access { operand, field } = document("(@import <| \"p.nuke\").accent").value.kind
     else {
-        panic!("the dot should take the call, not the path");
+        panic!("the group should be what the dot is handed");
     };
     assert_eq!(field.ident.as_str(), "accent");
-    assert!(matches!(operand.kind, ExprKind::Call { .. }));
+    assert!(matches!(operand.kind, ExprKind::Group(_)));
 
-    document("[@import \"p.nuke\"]");
-    document("{a = @import \"p.nuke\"}");
-    document("{@import \"p.nuke\" => 1}");
-    document("p := @import \"p.nuke\" [p]");
-    document("@import \"p.nuke\" . accent");
+    let ExprKind::Apply {
+        argument,
+        direction,
+        ..
+    } = document("@concat <| xs |> @flatten").value.kind
+    else {
+        panic!("`<|` should be the loosest operator");
+    };
+    assert_eq!(direction, Direction::Backward);
+    assert!(matches!(
+        argument.kind,
+        ExprKind::Apply {
+            direction: Direction::Forward,
+            ..
+        }
+    ));
+
+    let ExprKind::Apply { argument, .. } = document("@f <| @g <| x").value.kind else {
+        panic!("`<|` should be right-associative");
+    };
+    assert!(matches!(argument.kind, ExprKind::Apply { .. }));
+
+    let ExprKind::Apply {
+        argument: piped, ..
+    } = document("x |> @f |> @g").value.kind
+    else {
+        panic!("`|>` should be left-associative");
+    };
+    assert!(matches!(piped.kind, ExprKind::Apply { .. }));
 }
 
 #[test]
-fn the_canonical_form_refuses_the_call_by_name_where_it_reaches_it() {
+fn a_group_holds_one_value_and_stands_wherever_a_value_stands() {
+    let ExprKind::Group(inner) = document("(1)").value.kind else {
+        panic!("the document should be a group");
+    };
+    assert!(matches!(inner.kind, ExprKind::Integer(_)));
+
+    document("((1))");
+    document("[a (b)]");
+    document("{a = (1)}");
+    document("m.((1))");
+
+    assert_eq!(
+        fault("(1 2)"),
+        ErrorKind::ExpectedGroupClose,
+        "a group holds one value, as a key does"
+    );
+    assert_eq!(fault("(1"), ErrorKind::UnterminatedGroup, "an open group");
+    assert_eq!(fault("()"), ErrorKind::ExpectedValue, "an empty group");
+}
+
+#[test]
+fn the_canonical_form_refuses_the_builtin_and_the_operators_where_it_reaches_them() {
     for source in [
-        "@import \"p.nuke\"",
-        "[@import \"p.nuke\"]",
-        "{a = 1 b@import \"p\" = 2}",
-        "{\"a\" @import \"p\"}",
-        "1 @import \"p.nuke\"",
+        "@import",
+        "[@import]",
+        "{a = 1 b@import = 2}",
+        "{\"a\" @import}",
+        "1 @import",
     ] {
         let error = parse(source)
             .err()
             .unwrap_or_else(|| panic!("{source} should have been rejected"));
-        assert_eq!(error.kind(), &ErrorKind::SurfaceCall, "for {source}");
+        assert_eq!(error.kind(), &ErrorKind::SurfaceBuiltin, "for {source}");
+    }
+    for source in [
+        "1 <| 2",
+        "[1 |> 2]",
+        "{a = 1 b <| c = 2}",
+        "{\"a\" <| \"b\"}",
+        "1 |> 2",
+    ] {
+        let error = parse(source)
+            .err()
+            .unwrap_or_else(|| panic!("{source} should have been rejected"));
+        assert_eq!(error.kind(), &ErrorKind::SurfaceApply, "for {source}");
     }
 }
 
@@ -575,7 +696,7 @@ fn a_hole_holds_one_value_and_is_a_level_of_the_expression() {
 
     document(r#"$"{ {a = 1}.a }""#);
     document(r#"$"{$"{a}"}""#);
-    document(r#"$"{@import "./p.nuke".accent}""#);
+    document(r#"$"{(@import <| "./p.nuke").accent}""#);
     assert_eq!(
         fault(&format!(r#"$"{{{}}}""#, "[".repeat(200))),
         ErrorKind::TooDeep,

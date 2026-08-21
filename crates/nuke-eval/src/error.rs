@@ -19,6 +19,8 @@ pub enum ErrorKind {
     TooLarge,
     TooLong,
     NoSuchBuiltin(String),
+    NotAFunction,
+    UnappliedBuiltin,
     NotAList,
     NotAString,
     NoText,
@@ -73,10 +75,20 @@ impl fmt::Display for ErrorKind {
                 f,
                 "there is no builtin `{name}`; `@` names one, and the name is not a binding"
             ),
+            Self::NotAFunction => write!(
+                f,
+                "`<|` and `|>` apply a function, and `@name` is the only spelling a function \
+                 has; one of your own arrives when functions do"
+            ),
+            Self::UnappliedBuiltin => write!(
+                f,
+                "a builtin is applied and never reduced alone, `Value` being the canonical \
+                 form and admitting no spelling for a function"
+            ),
             Self::NotAList => write!(
                 f,
-                "`@concat` takes a list, because a call takes one operand and a builtin \
-                 wanting more takes a collection"
+                "`@concat` takes a list, because an application takes one argument and a \
+                 builtin wanting more takes a collection"
             ),
             Self::NotAString => write!(
                 f,

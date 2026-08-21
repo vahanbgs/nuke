@@ -1,3 +1,3 @@
 # A backend degrades an atom into a string of its own spelling because the target
 # has nowhere else to put it. Nothing forces that here, so nothing does it.
-@concat ["theme-" Dark]
+@concat <| ["theme-" Dark]

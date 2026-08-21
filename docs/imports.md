@@ -1,22 +1,22 @@
 # Imports
 
-`@import "./palette.nuke"` is another document's reduced value. `@` calls a builtin and `import`
-is the first of them; `docs/surface.md` argues the operator and this argues the builtin — the
-first part of Nuke about **files** rather than text, and so a resolution rule, an identity for a
-file and a cycle rule, none of which an ABNF can state. A search path, a registry and remote
-imports are all deferred: each answers how to find a file you did not write, which is
-distribution, and by-name imports will be a builtin of their own rather than an overload of a
-path — which is what spending a sigil rather than a word bought.
+`@import <| "./palette.nuke"` is another document's value. `@` names a builtin and `import` is the
+first; `docs/surface.md` argues the operator and this argues the builtin — the first part of Nuke
+about **files** rather than text, and so a resolution rule, an identity for a file and a cycle rule,
+none an ABNF can state. A search path, a registry and remote imports are deferred: each answers how
+to find a file you did not write, which is distribution, and by-name imports will be a builtin of
+their own rather than an overload of a path — which is what spending a sigil rather than a word
+bought.
 
 ## The path is a literal
 
-`@import` takes a string **literal**, never an expression, so `@import n` is refused even where `n`
-is bound to a path. What a file imports is then a property of its text, so the formatter, the
+`@import` takes a string **literal**, never an expression, so `@import <| n` is refused even where
+`n` is bound to a path. What a file imports is then a property of its text, so the formatter, the
 linter, the LSP server and a watcher read the dependency graph by walking rather than evaluating.
 Nix takes an expression, which is why nothing there can list a file's imports without running it.
-The grammar cannot say this, `call` taking any operand, so the evaluator checks the operand's shape
-before reducing it. What is given up is a path chosen while reducing, which conditionals will make
-expressible by choosing between imported *values*.
+The grammar cannot say this, an application taking any argument, so the evaluator checks its shape
+before reducing it, in either direction. What is given up is a path chosen while reducing, which
+conditionals will make expressible by choosing between imported *values*.
 
 ## Resolution
 
@@ -52,15 +52,15 @@ fg = "#EBDBB2"
 accent = "#FE8019"
 
 # editor.nuke
-palette := @import "./palette.nuke"
+palette := @import <| "./palette.nuke"
 
 theme = {background = palette.bg cursor = palette.accent}
 line_numbers = Relative
 ```
 
-The binding is a convenience — a call is an operand, so `@import "./palette.nuke".accent`
-projects straight out of the imported document — and `#include` and Nix's `with` are refused,
-because a name visible with no `:=` above it destroys what the totality argument rests on.
+The binding is a convenience — a group hands the dot an application, so `(@import <|
+"./palette.nuke").accent` reads out of the imported document — and `#include` and Nix's `with` are
+refused: a name visible with no `:=` above it destroys what the totality argument rests on.
 
 ## A cycle across files is detected
 

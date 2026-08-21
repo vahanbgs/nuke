@@ -1,4 +1,4 @@
 # `./palette.nuke` is a sibling of this file, not of whatever imported it.
-base := @import "./palette.nuke"
+base := @import <| "./palette.nuke"
 
 {fg = base.accent}

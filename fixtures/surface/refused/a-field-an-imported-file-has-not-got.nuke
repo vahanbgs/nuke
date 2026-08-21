@@ -1,2 +1,2 @@
 # A module's surface is the fields it ends with, and this one holds no `nope`.
-@import "../modules/palette.nuke".nope
+(@import <| "../modules/palette.nuke").nope

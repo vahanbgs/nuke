@@ -2,4 +2,4 @@
 # ways, because each file is reduced in a scope of its own.
 secret := "#282828"
 
-[secret @import "../modules/needs-a-name.nuke"]
+[secret @import <| "../modules/needs-a-name.nuke"]

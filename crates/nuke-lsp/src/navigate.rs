@@ -149,9 +149,9 @@ fn kind(value: &Expr) -> SymbolKind {
         ExprKind::String(_) | ExprKind::Interpolation(_) => SymbolKind::STRING,
         ExprKind::Integer(_) | ExprKind::Float(_) => SymbolKind::NUMBER,
         ExprKind::Atom(_) => SymbolKind::ENUM_MEMBER,
-        ExprKind::Access { .. } | ExprKind::Index { .. } | ExprKind::Call { .. } => {
-            SymbolKind::FIELD
-        }
+        ExprKind::Access { .. } | ExprKind::Index { .. } => SymbolKind::FIELD,
+        ExprKind::Apply { .. } | ExprKind::Builtin(_) => SymbolKind::FUNCTION,
+        ExprKind::Group(inner) => kind(inner),
         ExprKind::Reference(_) => SymbolKind::VARIABLE,
     }
 }

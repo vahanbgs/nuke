@@ -99,6 +99,14 @@ fn refusals() -> Vec<(&'static str, Fault)> {
             Fault::Kind(ErrorKind::NoSuchBuiltin("nope".to_owned())),
         ),
         (
+            "a-builtin-nothing-applies.nuke",
+            Fault::Kind(ErrorKind::UnappliedBuiltin),
+        ),
+        (
+            "a-value-that-is-not-a-function.nuke",
+            Fault::Kind(ErrorKind::NotAFunction),
+        ),
+        (
             "a-cycle-between-two-files.nuke",
             inside(
                 "cycles-back.nuke",
@@ -138,6 +146,10 @@ fn refusals() -> Vec<(&'static str, Fault)> {
         ),
         (
             "an-import-path-that-is-not-a-literal.nuke",
+            Fault::Kind(ErrorKind::ExpectedImportPath),
+        ),
+        (
+            "an-import-path-inside-a-group.nuke",
             Fault::Kind(ErrorKind::ExpectedImportPath),
         ),
         (

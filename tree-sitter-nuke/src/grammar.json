@@ -65,12 +65,78 @@
         {
           "type": "SYMBOL",
           "name": "access"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "apply"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "pipe"
         }
       ]
     },
+    "apply": {
+      "type": "PREC_RIGHT",
+      "value": 1,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "FIELD",
+            "name": "function",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_value"
+            }
+          },
+          {
+            "type": "STRING",
+            "value": "<|"
+          },
+          {
+            "type": "FIELD",
+            "name": "argument",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_value"
+            }
+          }
+        ]
+      }
+    },
+    "pipe": {
+      "type": "PREC_LEFT",
+      "value": 2,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "FIELD",
+            "name": "argument",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_value"
+            }
+          },
+          {
+            "type": "STRING",
+            "value": "|>"
+          },
+          {
+            "type": "FIELD",
+            "name": "function",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_value"
+            }
+          }
+        ]
+      }
+    },
     "access": {
       "type": "PREC_LEFT",
-      "value": 0,
+      "value": 3,
       "content": {
         "type": "SEQ",
         "members": [
@@ -98,7 +164,7 @@
                 },
                 {
                   "type": "SYMBOL",
-                  "name": "computed"
+                  "name": "group"
                 }
               ]
             }
@@ -106,7 +172,7 @@
         ]
       }
     },
-    "computed": {
+    "group": {
       "type": "SEQ",
       "members": [
         {
@@ -128,7 +194,11 @@
       "members": [
         {
           "type": "SYMBOL",
-          "name": "call"
+          "name": "group"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "builtin"
         },
         {
           "type": "SYMBOL",
@@ -168,7 +238,7 @@
         }
       ]
     },
-    "call": {
+    "builtin": {
       "type": "SEQ",
       "members": [
         {
@@ -177,18 +247,10 @@
         },
         {
           "type": "FIELD",
-          "name": "builtin",
+          "name": "name",
           "content": {
             "type": "SYMBOL",
             "name": "ident"
-          }
-        },
-        {
-          "type": "FIELD",
-          "name": "operand",
-          "content": {
-            "type": "SYMBOL",
-            "name": "_operand"
           }
         }
       ]

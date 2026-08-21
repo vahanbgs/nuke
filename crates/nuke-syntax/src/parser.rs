@@ -20,7 +20,10 @@ pub(crate) fn parse(source: &str) -> Result<Value, Error> {
             Err(Error::new(ErrorKind::SurfaceDot, token.span))
         }
         Some(token) if token.kind == TokenKind::At => {
-            Err(Error::new(ErrorKind::SurfaceCall, token.span))
+            Err(Error::new(ErrorKind::SurfaceBuiltin, token.span))
+        }
+        Some(token) if matches!(token.kind, TokenKind::Apply | TokenKind::Pipe) => {
+            Err(Error::new(ErrorKind::SurfaceApply, token.span))
         }
         Some(token) => Err(Error::new(ErrorKind::TrailingInput, token.span)),
         None => Ok(value),
@@ -63,7 +66,10 @@ impl Parser<'_> {
             )),
             TokenKind::Binder => Err(Error::new(ErrorKind::SurfaceBinder, token.span)),
             TokenKind::Dot => Err(Error::new(ErrorKind::SurfaceDot, token.span)),
-            TokenKind::At => Err(Error::new(ErrorKind::SurfaceCall, token.span)),
+            TokenKind::At => Err(Error::new(ErrorKind::SurfaceBuiltin, token.span)),
+            TokenKind::Apply | TokenKind::Pipe => {
+                Err(Error::new(ErrorKind::SurfaceApply, token.span))
+            }
             TokenKind::InterpolationOpen => {
                 Err(Error::new(ErrorKind::SurfaceInterpolation, token.span))
             }
@@ -150,7 +156,10 @@ impl Parser<'_> {
                     return Err(Error::new(ErrorKind::SurfaceDot, bound.span));
                 }
                 Some(bound) if bound.kind == TokenKind::At => {
-                    return Err(Error::new(ErrorKind::SurfaceCall, bound.span));
+                    return Err(Error::new(ErrorKind::SurfaceBuiltin, bound.span));
+                }
+                Some(bound) if matches!(bound.kind, TokenKind::Apply | TokenKind::Pipe) => {
+                    return Err(Error::new(ErrorKind::SurfaceApply, bound.span));
                 }
                 Some(bound) => return Err(Error::new(ErrorKind::ExpectedEquals, bound.span)),
                 None => return Err(Error::new(ErrorKind::UnterminatedBlock, open)),
@@ -186,7 +195,10 @@ impl Parser<'_> {
                     return Err(Error::new(ErrorKind::SurfaceDot, bound.span));
                 }
                 Some(bound) if bound.kind == TokenKind::At => {
-                    return Err(Error::new(ErrorKind::SurfaceCall, bound.span));
+                    return Err(Error::new(ErrorKind::SurfaceBuiltin, bound.span));
+                }
+                Some(bound) if matches!(bound.kind, TokenKind::Apply | TokenKind::Pipe) => {
+                    return Err(Error::new(ErrorKind::SurfaceApply, bound.span));
                 }
                 Some(bound) => return Err(Error::new(ErrorKind::ExpectedArrow, bound.span)),
                 None => return Err(Error::new(ErrorKind::UnterminatedBlock, open)),

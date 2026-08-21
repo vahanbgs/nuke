@@ -175,7 +175,7 @@ fn an_imported_fault_is_reported_at_the_import_that_asked_for_it() {
     let mut client = Client::start();
     let uri = client.open_at(
         &directory.path().join("main.nuke"),
-        "theme := @import \"./theme.nuke\"\n{a = theme.shade}",
+        "theme := @import <| \"./theme.nuke\"\n{a = theme.shade}",
     );
     let published = client.published();
     assert_eq!(published.diagnostics.len(), 1, "{published:?}");
@@ -188,7 +188,7 @@ fn an_imported_fault_is_reported_at_the_import_that_asked_for_it() {
 
     client.change(
         &uri,
-        "theme := @import \"./theme.nuke\"\n{a = theme.colour}",
+        "theme := @import <| \"./theme.nuke\"\n{a = theme.colour}",
     );
     let published = client.published();
     assert!(published.diagnostics.is_empty(), "{published:?}");
@@ -199,7 +199,7 @@ fn an_imported_fault_is_reported_at_the_import_that_asked_for_it() {
     assert_eq!(published.uri, uri, "the importer is re-diagnosed");
     assert_eq!(published.diagnostics.len(), 1, "{published:?}");
     let fault = &published.diagnostics[0];
-    assert_eq!(fault.range, at(0, 9, 0, 31), "the `@import` that asked");
+    assert_eq!(fault.range, at(0, 9, 0, 34), "the `@import` that asked");
     let related = fault.related_information.as_ref().expect("a related fault");
     assert_eq!(related.len(), 1);
     assert!(

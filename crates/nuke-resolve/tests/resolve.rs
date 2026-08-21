@@ -58,10 +58,10 @@ fn only_a_reference_reads_a_name() {
         spans(resolution.reads().iter().map(|read| read.span)),
         [Span::new(13, 14)]
     );
-    let resolution = of("p := \"./x.nuke\"\n@import p");
+    let resolution = of("p := \"./x.nuke\"\n@import <| p");
     assert_eq!(
         spans(resolution.reads().iter().map(|read| read.span)),
-        [Span::new(24, 25)]
+        [Span::new(27, 28)]
     );
 }
 

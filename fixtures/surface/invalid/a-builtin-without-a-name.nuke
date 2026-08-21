@@ -1,0 +1,2 @@
+# `@` names a builtin, and a builtin is named by an identifier.
+{theme = @"../modules/palette.nuke"}

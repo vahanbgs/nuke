@@ -120,7 +120,14 @@ impl Resolution {
                 self.expr(operand);
                 self.expr(key);
             }
-            ExprKind::Call { operand, .. } => self.expr(operand),
+            ExprKind::Apply {
+                function, argument, ..
+            } => {
+                self.expr(function);
+                self.expr(argument);
+            }
+            ExprKind::Builtin(_) => {}
+            ExprKind::Group(inner) => self.expr(inner),
             ExprKind::Interpolation(pieces) => {
                 for piece in pieces {
                     if let Piece::Hole { expr, .. } = piece {

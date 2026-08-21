@@ -13,6 +13,8 @@ pub enum TokenKind {
     Binder,
     Dot,
     At,
+    Apply,
+    Pipe,
     Atom,
     Ident,
     String,
@@ -98,6 +100,8 @@ impl<'a> Lexer<'a> {
             b':' if bytes.get(at + 1) == Some(&b'=') => Ok(self.token(TokenKind::Binder, at + 2)),
             b'.' => Ok(self.token(TokenKind::Dot, at + 1)),
             b'@' => Ok(self.token(TokenKind::At, at + 1)),
+            b'<' if bytes.get(at + 1) == Some(&b'|') => Ok(self.token(TokenKind::Apply, at + 2)),
+            b'|' if bytes.get(at + 1) == Some(&b'>') => Ok(self.token(TokenKind::Pipe, at + 2)),
             b'$' if bytes.get(at + 1) == Some(&b'"') => {
                 self.modes.push(Mode::Text { open: at });
                 Ok(self.token(TokenKind::InterpolationOpen, at + 2))

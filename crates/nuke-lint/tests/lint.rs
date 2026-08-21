@@ -54,19 +54,19 @@ fn a_hole_is_walked_and_a_string_is_not() {
 
 #[test]
 fn an_import_is_asked_for_the_extension() {
-    clean("@import \"./palette.nuke\"");
-    clean("{a = @concat [\"x\" \"y\"]}");
+    clean("@import <| \"./palette.nuke\"");
+    clean("{a = @concat <| [\"x\" \"y\"]}");
     trips(
-        "@import \"./palette\"",
+        "@import <| \"./palette\"",
         Rule::ImportExtension,
         "./palette",
-        Span::new(8, 19),
+        Span::new(11, 22),
     );
     trips(
-        "@import \"./palette.toml\"",
+        "@import <| \"./palette.toml\"",
         Rule::ImportExtension,
         "./palette.toml",
-        Span::new(8, 24),
+        Span::new(11, 27),
     );
 }
 
@@ -126,14 +126,14 @@ fn a_name_bound_below_the_only_reference_to_it_is_unread() {
 
 #[test]
 fn an_unread_import_is_still_an_import() {
-    let found = lint("p := @import \"./palette\"\n[1]").expect("parses");
+    let found = lint("p := @import <| \"./palette\"\n[1]").expect("parses");
     let rules: Vec<Rule> = found.iter().map(Diagnostic::rule).collect();
     assert_eq!(rules, [Rule::UnusedBinding, Rule::ImportExtension]);
 }
 
 #[test]
 fn findings_come_in_the_order_the_document_spells_them() {
-    let found = lint("{a__b = HTTPServer c_ = @import \"./p\"}").expect("parses");
+    let found = lint("{a__b = HTTPServer c_ = @import <| \"./p\"}").expect("parses");
     let rules: Vec<Rule> = found.iter().map(Diagnostic::rule).collect();
     assert_eq!(
         rules,

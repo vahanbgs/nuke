@@ -164,7 +164,7 @@ fn a_document_in_the_style_it_asks_for_is_silent() {
 
 #[test]
 fn a_document_out_of_style_names_the_rule_by_position() {
-    let output = piped(&["lint", "-"], "{a__b = HTTPServer c = @import \"./p\"}");
+    let output = piped(&["lint", "-"], "{a__b = HTTPServer c = @import <| \"./p\"}");
     assert!(!output.status.success());
     let stdout = out(&output);
     let reported: Vec<&str> = stdout.lines().collect();
@@ -178,7 +178,7 @@ fn a_document_out_of_style_names_the_rule_by_position() {
         "{reported:?}"
     );
     assert!(
-        reported[2].starts_with("<stdin>:1:32: import-extension:"),
+        reported[2].starts_with("<stdin>:1:35: import-extension:"),
         "{reported:?}"
     );
 }

@@ -1,0 +1,3 @@
+# A builtin is applied and never reduced alone. `Value` is the canonical form and
+# spells no function, so this parses and the reduction is where it stops.
+@import

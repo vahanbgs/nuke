@@ -87,8 +87,8 @@ keys **are** the set and asking costs a `Vec`. A diamond names the file it share
 
 That is what a watcher needs and what `docs/imports.md` promised it, and `docs/lsp.md` is the
 watcher: a server re-diagnoses an open document when a file it read is saved. It is not what a
-linter needs — reading the dependency graph *without* a filesystem is a walk over
-`ExprKind::Call`, whose operand is a literal precisely so that walk is possible.
+linter needs — reading the dependency graph *without* a filesystem is a walk over `ExprKind::Apply`,
+whose argument is a literal precisely so that walk is possible.
 
 ## The command line is the reference consumer
 

@@ -1,0 +1,2 @@
+# `<|` takes an argument on its right, and this one is given the end of the file.
+{a = @concat <|}

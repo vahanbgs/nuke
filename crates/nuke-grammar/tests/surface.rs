@@ -295,7 +295,6 @@ fn a_key_is_parenthesised_so_that_the_dot_evaluates_it_rather_than_reading_a_nam
             "m := {\"a\" => 1} m.\"a\"",
             "m := {\"a\" => 1} m.[\"a\"]",
             "1.(a)",
-            "(1)",
         ],
     );
 }
@@ -316,30 +315,33 @@ fn the_dot_takes_whitespace_the_way_every_other_operator_does() {
 }
 
 #[test]
-fn a_call_names_a_builtin_with_an_identifier_and_takes_exactly_one_operand() {
+fn a_builtin_is_named_by_an_identifier_and_an_application_takes_one_argument() {
     let grammar = Grammar::surface().unwrap();
     admitted(
         &grammar,
         &[
-            "@import \"p.nuke\"",
-            "@import\"p.nuke\"",
-            "@ import \"p.nuke\"",
-            "@import # here\n\"p.nuke\"",
-            "@import @import \"p.nuke\"",
-            "@length [1 2]",
-            "@merge {a = 1}",
-            "p := \"p.nuke\" @import p",
+            "@import",
+            "@ import",
+            "@import <| \"p.nuke\"",
+            "@import<|\"p.nuke\"",
+            "\"p.nuke\"|>@import",
+            "@import # here\n<| \"p.nuke\"",
+            "@import <| @import <| \"p.nuke\"",
+            "@length <| [1 2]",
+            "@merge <| {a = 1}",
+            "p := \"p.nuke\" @import <| p",
         ],
     );
     refused(
         &grammar,
         &[
             "@",
-            "@import",
             "@\"p.nuke\"",
-            "@Import \"p.nuke\"",
-            "@1 \"p.nuke\"",
-            "@import \"a.nuke\" \"b.nuke\"",
+            "@Import",
+            "@1",
+            "@import <|",
+            "|> @import",
+            "@import <| \"a.nuke\" \"b.nuke\"",
             "\"p.nuke\"@",
             "@:= \"p.nuke\"",
         ],
@@ -347,34 +349,41 @@ fn a_call_names_a_builtin_with_an_identifier_and_takes_exactly_one_operand() {
 }
 
 #[test]
-fn a_call_stands_where_a_value_stands_and_the_dot_takes_what_it_yields() {
+fn an_application_stands_where_a_value_stands_and_a_group_hands_it_to_the_dot() {
     let grammar = Grammar::surface().unwrap();
     admitted(
         &grammar,
         &[
-            "[@import \"p.nuke\"]",
-            "{a = @import \"p.nuke\"}",
-            "{@import \"p.nuke\" => 1}",
-            "{1 => @import \"p.nuke\"}",
-            "p := @import \"p.nuke\" [p]",
-            "@import \"p.nuke\".accent",
-            "@import \"p.nuke\" . accent",
-            "@import \"p.nuke\".a.b",
+            "[@import <| \"p.nuke\"]",
+            "{a = @import <| \"p.nuke\"}",
+            "{@import <| \"p.nuke\" => 1}",
+            "{1 => \"p.nuke\" |> @import}",
+            "p := @import <| \"p.nuke\" [p]",
+            "(@import <| \"p.nuke\").accent",
+            "( @import <| \"p.nuke\" ) . accent",
+            "(\"p.nuke\" |> @import).a.b",
+            "@import <| \"p.nuke\".accent",
+            "((1))",
+            "[a (b)]",
         ],
     );
+    refused(&grammar, &["(", "()", "(1", "1)", "(1 2)"]);
 }
 
 #[test]
-fn the_canonical_form_has_no_call_at_all() {
+fn the_canonical_form_has_neither_a_builtin_nor_an_operator_nor_a_group() {
     let grammar = Grammar::canonical().unwrap();
     refused(
         &grammar,
         &[
-            "@import \"p.nuke\"",
-            "[@import \"p.nuke\"]",
-            "{a = @import \"p.nuke\"}",
-            "{@import \"p.nuke\" => 1}",
-            "1 @import \"p.nuke\"",
+            "@import",
+            "[@import]",
+            "{a = @import <| \"p.nuke\"}",
+            "{\"p.nuke\" |> @import => 1}",
+            "1 @import",
+            "1 <| 2",
+            "1 |> 2",
+            "(1)",
         ],
     );
 }
@@ -390,8 +399,11 @@ fn a_projection_is_a_shape_of_its_own_until_it_is_reduced() {
             Shape::Tuple(vec![("b".to_owned(), scalar("access"))]),
         ),
         ("[{a = 1}.a]", Shape::List(vec![scalar("access")])),
-        ("@import \"p.nuke\"", scalar("call")),
-        ("@import \"p.nuke\".accent", scalar("access")),
+        ("@import", scalar("builtin")),
+        ("@import <| \"p.nuke\"", scalar("apply")),
+        ("\"p.nuke\" |> @import", scalar("pipe")),
+        ("(@import <| \"p.nuke\").accent", scalar("access")),
+        ("(1)", scalar("number")),
         ("m := {\"a\" => 1} m.(\"a\")", scalar("access")),
         (
             "m := {\"a\" => 1} [m.(\"a\")]",
@@ -403,8 +415,8 @@ fn a_projection_is_a_shape_of_its_own_until_it_is_reduced() {
             Shape::Tuple(vec![("a".to_owned(), scalar("interpolation"))]),
         ),
         (
-            "{a = @import \"p.nuke\"}",
-            Shape::Tuple(vec![("a".to_owned(), scalar("call"))]),
+            "{a = @import <| \"p.nuke\"}",
+            Shape::Tuple(vec![("a".to_owned(), scalar("apply"))]),
         ),
     ];
     for (source, expected) in cases {
@@ -427,7 +439,7 @@ fn an_interpolated_string_holds_text_holes_and_doubled_braces() {
             r#"$"{a}{b}""#,
             r#"$"{ a }""#,
             r#"$"{p.a}""#,
-            r#"$"{@import "./p.nuke"}""#,
+            r#"$"{@import <| "./p.nuke"}""#,
             r#"$"a{{b}}c""#,
             r#"$"{ {a = 1}.a }""#,
             r#"$"{$"{a}"}""#,

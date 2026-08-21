@@ -64,11 +64,10 @@ signature — which is what Rust's `_x` is for — and that is when to spell it.
 
 ## It takes no filesystem
 
-`nuke-lint` depends on `nuke-syntax` and never on `nuke-eval`, and that is the crate's
-defining constraint rather than an accident of the layering. `docs/embedding.md` said reading
-the dependency graph *without* a filesystem is a walk over `ExprKind::Call`, whose operand is
-a literal precisely so that walk is possible, and that it waits for the tool that wants it.
-This is that tool.
+`nuke-lint` depends on `nuke-syntax` and never on `nuke-eval`, and that is the crate's defining
+constraint rather than an accident of the layering. `docs/embedding.md` said reading the dependency
+graph *without* a filesystem is a walk over `ExprKind::Apply`, whose argument is a literal precisely
+so that walk is possible, and that it waits for the tool that wants it. This is that tool.
 
 So `nuke lint` reports the file it was given and follows no import. A linter that opened what
 a document imports would report a fault in a file its author may not own and cannot fix from

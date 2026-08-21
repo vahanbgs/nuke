@@ -1,2 +1,2 @@
 # The other half of a cycle; the fixture that imports this one is imported back.
-@import "../refused/a-cycle-between-two-files.nuke"
+@import <| "../refused/a-cycle-between-two-files.nuke"

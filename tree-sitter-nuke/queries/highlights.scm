@@ -17,7 +17,7 @@
 (reference (ident) @variable)
 (field name: (ident) @variable.other.member)
 (access key: (ident) @variable.other.member)
-(call builtin: (ident) @function.builtin)
+(builtin name: (ident) @function.builtin)
 
 [
   ":="
@@ -25,6 +25,8 @@
   "=>"
   "."
   ":"
+  "<|"
+  "|>"
 ] @operator
 
 "@" @punctuation.special
@@ -35,4 +37,4 @@
 (tuple ["{" "}"] @punctuation.bracket)
 (map ["{" "}"] @punctuation.bracket)
 (list ["[" "]"] @punctuation.bracket)
-(computed ["(" ")"] @punctuation.bracket)
+(group ["(" ")"] @punctuation.bracket)

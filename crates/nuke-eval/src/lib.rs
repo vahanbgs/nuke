@@ -196,7 +196,16 @@ impl Reducer<'_> {
                 };
                 read.ok_or_else(|| Error::new(ErrorKind::NoSuchKey, key.span))
             }
-            ExprKind::Call { name, operand } => self.call(name, operand, expr.span, depth),
+            ExprKind::Apply {
+                function, argument, ..
+            } => {
+                let ExprKind::Builtin(name) = &function.kind else {
+                    return Err(Error::new(ErrorKind::NotAFunction, function.span));
+                };
+                self.call(name, argument, expr.span, depth)
+            }
+            ExprKind::Builtin(_) => Err(Error::new(ErrorKind::UnappliedBuiltin, expr.span)),
+            ExprKind::Group(inner) => self.value(inner, depth),
             ExprKind::Interpolation(pieces) => self.interpolate(pieces, expr.span, depth),
             ExprKind::List(items) => {
                 let mut values = Vec::with_capacity(items.len());

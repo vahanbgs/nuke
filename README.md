@@ -41,7 +41,7 @@ projects a field out of a tuple, so one named value can hold what several places
 value becomes text, with Rust's specifier after a `:`. A plain string never pays for it. Its radix
 mirrors the literals: `0xFE8019` is hex and `0b101110100xC` nine bits of binary then four of hex.
 
-`@` calls a builtin, and `@import` reads another file's value — which is what lets one
+`@` names a builtin and `<|` applies one, so `@import` reads another file's value — which lets
 palette be written once and read by every program that needs it:
 
 ```nuke
@@ -52,7 +52,7 @@ muted = "#928374"
 
 ```nuke
 # ~/.config/nuke/shell.nuke
-palette := @import "./palette.nuke"
+palette := @import <| "./palette.nuke"
 
 prompt_color = palette.accent
 comment_color = palette.muted
@@ -78,7 +78,7 @@ one that cannot spell a name Nuke guarantees, one positional, one whose reader c
 and one wider than the language itself, typing what the target with no data model erased.
 
 The surface language is finished. [`grammar/surface.abnf`](grammar/surface.abnf) adds bindings,
-braceless documents, field access, calls, interpolation and dyadic literals, `crates/nuke-eval`
+braceless documents, projection, application, interpolation and dyadic literals, `crates/nuke-eval`
 reduces a document, and [`docs/surface.md`](docs/surface.md) argues what the grammar cannot state,
 with [`docs/imports.md`](docs/imports.md), [`docs/interpolation.md`](docs/interpolation.md) and
 [`docs/dyadic.md`](docs/dyadic.md) taking files, text and the bases. What holds the two languages

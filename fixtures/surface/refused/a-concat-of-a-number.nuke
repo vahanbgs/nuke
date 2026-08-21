@@ -1,3 +1,3 @@
 # `@concat` does not stringify. A language that cannot tell `1` from `"1"` has
 # given up what it is for, so a number meant as text is written as text.
-@concat ["port " 8080]
+["port " 8080] |> @concat

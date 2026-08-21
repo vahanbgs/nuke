@@ -7,13 +7,12 @@ whitespace-insensitive language could rewrite every line, and this one deliberat
 ## Spelling comes from the source, never from the tree
 
 `0xFE8019` reduces to the integer `16678937`, and `Float` holds an `f64`, so `1.50` and `1.5` are
-one value. A printer reading literals out of the AST would rewrite `docs/dyadic.md`'s whole argument
-into decimal and drop a trailing zero. So every leaf is copied from its own span and the tree is
+one value. A printer reading literals out of the AST would rewrite `docs/dyadic.md`'s argument into
+decimal and drop a trailing zero. So every leaf is copied from its own span and the tree is
 consulted only for **structure**; an escape is reproduced as written, the quotes' contents never
-being ours to change.
+ours to change.
 
-That is the formatter's half of the line `docs/embedding.md` draws. Reduction decides what a
-document *means*; formatting decides only how it *reads*, and the two must not meet.
+`docs/embedding.md` draws the line: reduction decides *meaning*, the formatter only *reading*.
 
 ## The author's lines are kept, and the spacing between them is not
 
@@ -28,9 +27,10 @@ put it on is the only hint there is. A formatter that reflowed would destroy the
 human has. Prettier keeps an object expanded for a weaker reason; here it is the grammar.
 
 What is *not* the author's is everything between tokens: `{a:=1}` becomes `{a := 1}`, `p . a . b`
-becomes `p.a.b`, and a run of blank lines becomes one. Three fixtures exist to demonstrate that
-this whitespace is optional — `whitespace.nuke` twice and `access-whitespace.nuke` — and the
-formatter putting it back is what they now also test.
+becomes `p.a.b`, `@import<|"p.nuke"` gets its spaces too, and a run of blank lines becomes one.
+Three fixtures show this whitespace optional — `whitespace.nuke` twice and `access-whitespace.nuke`
+— and the formatter putting it back is what they test. Which *direction* an application was written
+in is the author's, `<|` and `|>` reducing alike, so the printer reprints the one it finds.
 
 The dot has one exception, and it is not cosmetic. `1 . b` is a projection off a number, which
 reduces to nothing but parses; `1.b` is a malformed *number*, which does not. So the dot closes up
@@ -38,15 +38,15 @@ only when its operand is not a numeric literal, and `1 . b` becomes `1 .b` with 
 keeps it an operator. A formatter is allowed to change how a document reads and never whether it
 reads at all, and this is the one place in the grammar where closing a gap crosses that line.
 
-Two more rules are the formatter's own rather than the author's. An expanded block starts its
-items on the line after the delimiter, because `{ a = 1` with a broken tail reads as neither
-shape. And a block that does not fit in **100 columns** is broken one item per line, because there
-the author's single line is not a grouping they chose but the absence of one.
+Two more rules are the formatter's own rather than the author's. An expanded block starts its items
+on the line after the delimiter, because `{ a = 1` with a broken tail reads as neither shape. And a
+block past **100 columns** breaks one item per line, the author's single line there being the
+absence of a grouping rather than one they chose.
 
-Neither reaches the top of a file, where a run of fields has no delimiter to start after or to hang
-a break on. So a braceless document keeps the author's lines and is never reflowed, the rule its
+Neither reaches the top of a file, where a run of fields has no delimiter to start after or hang a
+break on. So a braceless document keeps the author's lines and is never reflowed, the rule its
 bindings already followed — the one place `{a = 1 b = 2}` and its braceless twin read differently
-while meaning the same value.
+while meaning one value.
 
 ## Indentation is a tab, and alignment would be spaces
 

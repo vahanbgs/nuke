@@ -39,21 +39,59 @@
 document   = ows *( binding ows ) ( fields / value ) ows
 fields     = field *( ows field )
 
+; `<|` applies a function to an argument, and `|>` pipes an argument into one.
+; Application is an operator rather than juxtaposition, and that is forced: a
+; collection carries no separators, so `[f a b]` could not tell a call of two
+; arguments from a call beside a value, and `[f (x + 1)]` could not tell an
+; application from two elements. What stood here before was one rule that
+; hardcoded the function — a builtin, named after a sigil — into the operator
+; itself, and splitting the two is what gives a function that is no builtin
+; somewhere to stand.
+;
+; Neither spelling spends a character. Arithmetic is owed `+ - * / %`, comparison
+; `< > = !`, and — since a language without reserved words cannot spell `and`,
+; `or` or `not` as words — conjunction is owed `& | !` too; and `( )` is owed to
+; grouping, which `group` below now spends it on. A digraph draws on none of it:
+; `|` stays owed to disjunction and `<` and `>` to comparison, because `a | > b`
+; was never anything and so `|>` steals no reading from it. `^` and `~` are left
+; unspent, which is what a digraph is for.
+;
+; `<|` is the loosest operator there is, and that is its job: it eats the
+; parenthesis standing to its right, where Haskell's `$` sits for the same
+; reason. So `@concat <| xs |> @flatten` is a concat of what the pipe yields. It
+; is right-associative because `f <| g <| x` has only one useful reading, and
+; `|>` is left-associative because a pipeline is read in the order it is written.
+;
+; Both operands carry their access chains, which settles a bill this file has
+; owed since a call took an `operand` rather than a `value`: `f <| p.a` now reads
+; as it looks, `(f <| p).a` takes the parenthesis grouping was always owed, and
+; `@concat <| theme.parts` has a spelling where before it had none.
+;
+; Two directions are not two spellings of one thing. `@concat <| xs` and
+; `xs |> @concat` do reduce alike and no tool prefers either — the bargain a file
+; standing in for its own braces already struck — but a chain reads one way and a
+; call reads the other, and neither is the readable one in both places.
+
+value      = apply
+apply      = pipe [ ows "<|" ows apply ]
+pipe       = projection *( ows "|>" ows projection )
+
 ; Projection reads a value out of a collection. It is postfix rather than
 ; recursive on its left because a PEG admits no left recursion, and it takes
 ; `ows` on both sides because every other operator does — so `[a .b]` holds one
-; element, not two.
+; element, not two. It binds tighter than either application operator, which is
+; what leaves `f <| p.a` reading as the projection it looks like.
 ;
 ; There is one operator and two right operands. A name is taken literally and
-; projects a tuple's field; a parenthesised expression is evaluated and its
-; value is the key an entry is read at. That is the whole rule — `p.accent` is
-; the field, `m.("accent")` and `m.(k)` are the entry — and it is what keeps
-; `.a` from becoming a second spelling of `.("a")`.
+; projects a tuple's field; a group is evaluated and its value is the key an
+; entry is read at. That is the whole rule — `p.accent` is the field,
+; `m.("accent")` and `m.(k)` are the entry — and it is what keeps `.a` from
+; becoming a second spelling of `.("a")`.
 ;
-; The parenthesis is not a character spent. Grouping is owed `( )` the moment
-; arithmetic arrives, and what stands after the dot is exactly a grouped
-; expression, so the paren arrives early in the one position that needs it and
-; `m.(1 + 1)` is already what this rule says. The square bracket was the other
+; The parenthesis is not a character spent. Grouping was owed `( )` from the
+; moment an operator could exist, and what stands after the dot is exactly a
+; group, so this rule spent nothing and `m.(1 + 1)` is already what it says. The
+; square bracket was the other
 ; candidate and is refused: `[ ]` means list everywhere else here, so `m.["a"]`
 ; reads as though a list were being projected. Postfix `m["a"]` is refused for
 ; a harder reason — collections carry no separators, so `[a [1]]` would be read
@@ -66,39 +104,45 @@ fields     = field *( ows field )
 ; Nothing new is at work — `[12]` and `[1 2]` differ for the same reason — but
 ; `.` is the first thing that is not a value and can still run together with one.
 
-value      = operand *( ows access )
-access     = "." ows ( ident / computed )
-computed   = "(" ows value ows ")"
-operand    = call / interpolation / tuple / map / list / reference / atom / string / number
+projection = operand *( ows access )
+access     = "." ows ( ident / group )
 
-; `@` calls a builtin, and `import` is the first of them. It is a sigil and
-; not the word `import` for the reason `:=` is not `let` — the canonical form
-; has no reserved words — and the sigil is what keeps it that way: `import` is
-; a name only after `@`, so `import := 1` and `{import = 1}` stay legal and
-; unrelated. Which builtins exist is not a question a grammar can answer, so
-; `call` names none; an unknown one is a fault the evaluator raises.
+; `@` names a builtin, and `import` is the first of them. It is a sigil and not
+; the word `import` for the reason `:=` is not `let` — the canonical form has no
+; reserved words — and the sigil is what keeps it that way: `import` is a name
+; only after `@`, so `import := 1` and `{import = 1}` stay legal and unrelated.
+; Which builtins exist is not a question a grammar can answer, so `builtin` names
+; none; an unknown one is a fault the evaluator raises.
 ;
-; `@` is what is left. Arithmetic is owed `+ - * / %`, comparison `< > = !`,
-; and — since a language without reserved words cannot spell `and`, `or` or
-; `not` as words — conjunction is owed `& | !` too. Grouping is owed `( )`,
-; which `access` now spends the near half of. Of what remains, `@` is the one
-; that reads as "at", which is what a path is.
+; `@` reads as "at", which is what a path is, and it now says that and nothing
+; more — the name, never the call. A builtin is an operand like any other and
+; stands wherever one does, but it is not yet a *value*: `Value` is the canonical
+; form and admits no seventh spelling, so a `@name` nothing applies is a fault
+; the evaluator raises as well. That restriction lifts the day functions arrive,
+; and no spelling changes when it does.
 ;
-; A call takes exactly one operand, and that is forced rather than chosen: a
-; collection carries no separators, so in `[@f a b]` nothing could tell a call
-; of two operands from a call beside a value. A builtin wanting more takes a
-; list or a tuple.
-;
-; It takes an `operand` and not a `value`, so `@import "p.nuke".accent`
-; projects out of the imported document rather than out of the path. The cost
-; is that `@f p.a` is `(@f p).a` and the other reading has no spelling, which
-; is a bill grouping settles when operators arrive.
-;
-; `ows` stands on both sides of the name because every other operator takes
-; it, and here it is free: `@` begins and continues no other token, so unlike
-; `.` there is no greedy token to collide with and nothing to argue.
+; `ows` stands on both sides of the name because every other operator takes it,
+; and here it is free: `@` begins and continues no other token, so unlike `.`
+; there is no greedy token to collide with and nothing to argue.
 
-call       = "@" ows ident ows operand
+; A group is one value in parentheses, and it is what pays for an operator: with
+; `<|` binding loosest of all, `(f <| p).a` is the only way to project out of
+; what an application yields, and `f <| (p.a)` the only way to spell the reading
+; the dot no longer takes. `access` has held this rule since it needed a key, and
+; nothing about it changes here except where it may stand.
+;
+; It could not have stood here before. `[f (x)]` is two elements only because a
+; parenthesis opening a value cannot also continue one, and that is true exactly
+; while juxtaposition means nothing — which is what an application operator
+; settles. Grouping and `<|` are one decision, not two.
+;
+; A group is a shape and not a step: `(1)` and `1` reduce alike, and it survives
+; parsing only so that a document reprints as its author spelled it.
+
+operand    = group / builtin / interpolation / tuple / map / list / reference
+           / atom / string / number
+group      = "(" ows value ows ")"
+builtin    = "@" ows ident
 
 ; `$"a{expr}b"` interpolates. The prefix is a sigil and not Python's `f` because
 ; tokens are greedy and `f` and `"a"` do not run together into one of them: today
