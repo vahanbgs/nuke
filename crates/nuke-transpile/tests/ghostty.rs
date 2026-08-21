@@ -112,16 +112,50 @@ fn the_empty_string_is_refused_because_an_empty_value_resets_its_option() {
 }
 
 #[test]
-fn the_two_atoms_ghostty_has_a_word_for_are_written_in_its_case() {
-    assert_eq!(value("True"), "true");
-    assert_eq!(value("False"), "false");
+fn an_atom_is_lowered_into_ghosttys_case() {
+    for (atom, spelling) in [
+        ("True", "true"),
+        ("False", "false"),
+        ("Null", "null"),
+        ("Bar", "bar"),
+        ("Relative", "relative"),
+        ("TopLeft", "top-left"),
+        ("AfterFirst", "after-first"),
+        ("OpenTerminal", "open-terminal"),
+        ("NonNativePaddedNotch", "non-native-padded-notch"),
+    ] {
+        assert_eq!(value(atom), spelling, "for {atom}");
+    }
 }
 
 #[test]
-fn every_other_atom_keeps_its_own_spelling() {
-    for atom in ["Null", "Relative", "OpenTerminal"] {
-        assert_eq!(value(atom), atom);
+fn a_digit_joins_the_word_before_it_and_opens_none() {
+    for (atom, spelling) in [
+        ("DisplayP3", "display-p3"),
+        ("Osc8", "osc8"),
+        ("Atom99", "atom99"),
+    ] {
+        assert_eq!(value(atom), spelling, "for {atom}");
     }
+}
+
+#[test]
+fn the_two_values_the_rule_cannot_reach_are_written_as_strings() {
+    assert_eq!(value("BlockHollow"), "block-hollow");
+    assert_eq!(value("IoUring"), "io-uring");
+    assert_eq!(value(r#""block_hollow""#), "block_hollow");
+    assert_eq!(value(r#""io_uring""#), "io_uring");
+}
+
+#[test]
+fn an_atom_is_lowered_in_value_position_and_never_names_an_option() {
+    let error = refused("{Relative => 1}");
+    assert_eq!(
+        error.kind(),
+        &ErrorKind::UnspellableName("Relative".to_owned()),
+        "{error}"
+    );
+    assert_eq!(error.path().to_string(), "#1");
 }
 
 #[test]

@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::fmt;
 
+use heck::ToKebabCase;
 use nuke_syntax::{Float, Value};
 
 use crate::error::{Path, Segment, article, form};
@@ -130,11 +131,7 @@ impl Writer {
 
     fn scalar(&mut self, value: &Value) -> Result<String, Error> {
         let text = match value {
-            Value::Atom(atom) => match atom.as_str() {
-                "True" => TRUE,
-                "False" => FALSE,
-                other => other,
-            },
+            Value::Atom(atom) => return self.text(&atom.as_str().to_kebab_case()),
             Value::String(text) => text.as_str(),
             Value::Integer(integer) => integer.as_str(),
             Value::Float(number) => return Ok(self.float(*number)),
@@ -187,8 +184,6 @@ impl Writer {
 }
 
 const PAIR: &str = " = ";
-const TRUE: &str = "true";
-const FALSE: &str = "false";
 
 fn entries(table: Table<'_>) -> Vec<Entry<'_>> {
     match table {
