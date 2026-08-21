@@ -180,9 +180,8 @@ fn a_control_is_refused_because_there_is_no_escape_to_write_one_with() {
 }
 
 #[test]
-fn a_name_is_narrower_than_an_identifier_and_narrower_than_gits() {
+fn a_name_ghostty_cannot_spell_is_one_only_a_key_can_carry() {
     for (source, name) in [
-        ("{tab_width = 1}", "tab_width"),
         (r#"{"Title" => 1}"#, "Title"),
         (r#"{"font-Family" => 1}"#, "font-Family"),
         (r#"{"2x" => 1}"#, "2x"),
@@ -218,14 +217,73 @@ fn a_key_that_is_neither_a_string_nor_an_atom_is_refused() {
 }
 
 #[test]
-fn no_two_keys_can_name_one_option_so_there_is_no_fold_to_refuse() {
+fn no_two_names_can_name_one_option_so_there_is_no_fold_to_refuse() {
     assert!(parse(r#"{"a" => 1 "a" => 2}"#).is_err());
+    assert!(
+        parse("{a_b = 1 a_b = 2}").is_err(),
+        "a tuple refuses a repeated field, and `-` never occurs in an identifier, so the transliteration is injective"
+    );
     let error = refused(r#"{Relative => 1 "Relative" => 2}"#);
     assert_eq!(
         error.kind(),
         &ErrorKind::UnspellableName("Relative".to_owned()),
         "an atom is capitalised, so the collision JSON refuses cannot spell a Ghostty option: {error}"
     );
+}
+
+#[test]
+fn a_field_is_transliterated_into_the_alphabet_and_a_key_is_taken_as_it_stands() {
+    assert_eq!(
+        ghostty(r#"{font_family = "FiraCode Nerd Font"}"#),
+        "font-family = FiraCode Nerd Font"
+    );
+    assert_eq!(ghostty("{tab_width = 2}"), "tab-width = 2");
+    assert_eq!(
+        ghostty("{font_family = 1}"),
+        ghostty(r#"{"font-family" => 1}"#),
+        "the field and the key reach one option, and a tuple and a map are never siblings"
+    );
+    let error = refused(r#"{"font_family" => 1}"#);
+    assert_eq!(
+        error.kind(),
+        &ErrorKind::UnspellableName("font_family".to_owned()),
+        "a string is a literal and is written as it stands, so the key stays refused: {error}"
+    );
+}
+
+#[test]
+fn the_transliteration_leaves_a_value_alone() {
+    assert_eq!(
+        ghostty(r#"{shell_integration_features = "no-cursor, ssh-env"}"#),
+        "shell-integration-features = no-cursor, ssh-env"
+    );
+    assert_eq!(ghostty(r#"{command = "a_b"}"#), "command = a_b");
+}
+
+#[test]
+fn every_identifier_spells_a_name_and_no_two_spell_one() {
+    let mut written = std::collections::HashSet::new();
+    let mut count = 0;
+    for first in ['a', 'z'] {
+        for rest in ["", "a", "z", "0", "9", "_", "_a", "a_", "__", "9_z"] {
+            let field = format!("{first}{rest}");
+            let text = ghostty(&format!("{{{field} = 1}}"));
+            let name = text.strip_suffix(" = 1").expect("one option on one line");
+            assert!(
+                !name.contains('_')
+                    && name
+                        .chars()
+                        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'),
+                "`{field}` spells `{name}`, which is not a name Ghostty could give an option"
+            );
+            count += 1;
+            assert!(
+                written.insert(name.to_owned()),
+                "`{field}` folded onto `{name}`"
+            );
+        }
+    }
+    assert_eq!(written.len(), count, "the map is injective");
 }
 
 #[test]

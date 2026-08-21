@@ -1,8 +1,10 @@
+use std::borrow::Cow;
 use std::fmt;
 
 use nuke_syntax::{Float, Value};
 
 use crate::error::{Path, Segment, article, form};
+use crate::name::transliterate;
 use crate::table::Table;
 
 pub type Error = crate::error::Error<ErrorKind>;
@@ -90,11 +92,11 @@ impl Writer {
     fn document(&mut self, table: Table<'_>) -> Result<(), Error> {
         for entry in entries(table) {
             self.path.push(entry.segment.clone());
-            let name = self.named(&entry.name)?;
-            if !is_name(name) {
-                return Err(self.error(ErrorKind::UnspellableName(name.to_owned())));
+            let name = self.spelled(&entry.name)?;
+            if !is_name(&name) {
+                return Err(self.error(ErrorKind::UnspellableName(name.into_owned())));
             }
-            self.option(name, entry.value)?;
+            self.option(&name, entry.value)?;
             self.path.pop();
         }
         Ok(())
@@ -157,6 +159,14 @@ impl Writer {
     fn float(&self, number: Float) -> String {
         let mut buffer = ryu::Buffer::new();
         buffer.format_finite(number.get()).to_owned()
+    }
+
+    fn spelled<'a>(&self, name: &Named<'a>) -> Result<Cow<'a, str>, Error> {
+        let literal = self.named(name)?;
+        Ok(match name {
+            Named::Field(_) => transliterate(literal),
+            Named::Key(_) => Cow::Borrowed(literal),
+        })
     }
 
     fn named<'a>(&self, name: &Named<'a>) -> Result<&'a str, Error> {

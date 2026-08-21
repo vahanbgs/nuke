@@ -975,8 +975,8 @@ fn gitconfig_refusals() -> Vec<(&'static str, gitconfig::ErrorKind, &'static str
         ("comments.nuke", root.clone(), "the document"),
         (
             "dotfile.nuke",
-            gitconfig::ErrorKind::UnspellableName("tab_width".to_owned()),
-            "editor.tab_width",
+            gitconfig::ErrorKind::SectionlessKey("keybindings".to_owned()),
+            "keybindings",
         ),
         (
             "maps.nuke",
@@ -1007,14 +1007,14 @@ fn every_fixture_gitconfig_cannot_carry_is_refused_by_the_error_that_names_its_f
 }
 
 #[test]
-fn gitconfig_stops_the_dot_file_at_a_field_name_and_ini_stops_it_later_at_a_value() {
+fn the_transliteration_carries_the_dot_file_past_every_name_and_gitconfig_stops_last() {
     let ini = stop_of(ini_refusals(), "dotfile.nuke");
     let git = stop_of(gitconfig_refusals(), "dotfile.nuke");
     assert_eq!(ini, "shell.aliases");
-    assert_eq!(git, "editor.tab_width");
+    assert_eq!(git, "keybindings");
     assert!(
-        !git.contains('#'),
-        "a field name is what gitconfig cannot spell, and only a map's key carries a #"
+        !git.contains('.'),
+        "every name the dot file spells now crosses, so gitconfig stops on a shape at the root rather than inside a section"
     );
 }
 
@@ -1315,22 +1315,23 @@ fn the_three_flat_targets_take_three_different_prefixes_of_one_tuple() {
 }
 
 #[test]
-fn ghostty_stops_the_dot_file_at_its_first_field_where_the_others_stop_inside_one() {
+fn the_dot_file_takes_three_prefixes_again_and_gitconfig_is_the_one_that_moved() {
     let ghostty = stop_of(ghostty_refusals(), "dotfile.nuke");
     assert_eq!(ghostty, "editor");
     assert!(
         !ghostty.contains('.'),
         "a file with no section cannot enter a field, so it stops at one"
     );
-    for (target, stop) in [
-        ("INI", stop_of(ini_refusals(), "dotfile.nuke")),
-        ("gitconfig", stop_of(gitconfig_refusals(), "dotfile.nuke")),
-    ] {
-        assert!(
-            stop.contains('.'),
-            "{target} takes the field itself and stops on something inside it"
-        );
-    }
+    assert_eq!(
+        stop_of(ini_refusals(), "dotfile.nuke"),
+        "shell.aliases",
+        "INI takes the first field whole and stops inside the second"
+    );
+    assert_eq!(
+        stop_of(gitconfig_refusals(), "dotfile.nuke"),
+        "keybindings",
+        "the transliteration leaves gitconfig no name here it cannot spell, so it takes both tables and stops on the third field, a list standing outside a section"
+    );
 }
 
 #[test]

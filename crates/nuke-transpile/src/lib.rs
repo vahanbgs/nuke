@@ -5,6 +5,7 @@ pub mod ini;
 pub mod json;
 pub mod kdl;
 pub mod lua;
+pub(crate) mod name;
 pub mod nix;
 pub mod plist;
 pub(crate) mod table;

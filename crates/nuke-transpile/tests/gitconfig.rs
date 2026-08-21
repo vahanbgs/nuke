@@ -141,8 +141,8 @@ fn a_name_is_three_alphabets_and_a_subsection_takes_what_the_other_two_refuse() 
     );
 
     for (source, name, path) in [
-        ("{a_b = {c = 1}}", "a_b", "a_b"),
-        ("{a = {b_c = 1}}", "b_c", "a.b_c"),
+        (r#"{"a_b" => {c = 1}}"#, "a_b", "#1"),
+        (r#"{a = {"b_c" => 1}}"#, "b_c", "a#1"),
         (r#"{"a.b" => {c = 1}}"#, "a.b", "#1"),
         (r#"{a = {"b.c" => 1}}"#, "b.c", "a#1"),
         (r#"{"" => {c = 1}}"#, "", "#1"),
@@ -334,15 +334,51 @@ fn the_backspace_git_documents_is_read_two_ways_so_the_character_it_spells_is_re
 }
 
 #[test]
-fn a_dot_file_cannot_be_a_git_config_file_because_a_field_name_is_not_a_variable_name() {
+fn a_dot_file_cannot_be_a_git_config_file_because_a_list_stands_outside_a_section() {
     let source = include_str!("../../../fixtures/valid/dotfile.nuke");
     let error = refused(source);
     assert_eq!(
         error.kind(),
-        &ErrorKind::UnspellableName("tab_width".to_owned()),
-        "{error}"
+        &ErrorKind::SectionlessKey("keybindings".to_owned()),
+        "every name the dot file spells is one git can spell now, so it reaches the third field: {error}"
     );
-    assert_eq!(error.path().to_string(), "editor.tab_width");
+    assert_eq!(error.path().to_string(), "keybindings");
+}
+
+#[test]
+fn a_section_and_a_variable_take_the_transliteration_and_a_subsection_never_does() {
+    assert_eq!(gitconfig("{a_b = {c_d = 1}}"), "[a-b]\n\tc-d = 1");
+    assert_eq!(
+        gitconfig(r#"{remote = {my_fork = {url = "git@example.com:me/repo.git"}}}"#),
+        "[remote \"my_fork\"]\n\turl = git@example.com:me/repo.git",
+        "a subsection is an arbitrary string and not a name, so `_` is legal there and stays itself"
+    );
+    assert_eq!(
+        gitconfig("{a = {b_c = 1}}"),
+        "[a]\n\tb-c = 1",
+        "the value decides the position and the position decides the alphabet"
+    );
+    assert_eq!(
+        gitconfig("{a = {b_c = {d_e = 1}}}"),
+        "[a \"b_c\"]\n\td-e = 1"
+    );
+    let error = refused(r#"{"diff_highlight" => {c = 1}}"#);
+    assert_eq!(
+        error.kind(),
+        &ErrorKind::UnspellableName("diff_highlight".to_owned()),
+        "a string is a literal, so a key holding `_` is still refused: {error}"
+    );
+}
+
+#[test]
+fn a_key_outside_a_section_is_named_as_the_document_wrote_it() {
+    let error = refused("{history_size = 1}");
+    assert_eq!(
+        error.kind(),
+        &ErrorKind::SectionlessKey("history_size".to_owned()),
+        "nothing spelled it, so the error names what the file holds: {error}"
+    );
+    assert_eq!(error.path().to_string(), "history_size");
 }
 
 #[test]

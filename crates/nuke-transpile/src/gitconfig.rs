@@ -1,9 +1,11 @@
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::fmt;
 
 use nuke_syntax::{Float, Value};
 
 use crate::error::{Path, Segment, article, form};
+use crate::name::transliterate;
 use crate::table::Table;
 
 pub type Error = crate::error::Error<ErrorKind>;
@@ -108,13 +110,14 @@ impl Writer {
             let Some(section) = entry.table else {
                 return Err(self.error(ErrorKind::SectionlessKey(name.to_owned())));
             };
-            if let Some(kind) = fault_in_section(name) {
+            let spelling = self.spelled(entry.name)?;
+            if let Some(kind) = fault_in_section(&spelling) {
                 return Err(self.error(kind));
             }
-            if !seen.insert(name.to_ascii_lowercase()) {
-                return Err(self.error(ErrorKind::DuplicateKey(name.to_owned())));
+            if !seen.insert(spelling.to_ascii_lowercase()) {
+                return Err(self.error(ErrorKind::DuplicateKey(spelling.into_owned())));
             }
-            self.section(name, section)?;
+            self.section(&spelling, section)?;
             self.path.pop();
         }
         Ok(())
@@ -144,17 +147,18 @@ impl Writer {
                     self.subsection(subsection)?;
                 }
                 None => {
-                    if let Some(kind) = fault_in_variable(name) {
+                    let spelling = self.spelled(entry.name)?;
+                    if let Some(kind) = fault_in_variable(&spelling) {
                         return Err(self.error(kind));
                     }
-                    if !seen.insert(Fold::Variable(name.to_ascii_lowercase())) {
-                        return Err(self.error(ErrorKind::DuplicateKey(name.to_owned())));
+                    if !seen.insert(Fold::Variable(spelling.to_ascii_lowercase())) {
+                        return Err(self.error(ErrorKind::DuplicateKey(spelling.into_owned())));
                     }
                     if !open {
                         self.header(section, None);
                         open = true;
                     }
-                    self.variable(name, entry.value)?;
+                    self.variable(&spelling, entry.value)?;
                 }
             }
             self.path.pop();
@@ -167,17 +171,17 @@ impl Writer {
         let mut seen = HashSet::with_capacity(entries.len());
         for entry in entries {
             self.path.push(entry.segment.clone());
-            let name = self.named(entry.name)?;
+            let name = self.spelled(entry.name)?;
             if entry.table.is_some() {
                 return Err(self.error(ErrorKind::UnrepresentableValue(form(entry.value))));
             }
-            if let Some(kind) = fault_in_variable(name) {
+            if let Some(kind) = fault_in_variable(&name) {
                 return Err(self.error(kind));
             }
             if !seen.insert(name.to_ascii_lowercase()) {
-                return Err(self.error(ErrorKind::DuplicateKey(name.to_owned())));
+                return Err(self.error(ErrorKind::DuplicateKey(name.into_owned())));
             }
-            self.variable(name, entry.value)?;
+            self.variable(&name, entry.value)?;
             self.path.pop();
         }
         Ok(())
@@ -263,6 +267,14 @@ impl Writer {
             self.out.push('"');
         }
         self.out.push(']');
+    }
+
+    fn spelled<'a>(&self, name: Named<'a>) -> Result<Cow<'a, str>, Error> {
+        let literal = self.named(name)?;
+        Ok(match name {
+            Named::Field(_) => transliterate(literal),
+            Named::Key(_) => Cow::Borrowed(literal),
+        })
     }
 
     fn named<'a>(&self, name: Named<'a>) -> Result<&'a str, Error> {
