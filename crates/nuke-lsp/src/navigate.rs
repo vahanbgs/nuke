@@ -101,7 +101,18 @@ impl Outline<'_> {
                 .iter()
                 .map(|binding| self.binding(binding))
                 .collect(),
-            _ => Vec::new(),
+            ExprKind::Group(inner) => self.expr(inner),
+            ExprKind::List(_)
+            | ExprKind::Access { .. }
+            | ExprKind::Index { .. }
+            | ExprKind::Apply { .. }
+            | ExprKind::Builtin(_)
+            | ExprKind::Interpolation(_)
+            | ExprKind::Reference(_)
+            | ExprKind::Atom(_)
+            | ExprKind::String(_)
+            | ExprKind::Integer(_)
+            | ExprKind::Float(_) => Vec::new(),
         }
     }
 
@@ -149,8 +160,10 @@ fn kind(value: &Expr) -> SymbolKind {
         ExprKind::String(_) | ExprKind::Interpolation(_) => SymbolKind::STRING,
         ExprKind::Integer(_) | ExprKind::Float(_) => SymbolKind::NUMBER,
         ExprKind::Atom(_) => SymbolKind::ENUM_MEMBER,
-        ExprKind::Access { .. } | ExprKind::Index { .. } => SymbolKind::FIELD,
-        ExprKind::Apply { .. } | ExprKind::Builtin(_) => SymbolKind::FUNCTION,
+        ExprKind::Access { .. } | ExprKind::Index { .. } | ExprKind::Apply { .. } => {
+            SymbolKind::FIELD
+        }
+        ExprKind::Builtin(_) => SymbolKind::FUNCTION,
         ExprKind::Group(inner) => kind(inner),
         ExprKind::Reference(_) => SymbolKind::VARIABLE,
     }

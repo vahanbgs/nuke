@@ -4,20 +4,20 @@ use lsp_server::{Connection, ErrorCode, Message, Notification, Request, Response
 use lsp_types::notification::Notification as _;
 use lsp_types::request::Request as _;
 use lsp_types::{
-    DidChangeTextDocumentParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
-    DidSaveTextDocumentParams, DocumentFormattingParams, DocumentHighlightParams,
-    DocumentSymbolParams, GotoDefinitionParams, GotoDefinitionResponse, InitializeParams,
-    InitializeResult, Location, OneOf, PublishDiagnosticsParams, ReferenceParams,
-    ServerCapabilities, ServerInfo, TextDocumentSyncCapability, TextDocumentSyncKind,
-    TextDocumentSyncOptions, TextDocumentSyncSaveOptions, TextEdit, Url, error_codes, notification,
-    request,
+    CompletionOptions, CompletionParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
+    DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams,
+    DocumentHighlightParams, DocumentSymbolParams, GotoDefinitionParams, GotoDefinitionResponse,
+    HoverParams, HoverProviderCapability, InitializeParams, InitializeResult, Location, OneOf,
+    PublishDiagnosticsParams, ReferenceParams, ServerCapabilities, ServerInfo,
+    TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
+    TextDocumentSyncSaveOptions, TextEdit, Url, error_codes, notification, request,
 };
 use serde::Serialize;
 use serde_json::Value;
 
 use crate::document::Open;
 use crate::position::{self, Encoding};
-use crate::{Error, diagnostics, navigate};
+use crate::{Error, complete, diagnostics, navigate};
 
 const NAME: &str = "nuke";
 
@@ -83,6 +83,8 @@ impl Server {
             request::References::METHOD => self.references(params),
             request::DocumentHighlightRequest::METHOD => self.highlights(params),
             request::DocumentSymbolRequest::METHOD => self.symbols(params),
+            request::Completion::METHOD => self.completion(params),
+            request::HoverRequest::METHOD => self.hover(params),
             request::Formatting::METHOD => self.formatting(params),
             _ => Err(Fault {
                 code: ErrorCode::MethodNotFound as i32,
@@ -142,6 +144,24 @@ impl Server {
             return answer(&Value::Null);
         };
         answer(&navigate::symbols(open, self.encoding))
+    }
+
+    fn completion(&self, params: Value) -> Result<Value, Fault> {
+        let params: CompletionParams = taken(params)?;
+        let at = &params.text_document_position;
+        let Some((open, offset)) = self.located(&at.text_document.uri, at.position) else {
+            return answer(&Value::Null);
+        };
+        answer(&complete::completions(open, offset, self.encoding))
+    }
+
+    fn hover(&self, params: Value) -> Result<Value, Fault> {
+        let params: HoverParams = taken(params)?;
+        let at = &params.text_document_position_params;
+        let Some((open, offset)) = self.located(&at.text_document.uri, at.position) else {
+            return answer(&Value::Null);
+        };
+        answer(&complete::hover(open, offset, self.encoding))
     }
 
     fn formatting(&self, params: Value) -> Result<Value, Fault> {
@@ -255,6 +275,11 @@ fn capabilities(encoding: Encoding) -> ServerCapabilities {
         references_provider: Some(OneOf::Left(true)),
         document_highlight_provider: Some(OneOf::Left(true)),
         document_symbol_provider: Some(OneOf::Left(true)),
+        completion_provider: Some(CompletionOptions {
+            trigger_characters: Some(vec!["@".to_owned()]),
+            ..CompletionOptions::default()
+        }),
+        hover_provider: Some(HoverProviderCapability::Simple(true)),
         document_formatting_provider: Some(OneOf::Left(true)),
         ..ServerCapabilities::default()
     }

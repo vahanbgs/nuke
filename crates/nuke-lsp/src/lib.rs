@@ -1,3 +1,4 @@
+mod complete;
 mod diagnostics;
 mod document;
 mod navigate;

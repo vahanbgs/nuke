@@ -11,9 +11,9 @@ use lsp_types::{
     DidSaveTextDocumentParams, DocumentFormattingParams, FormattingOptions,
     GeneralClientCapabilities, GotoDefinitionParams, InitializeParams, InitializeResult,
     InitializedParams, Position, PositionEncodingKind, PublishDiagnosticsParams, Range,
-    ReferenceContext, ReferenceParams, TextDocumentContentChangeEvent, TextDocumentIdentifier,
-    TextDocumentItem, TextDocumentPositionParams, TextEdit, Url, VersionedTextDocumentIdentifier,
-    WorkDoneProgressParams, notification, request,
+    ReferenceContext, ReferenceParams, SymbolKind, TextDocumentContentChangeEvent,
+    TextDocumentIdentifier, TextDocumentItem, TextDocumentPositionParams, TextEdit, Url,
+    VersionedTextDocumentIdentifier, WorkDoneProgressParams, notification, request,
 };
 use serde_json::{Value, json};
 use tempfile::TempDir;
@@ -32,6 +32,12 @@ fn initialize_advertises_what_the_server_answers() {
     assert_eq!(capabilities["documentHighlightProvider"], json!(true));
     assert_eq!(capabilities["documentSymbolProvider"], json!(true));
     assert_eq!(capabilities["documentFormattingProvider"], json!(true));
+    assert_eq!(capabilities["hoverProvider"], json!(true));
+    assert_eq!(
+        capabilities["completionProvider"]["triggerCharacters"],
+        json!(["@"]),
+        "`@` opens the builtin namespace"
+    );
     assert_eq!(capabilities["textDocumentSync"]["change"], json!(1));
     client.stop();
 }
@@ -160,6 +166,218 @@ fn an_outline_names_the_bindings_and_the_fields() {
 }
 
 #[test]
+fn an_outline_sees_through_a_group_and_stops_at_an_application() {
+    let mut client = Client::start();
+    let uri =
+        client.open("{font = ({family = \"Iosevka\"}) parts = @concat <| [\"a\"] join = @concat}");
+    let _ = client.published();
+    let response = client.request(
+        request::DocumentSymbolRequest::METHOD,
+        json!({ "textDocument": { "uri": uri } }),
+    );
+    let symbols = response.result.expect("symbols");
+    assert_eq!(symbols[0]["name"], json!("font"));
+    assert_eq!(symbols[0]["kind"], kind(SymbolKind::OBJECT));
+    assert_eq!(
+        symbols[0]["children"][0]["name"],
+        json!("family"),
+        "a group is a shape and not a step, so the outline sees through it"
+    );
+    assert_eq!(
+        symbols[1]["kind"],
+        kind(SymbolKind::FIELD),
+        "applying a function is not a function"
+    );
+    assert!(
+        symbols[1]["children"].is_null(),
+        "an argument is not at the field's path: {symbols}"
+    );
+    assert_eq!(
+        symbols[2]["kind"],
+        kind(SymbolKind::FUNCTION),
+        "a builtin is one, and a lambda will be"
+    );
+    client.stop();
+}
+
+#[test]
+fn a_name_is_followed_across_both_operators_and_out_of_a_group() {
+    let mut client = Client::start();
+    let uri =
+        client.open("parts := [\"a\"]\n{a = parts |> parts b = @concat <| parts c = (parts)}");
+    let _ = client.published();
+    let found = client.request(
+        request::GotoDefinition::METHOD,
+        json!({ "textDocument": { "uri": uri }, "position": { "line": 1, "character": 46 } }),
+    );
+    let location = found.result.expect("a location");
+    assert_eq!(
+        location["range"],
+        serde_json::to_value(at(0, 0, 0, 5)).expect("range"),
+        "a name inside a group is still the binding's"
+    );
+    let found = client.request(
+        request::References::METHOD,
+        json!({
+            "textDocument": { "uri": uri },
+            "position": { "line": 1, "character": 5 },
+            "context": { "includeDeclaration": true },
+        }),
+    );
+    let locations = found.result.expect("locations");
+    let columns: Vec<u64> = locations
+        .as_array()
+        .expect("an array")
+        .iter()
+        .map(|location| {
+            location["range"]["start"]["character"]
+                .as_u64()
+                .expect("a column")
+        })
+        .collect();
+    assert_eq!(
+        columns,
+        vec![0, 5, 14, 35, 46],
+        "the declaration and four reads, in source order however the pipe stores them"
+    );
+    client.stop();
+}
+
+#[test]
+fn a_binding_and_its_reads_are_highlighted_apart() {
+    let mut client = Client::start();
+    let uri = client.open("parts := [\"#\"]\n{a = @concat <| parts}");
+    let _ = client.published();
+    let found = client.request(
+        request::DocumentHighlightRequest::METHOD,
+        json!({ "textDocument": { "uri": uri }, "position": { "line": 1, "character": 17 } }),
+    );
+    let highlights = found.result.expect("highlights");
+    assert_eq!(
+        highlights[0]["range"],
+        serde_json::to_value(at(0, 0, 0, 5)).expect("range")
+    );
+    assert_eq!(highlights[0]["kind"], json!(3), "the binding is written");
+    assert_eq!(
+        highlights[1]["range"],
+        serde_json::to_value(at(1, 16, 1, 21)).expect("range")
+    );
+    assert_eq!(highlights[1]["kind"], json!(2), "the read is read");
+    client.stop();
+}
+
+#[test]
+fn each_way_an_application_can_be_wrong_is_reported_where_it_stands() {
+    let mut client = Client::start();
+    let uri = client.open("{a = @improt}");
+    let published = client.published();
+    assert_eq!(published.diagnostics.len(), 1, "{published:?}");
+    assert_eq!(
+        published.diagnostics[0].range,
+        at(0, 6, 0, 12),
+        "the name is the fault"
+    );
+    assert!(published.diagnostics[0].message.contains("improt"));
+
+    client.change(&uri, "{a = @concat}");
+    let published = client.published();
+    assert_eq!(published.diagnostics.len(), 1, "{published:?}");
+    assert_eq!(
+        published.diagnostics[0].range,
+        at(0, 5, 0, 12),
+        "the builtin nothing applies"
+    );
+
+    client.change(&uri, "{a = 1 <| 2}");
+    let published = client.published();
+    assert_eq!(published.diagnostics.len(), 1, "{published:?}");
+    assert_eq!(
+        published.diagnostics[0].range,
+        at(0, 5, 0, 6),
+        "the function position"
+    );
+
+    client.change(&uri, "{a = (@concat) <| []}");
+    let published = client.published();
+    assert!(
+        published.diagnostics.is_empty(),
+        "a group holds no step, so it holds no fault either: {published:?}"
+    );
+    client.stop();
+}
+
+#[test]
+fn an_unspaced_application_is_spaced_by_the_formatter() {
+    let mut client = Client::start();
+    let uri = client.open("{a = @concat<|[] b = []|>@concat}");
+    let _ = client.published();
+    let response = client.request(request::Formatting::METHOD, formatting(&uri));
+    let edits: Vec<TextEdit> =
+        serde_json::from_value(response.result.expect("edits")).expect("edits");
+    assert_eq!(edits.len(), 1);
+    assert_eq!(edits[0].new_text, "{a = @concat <| [] b = [] |> @concat}\n");
+    client.stop();
+}
+
+#[test]
+fn the_sigil_offers_the_roster_and_hover_says_what_one_takes() {
+    let mut client = Client::start();
+    let uri = client.open("{a = @}");
+    let _ = client.published();
+    let response = client.request(
+        request::Completion::METHOD,
+        json!({ "textDocument": { "uri": uri }, "position": { "line": 0, "character": 6 } }),
+    );
+    let offered = response.result.expect("completions");
+    let names: Vec<&str> = offered
+        .as_array()
+        .expect("an array")
+        .iter()
+        .map(|item| item["label"].as_str().expect("a label"))
+        .collect();
+    assert_eq!(
+        names,
+        vec!["concat", "import"],
+        "the roster is offered though `{{a = @}}` does not parse"
+    );
+
+    client.change(&uri, "{a = @concat <| []}");
+    let _ = client.published();
+    let response = client.request(
+        request::HoverRequest::METHOD,
+        json!({ "textDocument": { "uri": uri }, "position": { "line": 0, "character": 8 } }),
+    );
+    let hover = response.result.expect("a hover");
+    assert!(
+        hover["contents"]["value"]
+            .as_str()
+            .expect("markup")
+            .contains("list of strings"),
+        "{hover}"
+    );
+    assert_eq!(
+        hover["range"],
+        serde_json::to_value(at(0, 6, 0, 12)).expect("range")
+    );
+    client.stop();
+}
+
+#[test]
+fn a_name_in_scope_is_offered_where_a_value_stands() {
+    let mut client = Client::start();
+    let uri = client.open("size := 12\n{a = s}");
+    let _ = client.published();
+    let response = client.request(
+        request::Completion::METHOD,
+        json!({ "textDocument": { "uri": uri }, "position": { "line": 1, "character": 6 } }),
+    );
+    let offered = response.result.expect("completions");
+    assert_eq!(offered[0]["label"], json!("size"));
+    assert_eq!(offered[0]["kind"], json!(6), "a binding is a variable");
+    client.stop();
+}
+
+#[test]
 fn an_unknown_request_is_refused_rather_than_ignored() {
     let mut client = Client::start();
     let response = client.request("textDocument/inlayHint", json!({}));
@@ -237,6 +455,10 @@ fn an_offered_encoding_is_taken_and_a_wide_character_is_counted() {
         "one emoji is four utf-8 units"
     );
     client.stop();
+}
+
+fn kind(kind: SymbolKind) -> Value {
+    serde_json::to_value(kind).expect("a symbol kind")
 }
 
 fn at(line: u32, start: u32, end_line: u32, end: u32) -> Range {
