@@ -50,6 +50,13 @@ done <"$verdicts"
 
 tree-sitter test || fail 'the corpus and the grammar disagree'
 
+# Helix compiles a query against the grammar it finds, and one unknown node type
+# fails the whole file rather than the one pattern, so every .scm is compiled here.
+for query in queries/*.scm; do
+	tree-sitter query "$query" "$fixtures/valid/dotfile.nuke" >/dev/null 2>&1 ||
+		fail "$query names something grammar.js does not"
+done
+
 # The parser an editor compiles is generated, so it must be what the grammar says.
 tree-sitter generate || fail 'tree-sitter generate failed'
 [ -z "$(git status --porcelain -- src)" ] ||

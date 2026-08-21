@@ -556,6 +556,23 @@ fn the_dot_binds_tightest_and_the_backward_operator_loosest() {
         }
     ));
 
+    let ExprKind::Apply {
+        function,
+        direction,
+        ..
+    } = document("xs |> @flatten <| ys").value.kind
+    else {
+        panic!("`<|` should take the whole pipe to its left");
+    };
+    assert_eq!(direction, Direction::Backward);
+    assert!(matches!(
+        function.kind,
+        ExprKind::Apply {
+            direction: Direction::Forward,
+            ..
+        }
+    ));
+
     let ExprKind::Apply { argument, .. } = document("@f <| @g <| x").value.kind else {
         panic!("`<|` should be right-associative");
     };

@@ -83,3 +83,22 @@ The dot binds tighter than either operator, so a group is what hands it the impo
           (ident))
         (reference
           (ident))))))
+
+================================================================================
+Where the two compete, `<|` takes the whole pipe to its left
+================================================================================
+
+[xs |> @flatten <| ys]
+
+--------------------------------------------------------------------------------
+
+(document
+  (list
+    (apply
+      (pipe
+        (reference
+          (ident))
+        (builtin
+          (ident)))
+      (reference
+        (ident)))))

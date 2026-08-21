@@ -17,25 +17,22 @@ fails the suite rather than settling in. That is the arrangement
 `crates/nuke-syntax/tests/conformance.rs` already uses against the ABNF, moved to the tool that
 can run it.
 
-Seven fixtures the parser refuses are absent on purpose. Five are the boundary the surface
-language already crossed — `bare-ident`, `braceless-fields`, `hex-literal`, `ident-as-map-key` and
+Seven fixtures the parser refuses are absent on purpose. Five are the boundary the surface language
+already crossed — `bare-ident`, `braceless-fields`, `hex-literal`, `ident-as-map-key` and
 `interpolated-string` are refused by the canonical form and admitted by this one. One is
-`a-specifier-that-is-not-one`, `{1:007}`, because a specifier is a raw tail to the closing brace
-here and `Spec::parse` is what reads it. The last is `byte-order-mark`, and it is the only one
-that is a limit of the tool: `tree-sitter parse` strips a BOM before the grammar is given the
-text, so there is no byte here to refuse.
+`a-specifier-that-is-not-one`, `{1:007}`, a specifier being a raw tail to the closing brace here
+that `Spec::parse` reads. The last is `byte-order-mark`, the only limit of the tool: `tree-sitter
+parse` strips a BOM before the grammar sees it, so there is no byte here to refuse.
 
-Everything else a semantic pass owns — a duplicate field, a lone surrogate, a cycle between
-files, a hole holding a float — is a `fixtures/surface/refused` document, and those all parse.
-That is the point rather than a gap: the linter and the LSP server report them, and they will
-read this tree to do it.
+Everything else a semantic pass owns — a duplicate field, a lone surrogate, a cycle between files, a
+hole holding a float — is a `fixtures/surface/refused` document, and those all parse. That is the
+point rather than a gap: the linter and the LSP server report them, reading this tree to do it.
 
 ## The refinement falls out of longest match
 
-`grammar/tokens.abnf` splits a number in two, a permissive token and a rule refining it, so that
-a misspelling is one bad token that names itself rather than two good ones — `0xff` must not
-read as `0` beside `xff`. ABNF cannot say that in one rule, and `Grammar::parse` checks it in a
-second pass over the tree.
+`grammar/tokens.abnf` splits a number in two, a permissive token and a rule refining it, so that a
+misspelling is one bad token that names itself rather than two good ones — `0xff` must not read as
+`0` beside `xff`. ABNF cannot say that in one rule; `Grammar::parse` checks it in a second pass.
 
 A tree-sitter lexer needs no second pass. Both spellings are tokens — `number` matching
 `surface-number` exactly, `malformed_number` matching the permissive run — and longest match
@@ -94,3 +91,9 @@ colour saying otherwise would be this file deciding what an atom means.
 below itself and inside the blocks nested there, so a scope is a `document`, a `tuple` or a
 `map`, and a name can be followed to where it was bound without evaluating anything. There is no
 `injections.scm` — nothing inside a Nuke file is another language.
+
+`indents.scm` carries `(group)`, a parenthesis standing wherever a value does. What no query
+carries is `@function` for a name in an application's function position, that document being
+`NotAFunction` until lambdas land, nor a textobject for a call, `@function.around` naming a lambda.
+`conformance.sh` compiles every `.scm` against the grammar: one unknown node type fails the whole
+file in Helix rather than the pattern that names it.
