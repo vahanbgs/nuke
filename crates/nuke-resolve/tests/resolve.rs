@@ -92,6 +92,39 @@ fn everything_is_in_source_order() {
     assert_eq!(resolution.reads().len(), 4);
 }
 
+#[test]
+fn a_pipe_is_walked_the_way_it_is_written() {
+    let resolution = of("f := 1\nx := 2\n[x |> f {p := 3 q => p}]");
+    assert!(
+        increasing(resolution.reads().iter().map(|read| read.span)),
+        "`|>` stores the function first and spells it last: {:?}",
+        resolution.reads()
+    );
+    assert!(increasing(
+        resolution.bounds().iter().map(|bound| bound.span)
+    ));
+}
+
+#[test]
+fn a_binding_is_visible_below_itself_and_no_higher() {
+    let resolution = of("n := 1\n{a = {m := n b = m}}");
+    let names: Vec<&str> = resolution
+        .visible(24)
+        .map(|bound| bound.ident.as_str())
+        .collect();
+    assert_eq!(names, ["n", "m"], "both stand at the field below them");
+    assert_eq!(
+        resolution.visible(5).count(),
+        0,
+        "a binding does not stand inside its own value"
+    );
+    let outer: Vec<&str> = resolution
+        .visible(8)
+        .map(|bound| bound.ident.as_str())
+        .collect();
+    assert_eq!(outer, ["n"], "the nested name has not opened yet");
+}
+
 fn of(source: &str) -> Resolution {
     Resolution::of(&surface::parse(source).expect("parses"))
 }

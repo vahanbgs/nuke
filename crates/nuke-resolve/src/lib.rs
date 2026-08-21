@@ -1,5 +1,5 @@
 use nuke_syntax::Span;
-use nuke_syntax::expr::{Binding, Document, Expr, ExprKind, Piece};
+use nuke_syntax::expr::{Binding, Direction, Document, Expr, ExprKind, Piece};
 use nuke_syntax::value::Ident;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -9,6 +9,7 @@ pub struct Id(usize);
 pub struct Bound {
     pub ident: Ident,
     pub span: Span,
+    pub visible: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,7 +32,7 @@ impl Resolution {
         let mut resolution = Self::default();
         let frame = resolution.open(&document.bindings);
         resolution.expr(&document.value);
-        resolution.close(frame);
+        resolution.close(frame, document.value.span.end);
         resolution.scope = Vec::new();
         resolution
     }
@@ -67,6 +68,12 @@ impl Resolution {
         self.reads.iter().filter(move |read| read.bound == Some(id))
     }
 
+    pub fn visible(&self, offset: usize) -> impl Iterator<Item = &Bound> {
+        self.bounds
+            .iter()
+            .filter(move |bound| covers(bound.visible, offset))
+    }
+
     pub fn unread(&self) -> impl Iterator<Item = &Bound> {
         self.bounds
             .iter()
@@ -78,9 +85,11 @@ impl Resolution {
         let frame = self.scope.len();
         for binding in bindings {
             let id = Id(self.bounds.len());
+            let from = binding.value.span.end;
             self.bounds.push(Bound {
                 ident: binding.name.ident.clone(),
                 span: binding.name.span,
+                visible: Span::new(from, from),
             });
             self.was_read.push(false);
             self.expr(&binding.value);
@@ -89,8 +98,10 @@ impl Resolution {
         frame
     }
 
-    fn close(&mut self, frame: usize) {
-        self.scope.truncate(frame);
+    fn close(&mut self, frame: usize, end: usize) {
+        for id in self.scope.split_off(frame) {
+            self.bounds[id.0].visible.end = end;
+        }
     }
 
     fn expr(&mut self, expr: &Expr) {
@@ -100,7 +111,7 @@ impl Resolution {
                 for field in fields {
                     self.expr(&field.value);
                 }
-                self.close(frame);
+                self.close(frame, expr.span.end);
             }
             ExprKind::Map { bindings, entries } => {
                 let frame = self.open(bindings);
@@ -108,7 +119,7 @@ impl Resolution {
                     self.expr(&entry.key);
                     self.expr(&entry.value);
                 }
-                self.close(frame);
+                self.close(frame, expr.span.end);
             }
             ExprKind::List(items) => {
                 for item in items {
@@ -121,10 +132,16 @@ impl Resolution {
                 self.expr(key);
             }
             ExprKind::Apply {
-                function, argument, ..
+                function,
+                argument,
+                direction,
             } => {
-                self.expr(function);
-                self.expr(argument);
+                let (first, second) = match direction {
+                    Direction::Backward => (function, argument),
+                    Direction::Forward => (argument, function),
+                };
+                self.expr(first);
+                self.expr(second);
             }
             ExprKind::Builtin(_) => {}
             ExprKind::Group(inner) => self.expr(inner),
