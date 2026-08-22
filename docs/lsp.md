@@ -95,5 +95,5 @@ auto-format = true
 
 `formatter` is not needed — the server formats — and `nuke fmt -` stays for what is not an editor.
 That block is half of it: Helix finds a grammar and its queries by **language name** under a runtime
-directory and never from the grammar's own repository, so what makes it work is
-`runtime/grammars/nuke.so` and `runtime/queries/nuke/`, which `packages.tree-sitter-nuke` builds.
+directory, never the grammar's own repository, so `runtime/grammars/nuke.so` and
+`runtime/queries/nuke/` are the rest: `programs.nuke.helix.enable`, from `homeModules.default`.

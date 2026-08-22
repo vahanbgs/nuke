@@ -12,6 +12,7 @@
 
   outputs =
     {
+      self,
       nixpkgs,
       flake-utils,
       rust-overlay,
@@ -97,5 +98,43 @@
 
         formatter = pkgs.nixfmt-tree;
       }
-    );
+    )
+    // {
+      homeModules.default =
+        {
+          config,
+          lib,
+          pkgs,
+          ...
+        }:
+        let
+          cfg = config.programs.nuke;
+          packages = self.packages.${pkgs.stdenv.hostPlatform.system};
+        in
+        {
+          options.programs.nuke = {
+            enable = lib.mkEnableOption "the Nuke command line tool";
+
+            package = lib.mkOption {
+              type = lib.types.package;
+              default = packages.default;
+              defaultText = lib.literalMD "the flake's `packages.default`";
+              description = "The package providing the `nuke` binary and its language server.";
+            };
+
+            helix.enable = lib.mkEnableOption "Nuke's grammar and queries for Helix";
+          };
+
+          config = lib.mkMerge [
+            (lib.mkIf cfg.enable { home.packages = [ cfg.package ]; })
+
+            (lib.mkIf cfg.helix.enable {
+              programs.nuke.enable = lib.mkDefault true;
+
+              xdg.configFile."helix/runtime/grammars/nuke.so".source = "${packages.tree-sitter-nuke}/parser";
+              xdg.configFile."helix/runtime/queries/nuke".source = "${packages.tree-sitter-nuke}/queries";
+            })
+          ];
+        };
+    };
 }
